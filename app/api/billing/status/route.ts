@@ -14,7 +14,7 @@ import {
   isLegacyUserEntitlementColumnError,
   runtimeEntitlementSelect,
 } from "@/lib/billing/entitlementDb";
-import { getChatPlanLimits, getHumanizerPlanLimits, getNotePlanLimits } from "@/lib/plans/productLimits";
+import { getChatPlanLimits, getConverterPlanLimits, getHumanizerPlanLimits, getNotePlanLimits } from "@/lib/plans/productLimits";
 import { getUserIdOrDev } from "@/lib/auth/devUser";
 
 export const runtime = "nodejs";
@@ -35,6 +35,7 @@ function fallbackBillingStatus(userId: string) {
   const chatLimits = getChatPlanLimits(plan);
   const noteLimits = getNotePlanLimits(plan);
   const humanizerLimits = getHumanizerPlanLimits(plan);
+  const converterLimits = getConverterPlanLimits(plan);
 
   return NextResponse.json({
     ok: true,
@@ -77,6 +78,13 @@ function fallbackBillingStatus(userId: string) {
     studyMaxSelectableModes: studyLimits.maxSelectableModes,
     studyAllowedDifficulties: studyLimits.allowedDifficulties,
     usedStudyCountToday: 0,
+    converterConversionsPerDay: converterLimits.conversionsPerDay,
+    converterMaxFileSizeBytes: converterLimits.maxFileSizeBytes,
+    converterBatchMaxFiles: converterLimits.batchMaxFiles,
+    converterAllowAdvancedVideo: converterLimits.allowAdvancedVideo,
+    converterAllowLinkToAudio: converterLimits.allowLinkToAudio,
+    converterPriority: converterLimits.priority,
+    usedConverterCountToday: 0,
   });
 }
 
@@ -89,6 +97,7 @@ function emptyUsageSnapshot() {
     usedNoteGeneratesToday: 0,
     usedChatInputCharsWindow: 0,
     usedStudyCountToday: 0,
+    usedConverterCountToday: 0,
   };
 }
 
@@ -216,6 +225,7 @@ export async function GET() {
           const chatLimits = getChatPlanLimits(plan);
           const noteLimits = getNotePlanLimits(plan);
           const humanizerLimits = getHumanizerPlanLimits(plan);
+          const converterLimits = getConverterPlanLimits(plan);
           const daysLeft =
             access.source === "promo"
               ? daysLeftFromDate(access.promoExpiresAt)
@@ -273,6 +283,13 @@ export async function GET() {
             studyMaxSelectableModes: studyLimits.maxSelectableModes,
             studyAllowedDifficulties: studyLimits.allowedDifficulties,
             usedStudyCountToday: usage.usedStudyCountToday,
+            usedConverterCountToday: usage.usedConverterCountToday,
+            converterConversionsPerDay: converterLimits.conversionsPerDay,
+            converterMaxFileSizeBytes: converterLimits.maxFileSizeBytes,
+            converterBatchMaxFiles: converterLimits.batchMaxFiles,
+            converterAllowAdvancedVideo: converterLimits.allowAdvancedVideo,
+            converterAllowLinkToAudio: converterLimits.allowLinkToAudio,
+            converterPriority: converterLimits.priority,
           });
         } catch (error) {
           console.error("[billing.status] falling back to basic plan", {

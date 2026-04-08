@@ -7,7 +7,7 @@ export function formatSecondsToHrs(sec: number) {
 }
 
 export function formatLimitSeconds(sec: number | null) {
-  if (sec === null) return "∞";
+  if (sec === null) return "Unlimited";
   return formatSecondsToHrs(sec);
 }
 

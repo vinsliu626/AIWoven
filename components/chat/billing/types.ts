@@ -34,6 +34,13 @@ export type Entitlement = {
   studyMaxQuizQuestions?: number;
   studyMaxSelectableModes?: number;
   studyAllowedDifficulties?: ("easy" | "medium" | "hard")[];
+  usedConverterCountToday?: number;
+  converterConversionsPerDay?: number;
+  converterMaxFileSizeBytes?: number;
+  converterBatchMaxFiles?: number;
+  converterAllowAdvancedVideo?: boolean;
+  converterAllowLinkToAudio?: boolean;
+  converterPriority?: "standard" | "fast" | "priority";
 
   canSeeSuspiciousSentences: boolean;
 };

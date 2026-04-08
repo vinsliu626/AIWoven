@@ -14,6 +14,7 @@ import { DetectorUI } from "@/components/workspace/detector/DetectorUI";
 import { HumanizerUI } from "@/components/workspace/humanizer/HumanizerUI";
 import { NoteUI } from "@/components/workspace/note/NoteUI";
 import { StudyUI } from "@/components/workspace/study/StudyUI";
+import { ConverterUI } from "@/components/workspace/converter/ConverterUI";
 import { AiFormattedText } from "@/components/shared/AiFormattedText";
 import { NexusOrb } from "@/components/shared/NexusOrb";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -73,6 +74,13 @@ type Entitlement = {
   studyMaxQuizQuestions: number;
   studyMaxSelectableModes?: number;
   studyAllowedDifficulties: ("easy" | "medium" | "hard")[];
+  usedConverterCountToday?: number;
+  converterConversionsPerDay?: number;
+  converterMaxFileSizeBytes?: number;
+  converterBatchMaxFiles?: number;
+  converterAllowAdvancedVideo?: boolean;
+  converterAllowLinkToAudio?: boolean;
+  converterPriority?: "standard" | "fast" | "priority";
 
   canSeeSuspiciousSentences: boolean;
 };
@@ -146,11 +154,11 @@ function buildHttpErrorMessage(opts: { res: Response; data: any; text: string; i
   const hint =
     res.status === 401
       ? isZh
-        ? "锛堝彲鑳芥湭鐧诲綍 / session cookie 娌″甫涓婏級"
+        ? "（可能未登录 / 未携带 session cookie）"
         : "(likely not signed in / missing session cookie)"
       : res.status === 404
       ? isZh
-        ? "锛堜細璇濅笉瀛樺湪锛屾垨涓嶅睘浜庡綋鍓嶈处鍙凤級"
+        ? "（会话不存在，或不属于当前账号）"
         : "(session not found or not owned by current user)"
       : res.status === 400
       ? isZh
@@ -232,26 +240,28 @@ function formatGiftGrantEndAt(grantEndAt: string | null, isZh: boolean) {
 
 function formatGiftPlan(plan: string, isZh: boolean) {
   if (plan.toLowerCase() === "pro") return "Pro";
-  if (plan.toLowerCase() === "ultra") return isZh ? "Ultra 娑撴挷绗熼悧?" : "Ultra Pro";
+  if (plan.toLowerCase() === "ultra") return isZh ? "Ultra 专业版" : "Ultra Pro";
   return plan;
 }
 
-function modeTitle(mode: ChatMode) {
+function modeTitle(mode: ChatMode, isZh: boolean) {
   switch (mode) {
     case "normal":
-      return "Chat";
+      return isZh ? "💬 普通对话" : "💬 Chat / Normal";
     case "workflow":
-      return "Workflow";
+      return isZh ? "⚙️ 工作流对话" : "⚙️ Chat / Workflow";
     case "detector":
-      return "AI Detector";
+      return isZh ? "🛡️ AI 检测器" : "🛡️ AI Detector";
     case "note":
-      return "AI Note";
+      return isZh ? "📝 AI 笔记" : "📝 AI Note";
     case "study":
-      return "AI Study";
+      return isZh ? "📚 AI 学习" : "📚 AI Study";
     case "humanizer":
-      return "AI Humanizer";
+      return isZh ? "✨ AI Humanizer" : "✨ AI Humanizer";
+    case "converter":
+      return isZh ? "🔄 转换器" : "🔄 Converter";
     default:
-      return "Chat";
+      return isZh ? "💬 普通对话" : "💬 Chat / Normal";
   }
 }
 
@@ -280,6 +290,16 @@ function HeaderAuthMenu({
 }) {
   const [menuOpen, setMenuOpen] = useState<"signin" | "account" | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const copy = {
+    signIn: isZh ? "登录" : "Sign in",
+    continueWithGoogle: isZh ? "使用 Google 继续" : "Continue with Google",
+    continueWithGitHub: isZh ? "使用 GitHub 继续" : "Continue with GitHub",
+    noProviders: isZh ? "当前没有可用的登录方式。" : "No sign-in providers are currently available.",
+    account: isZh ? "账户" : "Account",
+    billing: isZh ? "套餐与额度" : "Billing",
+    settings: isZh ? "设置" : "Settings",
+    signOut: isZh ? "退出登录" : "Sign out",
+  };
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -324,14 +344,14 @@ function HeaderAuthMenu({
           onClick={() => setMenuOpen((current) => (current === "signin" ? null : "signin"))}
           className="rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 px-3 py-1.5 text-xs font-medium text-white shadow-md shadow-blue-500/40 transition-all hover:brightness-110"
         >
-          {isZh ? "闁谎嗩嚙缂?" : "Sign in"}
+          {copy.signIn}
         </button>
       )}
 
       {menuOpen === "signin" && !sessionExists && (
         <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-56 rounded-3xl border border-white/10 bg-[#080808]/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
           <div className="border-b border-white/8 px-3 py-2">
-            <p className="text-sm font-semibold text-slate-50">{isZh ? "闁谎嗩嚙缂?" : "Sign in"}</p>
+            <p className="text-sm font-semibold text-slate-50">{copy.signIn}</p>
           </div>
           <div className="space-y-1 px-1 py-2">
             {visibleAuthProviders.map((provider) => (
@@ -345,13 +365,9 @@ function HeaderAuthMenu({
               >
                 <span>
                   {provider.id === "google"
-                    ? isZh
-                      ? "缂佈呯敾娴ｈ法鏁?Google"
-                      : "Continue with Google"
+                    ? copy.continueWithGoogle
                     : provider.id === "github"
-                    ? isZh
-                      ? "缂佈呯敾娴ｈ法鏁?GitHub"
-                      : "Continue with GitHub"
+                    ? copy.continueWithGitHub
                     : provider.name}
                 </span>
                 <span className="text-slate-500">↗</span>
@@ -359,7 +375,7 @@ function HeaderAuthMenu({
             ))}
             {visibleAuthProviders.length === 0 && (
               <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] text-slate-400">
-                {isZh ? "閺嗗倹婀Λ鈧ù瀣煂閸欘垳鏁ら惃鍕瑜版洘鏌熷?" : "No sign-in providers are currently available."}
+                {copy.noProviders}
               </div>
             )}
           </div>
@@ -380,7 +396,7 @@ function HeaderAuthMenu({
               }}
               className="flex w-full items-center rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10"
             >
-              {isZh ? "账户" : "Account"}
+              {copy.account}
             </button>
             <button
               onClick={() => {
@@ -389,7 +405,7 @@ function HeaderAuthMenu({
               }}
               className="flex w-full items-center rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10"
             >
-              Billing
+              {copy.billing}
             </button>
             <button
               onClick={() => {
@@ -398,7 +414,7 @@ function HeaderAuthMenu({
               }}
               className="flex w-full items-center rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10"
             >
-              {isZh ? "设置" : "Settings"}
+              {copy.settings}
             </button>
             <button
               onClick={() => {
@@ -407,7 +423,7 @@ function HeaderAuthMenu({
               }}
               className="flex w-full items-center rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-100 transition hover:bg-red-500/15"
             >
-              {isZh ? "闂侇偀鍋撻柛鎴ｆ濞呫儴銇?" : "Sign out"}
+              {copy.signOut}
             </button>
           </div>
         </div>
@@ -460,6 +476,7 @@ function ChatPageInner() {
   const humanizerLocked = !sessionExists;
   const noteLocked = !sessionExists;
   const studyLocked = !sessionExists;
+  const converterLocked = !sessionExists;
 
   // Stripe redirect: success/canceled
   useEffect(() => {
@@ -574,7 +591,7 @@ function ChatPageInner() {
     if (isLoading) return;
 
     if (!sessionId || typeof sessionId !== "string") {
-      setMessages([{ id: uid(), stage: "assistant", title: "AI", subtitle: "Error", content: isZh ? "鏃犳晥鐨勪細璇?ID" : "Invalid session id" }]);
+      setMessages([{ id: uid(), stage: "assistant", title: "AI", subtitle: "Error", content: isZh ? "无效的会话 ID" : "Invalid session id" }]);
       return;
     }
 
@@ -940,7 +957,7 @@ function ChatPageInner() {
       });
       await refreshEnt();
     } catch (e: any) {
-      setRedeemError(e?.message || (isZh ? "鍏戞崲澶辫触" : "Redeem failed"));
+      setRedeemError(e?.message || (isZh ? "兑换失败" : "Redeem failed"));
     } finally {
       setRedeemLoading(false);
     }
@@ -1001,15 +1018,23 @@ function ChatPageInner() {
     window.location.href = "/account";
   }
 
+  function clearLocalData() {
+    try {
+      localStorage.removeItem("lang");
+      localStorage.removeItem("theme");
+    } catch {}
+    setLang("en");
+  }
+
   function setModeSafely(next: ChatMode) {
-    if (!sessionExists && (next === "detector" || next === "note" || next === "study" || next === "humanizer")) {
+    if (!sessionExists && (next === "detector" || next === "note" || next === "study" || next === "humanizer" || next === "converter")) {
       setPlanOpen(true);
       return;
     }
     setMode(next);
   }
 
-  // 濮嬬粓寮哄埗榛戣壊/鏈潵鎰熶富棰樺熀璋?
+  // Keep the workspace locked to the existing dark premium shell.
   return (
     <main className="h-screen w-screen overflow-hidden text-slate-200 bg-[#030303] font-sans selection:bg-blue-500/30 selection:text-blue-100 relative">
       <PlanPillStyles />
@@ -1017,7 +1042,7 @@ function ChatPageInner() {
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none base-grid" />
 
       <div className="relative z-10 h-full w-full flex">
-        {/* 鍏ㄥ眬閬僵锛氭闈㈠拰绉诲姩绔兘涓€鏍凤紝鍙湁 sidebarOpen 鏃舵樉绀?*/}
+        {/* Global overlay shown only while the sidebar is open. */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 z-40 bg-black/60 transition-opacity"
@@ -1025,7 +1050,7 @@ function ChatPageInner() {
           />
         )}
 
-        {/* Sidebar锛氶粯璁ら殣钘忥紝鐐瑰嚮鑿滃崟鎸夐挳鎵嶅睍寮€ */}
+        {/* Sidebar stays hidden until the menu trigger is used. */}
         <aside
           className={[
             "fixed z-50 left-0 top-0 h-full w-[280px]",
@@ -1168,7 +1193,7 @@ function ChatPageInner() {
                 <NexusOrb sizeClass="h-7 w-7" />
                 <div className="flex flex-col">
                   <h1 className="font-semibold text-sm text-slate-100 tracking-wide">NexusDesk</h1>
-                  <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">{modeTitle(mode)}</p>
+                  <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">{modeTitle(mode, isZh)}</p>
                 </div>
               </div>
             </div>
@@ -1223,7 +1248,7 @@ function ChatPageInner() {
                       onClick={() => signOut()}
                       className="text-left text-xs text-slate-400 transition hover:text-slate-200 hover:underline underline-offset-2"
                     >
-                      {isZh ? "闁偓閸戣櫣娅ヨぐ?" : "Sign out"}
+                      {isZh ? "退出登录" : "Sign out"}
                     </button>
                   </div>
                 </div>
@@ -1302,6 +1327,8 @@ function ChatPageInner() {
             <DetectorUI isLoadingGlobal={isLoading} isZh={isZh} locked={detectorLocked} canSeeSuspicious={!!ent?.canSeeSuspiciousSentences} />
           ) : mode === "humanizer" ? (
             <HumanizerUI locked={humanizerLocked} entitlement={ent} onUsageRefresh={refreshEnt} />
+          ) : mode === "converter" ? (
+            <ConverterUI isZh={isZh} locked={converterLocked} entitlement={ent} />
           ) : mode === "note" ? (
             <NoteUI isLoadingGlobal={isLoading} isZh={isZh} locked={noteLocked} entitlement={ent} onUsageRefresh={refreshEnt} />
           ) : mode === "study" ? (
@@ -1399,13 +1426,13 @@ function ChatPageInner() {
                   {sessionExists && ent && !ent.unlimited && ent.plan === "basic" && (
                     <div className="px-4 flex items-center justify-between text-[10px] text-slate-500 font-mono uppercase tracking-wide">
                       <span>
-                        {isZh ? "浠婃棩璋冪敤闄愬埗:" : "Daily limit:"}{" "}
+                        {isZh ? "今日聊天额度:" : "Daily limit:"}{" "}
                         <span className="text-slate-300">
                           {ent.usedChatCountToday}/{ent.chatPerDay}
                         </span>
                       </span>
                       <button onClick={() => setPlanOpen(true)} className="text-blue-400 hover:text-blue-300 hover:underline underline-offset-2">
-                        {isZh ? "鍗囩骇鏉冮檺" : "Upgrade Access"}
+                        {isZh ? "升级权限" : "Upgrade Access"}
                       </button>
                     </div>
                   )}
@@ -1460,6 +1487,7 @@ function ChatPageInner() {
           openRedeemModal();
         }}
         onSignOut={sessionExists ? () => signOut() : undefined}
+        onClearLocalData={clearLocalData}
       />
 
       <style jsx global>{`

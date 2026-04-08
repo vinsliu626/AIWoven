@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node ./node_modules/vitest/vitest.mjs run --configLoader native --pool threads",
+    "test:e2e": "playwright test",
     "test:stripe": "node ./node_modules/vitest/vitest.mjs run --configLoader native --pool threads tests/api/stripe-checkout.test.ts tests/api/stripe-webhook.test.ts",
     "postinstall": "prisma generate",
     "gift:create": "ts-node scripts/create-gift-code.ts",
@@ -39,6 +40,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -3,24 +3,28 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMode, Lang } from "./types";
 
+type ModeItem = {
+  value: ChatMode;
+  title: Record<Lang, string>;
+  desc: Record<Lang, string>;
+};
+
+const MODE_ITEMS: ModeItem[] = [
+  { value: "normal", title: { en: "Chat / Normal", zh: "聊天 / 普通" }, desc: { en: "Fast, classic chat", zh: "快速、直接的经典对话" } },
+  { value: "workflow", title: { en: "Chat / Workflow", zh: "聊天 / 工作流" }, desc: { en: "Planner, Writer, Reviewer", zh: "规划、撰写、审阅协作" } },
+  { value: "detector", title: { en: "AI Detector", zh: "AI 检测器" }, desc: { en: "Detect AI-like writing patterns", zh: "检测文本中的 AI 痕迹" } },
+  { value: "note", title: { en: "AI Note", zh: "AI 笔记" }, desc: { en: "Generate notes from audio or text", zh: "把音频或文本整理成笔记" } },
+  { value: "study", title: { en: "AI Study", zh: "AI 学习" }, desc: { en: "Notes, flashcards, and quizzes", zh: "生成笔记、卡片和测验" } },
+  { value: "humanizer", title: { en: "AI Humanizer", zh: "AI Humanizer" }, desc: { en: "Rewrite for better flow and readability", zh: "让表达更自然、更顺畅" } },
+  {
+    value: "converter",
+    title: { en: "Converter", zh: "转换器" },
+    desc: { en: "Convert documents, images, audio, and common media formats", zh: "转换文档、图片、音频和常见媒体格式" },
+  },
+];
+
 function labelFor(mode: ChatMode, lang: Lang) {
-  const isZh = lang === "zh";
-  switch (mode) {
-    case "workflow":
-      return isZh ? "Chat / Workflow" : "Chat / Workflow";
-    case "normal":
-      return isZh ? "Chat / Normal" : "Chat / Normal";
-    case "detector":
-      return isZh ? "AI Detector" : "AI Detector";
-    case "note":
-      return isZh ? "AI Note" : "AI Note";
-    case "study":
-      return isZh ? "AI Study" : "AI Study";
-    case "humanizer":
-      return isZh ? "AI Humanizer" : "AI Humanizer";
-    default:
-      return mode;
-  }
+  return MODE_ITEMS.find((item) => item.value === mode)?.title[lang] ?? mode;
 }
 
 export function ModeDropdown({
@@ -38,40 +42,14 @@ export function ModeDropdown({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
-  const items: { value: ChatMode; title: string; desc: string }[] = useMemo(
-    () => [
-      {
-        value: "normal",
-        title: isZh ? "Chat / Normal" : "Chat / Normal",
-        desc: isZh ? "Fast, classic chat" : "Fast, classic chat",
-      },
-      {
-        value: "workflow",
-        title: isZh ? "Chat / Workflow" : "Chat / Workflow",
-        desc: isZh ? "Planner, Writer, Reviewer + Conclusion" : "Planner, Writer, Reviewer + Conclusion",
-      },
-      {
-        value: "detector",
-        title: isZh ? "AI Detector" : "AI Detector",
-        desc: isZh ? "Detect AI-like writing patterns" : "Detect AI-like writing patterns",
-      },
-      {
-        value: "note",
-        title: isZh ? "AI Note" : "AI Note",
-        desc: isZh ? "Generate notes from audio or text" : "Generate notes from audio or text",
-      },
-      {
-        value: "study",
-        title: isZh ? "AI Study" : "AI Study",
-        desc: isZh ? "Upload documents for notes, flashcards, and quizzes" : "Upload documents for notes, flashcards, and quizzes",
-      },
-      {
-        value: "humanizer",
-        title: isZh ? "AI Humanizer" : "AI Humanizer",
-        desc: isZh ? "Rewrite for better flow and readability" : "Rewrite for better flow and readability",
-      },
-    ],
-    [isZh]
+  const items = useMemo(
+    () =>
+      MODE_ITEMS.map((item) => ({
+        value: item.value,
+        title: item.title[lang],
+        desc: item.desc[lang],
+      })),
+    [lang]
   );
 
   useEffect(() => {
@@ -90,20 +68,19 @@ export function ModeDropdown({
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         className={[
-          "h-9 px-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition",
-          "text-xs text-slate-100 flex items-center gap-2",
-          disabled ? "opacity-60 cursor-not-allowed" : "",
+          "flex h-9 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 text-xs text-slate-100 transition hover:bg-white/10",
+          disabled ? "cursor-not-allowed opacity-60" : "",
         ].join(" ")}
-        title={isZh ? "Switch mode" : "Switch mode"}
+        title={isZh ? "切换工作区" : "Switch workspace"}
       >
         <span className="text-slate-200">{labelFor(value, lang)}</span>
         <span className="text-slate-400">▼</span>
       </button>
 
-      {open && (
-        <div className="absolute right-0 mt-2 w-[280px] rounded-2xl border border-white/10 bg-slate-950/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden z-50">
-          <div className="px-3 py-2 text-[11px] text-slate-400 border-b border-white/5">
-            {isZh ? "Choose a workspace" : "Choose a workspace"}
+      {open ? (
+        <div className="absolute right-0 z-50 mt-2 w-[300px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur-xl">
+          <div className="border-b border-white/5 px-3 py-2 text-[11px] text-slate-400">
+            {isZh ? "选择工作区" : "Choose a workspace"}
           </div>
 
           <div className="p-1">
@@ -117,19 +94,19 @@ export function ModeDropdown({
                     onChange(item.value);
                     setOpen(false);
                   }}
-                  className={["w-full text-left px-3 py-2 rounded-xl transition", active ? "bg-white/10" : "hover:bg-white/10"].join(" ")}
+                  className={["w-full rounded-xl px-3 py-2 text-left transition", active ? "bg-white/10" : "hover:bg-white/10"].join(" ")}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-slate-100 font-medium">{item.title}</div>
-                    {active ? <div className="text-emerald-300 text-xs">✓</div> : null}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-medium text-slate-100">{item.title}</div>
+                    {active ? <div className="text-xs text-emerald-300">✓</div> : null}
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{item.desc}</div>
+                  <div className="mt-0.5 text-[11px] text-slate-400">{item.desc}</div>
                 </button>
               );
             })}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

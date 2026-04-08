@@ -8,7 +8,7 @@ export async function getUsage(userId: string) {
   const dayStart = startOfTodayUTC();
   const chatBudgetWindowStart = new Date(Date.now() - 3 * 60 * 60 * 1000);
 
-  const [weekDetector, weekNote, weekHumanizer, dayChat, dayNoteGenerates, chatBudgetWindow] = await Promise.all([
+  const [weekDetector, weekNote, weekHumanizer, dayChat, dayNoteGenerates, chatBudgetWindow, dayConverter] = await Promise.all([
     prisma.usageEvent.aggregate({
       where: { userId, type: "detector_words", createdAt: { gte: weekStart } },
       _sum: { amount: true },
@@ -31,6 +31,10 @@ export async function getUsage(userId: string) {
     }),
     prisma.usageEvent.aggregate({
       where: { userId, type: "chat_input_chars", createdAt: { gte: chatBudgetWindowStart } },
+      _sum: { amount: true },
+    }),
+    prisma.usageEvent.aggregate({
+      where: { userId, type: "converter_count", createdAt: { gte: dayStart } },
       _sum: { amount: true },
     }),
   ]);
@@ -57,6 +61,7 @@ export async function getUsage(userId: string) {
     usedNoteGeneratesToday: dayNoteGenerates._sum.amount ?? 0,
     usedChatInputCharsWindow: chatBudgetWindow._sum.amount ?? 0,
     usedStudyCountToday,
+    usedConverterCountToday: dayConverter._sum.amount ?? 0,
   };
 }
 

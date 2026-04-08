@@ -39,6 +39,15 @@ export type StudyPlanLimitsConfig = {
   cooldownMs: number;
 };
 
+export type ConverterPlanLimits = {
+  maxFileSizeBytes: number;
+  conversionsPerDay: number;
+  batchMaxFiles: number;
+  allowAdvancedVideo: boolean;
+  allowLinkToAudio: boolean;
+  priority: "standard" | "fast" | "priority";
+};
+
 export type ProductPlanLimits = {
   detectorWordsPerWeek: number | null;
   noteSecondsPerWeek: number | null;
@@ -47,6 +56,7 @@ export type ProductPlanLimits = {
   note: NotePlanLimits;
   humanizer: HumanizerPlanLimits;
   study: StudyPlanLimitsConfig;
+  converter: ConverterPlanLimits;
 };
 
 export const PRODUCT_PLAN_LIMITS: Record<PlanId, ProductPlanLimits> = {
@@ -85,6 +95,14 @@ export const PRODUCT_PLAN_LIMITS: Record<PlanId, ProductPlanLimits> = {
       maxFlashcards: 6,
       cooldownMs: 90_000,
     },
+    converter: {
+      maxFileSizeBytes: 10 * 1024 * 1024,
+      conversionsPerDay: 5,
+      batchMaxFiles: 1,
+      allowAdvancedVideo: false,
+      allowLinkToAudio: false,
+      priority: "standard",
+    },
   },
   pro: {
     detectorWordsPerWeek: 25_000,
@@ -120,6 +138,14 @@ export const PRODUCT_PLAN_LIMITS: Record<PlanId, ProductPlanLimits> = {
       maxNotes: 8,
       maxFlashcards: 10,
       cooldownMs: 60_000,
+    },
+    converter: {
+      maxFileSizeBytes: 50 * 1024 * 1024,
+      conversionsPerDay: 30,
+      batchMaxFiles: 3,
+      allowAdvancedVideo: false,
+      allowLinkToAudio: true,
+      priority: "fast",
     },
   },
   ultra: {
@@ -157,6 +183,14 @@ export const PRODUCT_PLAN_LIMITS: Record<PlanId, ProductPlanLimits> = {
       maxFlashcards: 14,
       cooldownMs: 45_000,
     },
+    converter: {
+      maxFileSizeBytes: 200 * 1024 * 1024,
+      conversionsPerDay: 100,
+      batchMaxFiles: 10,
+      allowAdvancedVideo: true,
+      allowLinkToAudio: true,
+      priority: "priority",
+    },
   },
 };
 
@@ -178,4 +212,8 @@ export function getHumanizerPlanLimits(plan?: string | null): HumanizerPlanLimit
 
 export function getStudyBasePlanLimits(plan?: string | null): StudyPlanLimitsConfig {
   return getProductPlanLimits(plan).study;
+}
+
+export function getConverterPlanLimits(plan?: string | null): ConverterPlanLimits {
+  return getProductPlanLimits(plan).converter;
 }

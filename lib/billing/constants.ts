@@ -7,7 +7,8 @@ export type UsageType =
   | "study_count"
   | "chat_input_chars"
   | "note_generate_count"
-  | "humanizer_words";
+  | "humanizer_words"
+  | "converter_count";
 
 export type PlanLimits = {
   detectorWordsPerWeek: number | null; // null = unlimited
