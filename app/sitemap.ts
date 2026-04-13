@@ -5,11 +5,12 @@ import { absoluteUrl } from "@/lib/seo";
 const routes = [
   "/",
   "/privacy",
+  "/chat",
   "/converter",
   "/ai-note",
   "/ai-detector",
   "/ai-study",
-  "/humanizer",
+  "/ai-humanizer",
   "/convert-pdf-to-jpg",
   "/jpg-to-png",
   "/png-to-webp",
@@ -23,6 +24,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: absoluteUrl(route),
     lastModified,
     changeFrequency: route === "/" ? "weekly" : "monthly",
-    priority: route === "/" ? 1 : route === "/converter" || route === "/ai-note" || route === "/ai-detector" ? 0.9 : 0.8,
+    priority:
+      route === "/"
+        ? 1
+        : route === "/chat" ||
+            route === "/converter" ||
+            route === "/ai-note" ||
+            route === "/ai-detector" ||
+            route === "/ai-study" ||
+            route === "/ai-humanizer"
+        ? 0.9
+        : 0.8,
   }));
 }

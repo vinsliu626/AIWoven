@@ -13,15 +13,17 @@ type HumanizerEntitlement = {
 };
 
 export function HumanizerUI({
+  isZh,
   locked,
   entitlement,
   onUsageRefresh,
 }: {
+  isZh: boolean;
   locked: boolean;
   entitlement: HumanizerEntitlement | null;
   onUsageRefresh?: () => Promise<void> | void;
 }) {
-  const ctl = useHumanizerController({ locked, entitlement, onUsageRefresh });
+  const ctl = useHumanizerController({ isZh, locked, entitlement, onUsageRefresh });
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -31,12 +33,14 @@ export function HumanizerUI({
   }, [copied]);
 
   const helperText = useMemo(() => {
-    if (locked) return "Sign in to use AI Humanizer.";
-    if (ctl.inputWords > 0 && ctl.inputWords < ctl.minWords) return `Enter at least ${ctl.minWords} words to continue.`;
-    if (ctl.maxWords > 0 && ctl.inputWords > ctl.maxWords) return `Your plan allows up to ${ctl.maxWords} words per request.`;
-    if (ctl.remainingWeeklyWords <= 0) return "You've reached your weekly Humanizer limit.";
-    return "Lightly revise text to sound more natural and less stiff while keeping your original meaning and phrasing.";
-  }, [ctl.inputWords, ctl.maxWords, ctl.minWords, ctl.remainingWeeklyWords, locked]);
+    if (locked) return isZh ? "登录后即可使用 AI Humanizer。" : "Sign in to use AI Humanizer.";
+    if (ctl.inputWords > 0 && ctl.inputWords < ctl.minWords) return isZh ? `至少输入 ${ctl.minWords} 个单词后继续。` : `Enter at least ${ctl.minWords} words to continue.`;
+    if (ctl.maxWords > 0 && ctl.inputWords > ctl.maxWords) return isZh ? `你当前套餐每次最多允许 ${ctl.maxWords} 个单词。` : `Your plan allows up to ${ctl.maxWords} words per request.`;
+    if (ctl.remainingWeeklyWords <= 0) return isZh ? "你已达到本周 Humanizer 配额上限。" : "You've reached your weekly Humanizer limit.";
+    return isZh
+      ? "在保留原意的前提下，轻度润色文本，让表达更自然、更顺畅。"
+      : "Lightly revise text to sound more natural and less stiff while keeping your original meaning and phrasing.";
+  }, [ctl.inputWords, ctl.maxWords, ctl.minWords, ctl.remainingWeeklyWords, isZh, locked]);
 
   const statusText = ctl.error || ctl.success;
 
@@ -45,7 +49,11 @@ export function HumanizerUI({
       <div className="relative h-full w-full rounded-3xl border border-white/10 bg-gradient-to-b from-slate-950/40 via-slate-900/30 to-slate-950/40 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl overflow-hidden flex flex-col">
         <div className="px-6 py-5 border-b border-white/10">
           <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-50">AI Humanizer</h2>
-          <p className="mt-2 text-sm text-slate-300">Lightly revise text to sound more natural and less stiff while keeping your original meaning and phrasing.</p>
+          <p className="mt-2 text-sm text-slate-300">
+            {isZh
+              ? "轻度润色文本，让语气更自然、节奏更顺，同时保留原本意思。"
+              : "Lightly revise text to sound more natural and less stiff while keeping your original meaning and phrasing."}
+          </p>
           <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-2 text-[12px] text-slate-300">{helperText}</div>
         </div>
 
@@ -55,7 +63,9 @@ export function HumanizerUI({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Input</p>
-                  <p className="mt-2 text-sm text-slate-300">Paste the original text for a single consistent light edit style.</p>
+                  <p className="mt-2 text-sm text-slate-300">
+                    {isZh ? "粘贴原始文本，使用统一且克制的轻度润色风格。" : "Paste the original text for a single consistent light edit style."}
+                  </p>
                 </div>
                 <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">{ctl.inputWords} words</div>
               </div>
@@ -63,7 +73,7 @@ export function HumanizerUI({
               <textarea
                 value={ctl.text}
                 onChange={(event) => ctl.setText(event.target.value)}
-                placeholder="Paste text with at least 20 words..."
+                placeholder={isZh ? "请粘贴至少 20 个单词的文本..." : "Paste text with at least 20 words..."}
                 className="mt-4 min-h-[360px] w-full rounded-3xl border border-white/10 bg-slate-950/70 px-4 py-4 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500"
                 disabled={ctl.loading || locked}
               />
@@ -74,7 +84,7 @@ export function HumanizerUI({
                   disabled={!ctl.canSubmit}
                   className="h-11 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-400 px-5 text-sm font-semibold text-white shadow-md shadow-blue-500/30 disabled:from-slate-700 disabled:via-slate-700 disabled:to-slate-700 disabled:text-slate-300 disabled:shadow-none disabled:cursor-not-allowed hover:brightness-110 transition"
                 >
-                  {ctl.loading ? "Humanizing..." : "Humanize"}
+                  {ctl.loading ? (isZh ? "处理中..." : "Humanizing...") : isZh ? "开始润色" : "Humanize"}
                 </button>
               </div>
             </div>
@@ -83,7 +93,9 @@ export function HumanizerUI({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Output</p>
-                  <p className="mt-2 text-sm text-slate-300">Simpler wording, smoother flow, and minimal rewriting.</p>
+                  <p className="mt-2 text-sm text-slate-300">
+                    {isZh ? "更自然的措辞、更顺的节奏，以及最小化重写。" : "Simpler wording, smoother flow, and minimal rewriting."}
+                  </p>
                 </div>
                 <CopyButton text={ctl.output} onCopied={() => setCopied(true)} />
               </div>
@@ -107,7 +119,7 @@ export function HumanizerUI({
                   copied ? "border-emerald-400/40 shadow-[0_0_0_1px_rgba(52,211,153,0.2)]" : "border-white/10"
                 }`}
               >
-                {ctl.output || <span className="text-slate-500">Humanized text will appear here.</span>}
+                {ctl.output || <span className="text-slate-500">{isZh ? "润色后的文本会显示在这里。" : "Humanized text will appear here."}</span>}
               </div>
             </div>
           </div>

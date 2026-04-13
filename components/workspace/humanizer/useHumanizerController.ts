@@ -17,20 +17,22 @@ type UsageState = {
   weeklyLimit: number;
 } | null;
 
-function apiErrorMessage(payload: { error?: unknown; message?: unknown } | null | undefined, fallback: string) {
+function apiErrorMessage(payload: { error?: unknown; message?: unknown } | null | undefined, fallback: string, isZh: boolean) {
   const code = String(payload?.error || "");
-  if (code === "HUMANIZER_WEEKLY_LIMIT_REACHED") return "You've reached your weekly Humanizer limit.";
-  if (code === "HUMANIZER_INPUT_TOO_SHORT") return "Please enter at least 20 words.";
-  if (code === "HUMANIZER_INPUT_TOO_LARGE") return "This request exceeds your plan's Humanizer limit.";
-  if (code === "AUTH_REQUIRED") return "Please sign in to use AI Humanizer.";
+  if (code === "HUMANIZER_WEEKLY_LIMIT_REACHED") return isZh ? "你已达到本周 Humanizer 配额上限。" : "You've reached your weekly Humanizer limit.";
+  if (code === "HUMANIZER_INPUT_TOO_SHORT") return isZh ? "请至少输入 20 个单词。" : "Please enter at least 20 words.";
+  if (code === "HUMANIZER_INPUT_TOO_LARGE") return isZh ? "这次请求超出了你当前套餐的 Humanizer 限制。" : "This request exceeds your plan's Humanizer limit.";
+  if (code === "AUTH_REQUIRED") return isZh ? "请先登录后再使用 AI Humanizer。" : "Please sign in to use AI Humanizer.";
   return typeof payload?.message === "string" && payload.message.trim() ? payload.message : fallback;
 }
 
 export function useHumanizerController({
+  isZh,
   locked,
   entitlement,
   onUsageRefresh,
 }: {
+  isZh: boolean;
   locked: boolean;
   entitlement: HumanizerEntitlement | null;
   onUsageRefresh?: () => Promise<void> | void;
@@ -59,7 +61,7 @@ export function useHumanizerController({
 
   async function humanize() {
     if (locked) {
-      setError("Please sign in to use AI Humanizer.");
+      setError(isZh ? "请先登录后再使用 AI Humanizer。" : "Please sign in to use AI Humanizer.");
       return;
     }
     if (!canSubmit) return;
@@ -77,15 +79,15 @@ export function useHumanizerController({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || data?.success === false) {
-        throw new Error(apiErrorMessage(data, "Unable to humanize text right now."));
+        throw new Error(apiErrorMessage(data, isZh ? "暂时无法处理这段文本。" : "Unable to humanize text right now.", isZh));
       }
 
       setOutput(String(data?.output ?? ""));
       setUsage(data?.usage ?? null);
-      setSuccess("Text humanized.");
+      setSuccess(isZh ? "文本已优化。" : "Text humanized.");
       await onUsageRefresh?.();
     } catch (humanizeError) {
-      const message = humanizeError instanceof Error ? humanizeError.message : "Unable to humanize text right now.";
+      const message = humanizeError instanceof Error ? humanizeError.message : isZh ? "暂时无法处理这段文本。" : "Unable to humanize text right now.";
       setError(message);
     } finally {
       setLoading(false);

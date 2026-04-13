@@ -2,7 +2,8 @@
 
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSession, signIn, signOut, getProviders, type ClientSafeProvider } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // 缁勪欢锛堜綘鐜版湁锛?
 import { PlanPillStyles, PlanPillButton } from "@/components/chat/billing/PlanPill";
@@ -18,13 +19,15 @@ import { ConverterUI } from "@/components/workspace/converter/ConverterUI";
 import { AiFormattedText } from "@/components/shared/AiFormattedText";
 import { NexusOrb } from "@/components/shared/NexusOrb";
 import { CopyButton } from "@/components/ui/copy-button";
+import { useAppLanguage } from "@/components/app/AppLanguageProvider";
 
 // workflow UI
 import { Bubble } from "@/components/chat/ui/workflow/Bubble";
 import { ModeDropdown } from "@/components/chat/ui/workflow/ModeDropdown";
-import type { ChatMode, Lang, WorkflowMessage } from "@/components/chat/ui/workflow/types";
+import type { ChatMode, WorkflowMessage } from "@/components/chat/ui/workflow/types";
 import { uid } from "@/components/chat/ui/workflow/types";
 import { tryParseWorkflowReply } from "@/components/chat/ui/workflow/parseWorkflow";
+import { routeForMode } from "@/lib/productRoutes";
 
 /** ===================== Types ===================== */
 type ChatSession = {
@@ -452,6 +455,7 @@ function ChatPageInner() {
   const { data: session } = useSession();
   const sessionExists = !!session;
   const effectiveSession = session;
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedMode = getRequestedMode(searchParams.get("mode"));
 
@@ -465,8 +469,7 @@ function ChatPageInner() {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   // settings
-  const [lang, setLang] = useState<Lang>("en");
-  const isZh = lang === "zh";
+  const { lang, setLang, isZh, clearLang } = useAppLanguage();
 
   // dropdown mode
   const [mode, setMode] = useState<ChatMode>(requestedMode ?? "normal");
@@ -550,21 +553,6 @@ function ChatPageInner() {
       setSidebarOpen(false);
     }
   }, [mode]);
-
-  // ===== Settings persistence (language) =====
-  useEffect(() => {
-    try {
-      const savedLang = (localStorage.getItem("lang") as Lang) || "en";
-      setLang(savedLang);
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("lang", lang);
-    } catch {}
-  }, [lang]);
 
   // auto scroll to bottom when messages change
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -1041,16 +1029,19 @@ function ChatPageInner() {
   }
 
   function clearLocalData() {
+    clearLang();
     try {
-      localStorage.removeItem("lang");
       localStorage.removeItem("theme");
     } catch {}
-    setLang("en");
   }
 
   function setModeSafely(next: ChatMode) {
     if (!sessionExists && (next === "detector" || next === "note" || next === "study" || next === "humanizer" || next === "converter")) {
       setPlanOpen(true);
+      return;
+    }
+    if (next !== "normal" && next !== "workflow") {
+      router.push(routeForMode(next));
       return;
     }
     setMode(next);
@@ -1344,11 +1335,19 @@ function ChatPageInner() {
             </div>
           )}
 
+          <div className="sr-only">
+            <p>AI Chat</p>
+            <h1>NexusDesk AI chat workspace for direct conversations and workflow collaboration</h1>
+            <p>
+              Use this route for direct chat with NexusDesk. You can stay in normal chat, switch to workflow chat, or jump into the dedicated tool routes for AI Note, AI Detector, AI Study, AI Humanizer, and Converter.
+            </p>
+          </div>
+
           {/* Body */}
           {mode === "detector" ? (
             <DetectorUI isLoadingGlobal={isLoading} isZh={isZh} locked={detectorLocked} canSeeSuspicious={!!ent?.canSeeSuspiciousSentences} />
           ) : mode === "humanizer" ? (
-            <HumanizerUI locked={humanizerLocked} entitlement={ent} onUsageRefresh={refreshEnt} />
+            <HumanizerUI isZh={isZh} locked={humanizerLocked} entitlement={ent} onUsageRefresh={refreshEnt} />
           ) : mode === "converter" ? (
             <ConverterUI isZh={isZh} locked={converterLocked} entitlement={ent} />
           ) : mode === "note" ? (
@@ -1413,7 +1412,7 @@ function ChatPageInner() {
 
               {/* Input Area (Console Style) */}
               <div className="p-4 md:px-8 md:pb-6 pt-2 bg-gradient-to-t from-[#030303] via-[#030303] to-transparent shrink-0">
-                <div className="max-w-4xl mx-auto relative flex flex-col gap-2">
+                <div id="chat-composer" className="max-w-4xl mx-auto relative flex flex-col gap-2">
                   <div className="relative flex items-end bg-[#0a0a0a] rounded-3xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all focus-within:border-blue-500/40 focus-within:shadow-[0_0_20px_rgba(59,130,246,0.1)]">
                     <textarea
                       className="flex-1 max-h-40 min-h-[52px] w-full bg-transparent text-slate-100 placeholder:text-slate-600 px-5 py-4 text-sm resize-none focus:outline-none focus:ring-0 custom-scrollbar"

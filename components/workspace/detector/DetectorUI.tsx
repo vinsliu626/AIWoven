@@ -172,8 +172,8 @@ export function DetectorUI({
   }, [sentences, result?.aiGenerated]);
 
   return (
-    <div className="flex-1 overflow-hidden px-4 py-4">
-      <div className="relative flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-950/40 via-slate-900/30 to-slate-950/40 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+    <div className="flex-1 overflow-hidden px-4 py-4 md:px-8 md:pb-6">
+      <div className="relative flex h-full min-h-[calc(100vh-7.5rem)] w-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-950/40 via-slate-900/30 to-slate-950/40 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-2xl bg-gradient-to-br from-blue-500 via-cyan-400 to-emerald-400 shadow-md shadow-blue-500/30" />
@@ -199,7 +199,7 @@ export function DetectorUI({
         )}
 
         <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-          <div className="flex-1 overflow-hidden p-4">
+          <div className="overflow-hidden p-4 lg:min-w-0 lg:flex-[1.35]">
             <div className="h-full rounded-3xl bg-gradient-to-r from-blue-500/60 via-purple-500/50 to-cyan-400/50 p-[1px]">
               <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 shadow-xl backdrop-blur-xl">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
@@ -230,7 +230,7 @@ export function DetectorUI({
                   )}
                 </div>
 
-                <div className="flex-1 overflow-hidden px-4 pb-4">
+                <div className="min-h-[380px] flex-1 overflow-hidden px-4 pb-4 lg:min-h-[560px]">
                   <HighlightEditor
                     value={text}
                     onChange={handleTextChange}
@@ -248,7 +248,7 @@ export function DetectorUI({
             </div>
           </div>
 
-          <div className="w-full overflow-hidden p-4 lg:w-[420px]">
+          <div className="w-full overflow-hidden p-4 lg:w-[460px] xl:w-[500px]">
             <div className="h-full rounded-3xl bg-gradient-to-b from-white/10 via-blue-500/20 to-purple-500/20 p-[1px]">
               <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60 shadow-xl backdrop-blur-xl">
                 <div className="border-b border-white/10 px-4 py-3">

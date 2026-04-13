@@ -1,19 +1,41 @@
 import type { Metadata } from "next";
 
 export const SITE_NAME = "NexusDesk";
-const FALLBACK_SITE_URL = "https://nexusdesk.app";
+const PRODUCTION_SITE_URL = "https://ai-multimodel-erhw.vercel.app";
+const DEVELOPMENT_SITE_URL = "http://localhost:3000";
+
+function normalizeSiteUrl(value: string) {
+  return new URL(value).toString().replace(/\/$/, "");
+}
+
+function isLocalSeoHost(url: URL) {
+  return (
+    url.hostname === "localhost" ||
+    url.hostname === "127.0.0.1" ||
+    url.hostname === "::1"
+  );
+}
 
 export function getSiteUrl() {
-  const candidate =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.SITE_URL ||
-    process.env.OPENROUTER_SITE_URL ||
-    FALLBACK_SITE_URL;
+  const candidate = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL;
+  const fallback =
+    process.env.NODE_ENV === "production"
+      ? PRODUCTION_SITE_URL
+      : DEVELOPMENT_SITE_URL;
 
   try {
-    return new URL(candidate).toString().replace(/\/$/, "");
+    if (!candidate) {
+      return fallback;
+    }
+
+    const normalized = new URL(candidate);
+    if (process.env.NODE_ENV === "production" && isLocalSeoHost(normalized)) {
+      return PRODUCTION_SITE_URL;
+    }
+
+    return normalizeSiteUrl(normalized.toString());
   } catch {
-    return FALLBACK_SITE_URL;
+    return fallback;
   }
 }
 
