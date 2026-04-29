@@ -1,21 +1,18 @@
 "use client";
 
 import { HumanizerUI } from "@/components/workspace/humanizer/HumanizerUI";
+import { ToolLandingPageSection } from "@/components/seo/ToolLandingPageSection";
+import { toolPageContent } from "@/lib/seo/toolPageContent";
 
-import { CompactRouteIntro, PublicWorkspaceShell } from "./PublicWorkspaceShell";
+import { PublicWorkspaceShell } from "./PublicWorkspaceShell";
 
 export function AiHumanizerWorkspacePage() {
   return (
     <PublicWorkspaceShell mode="humanizer">
       {({ entitlement, locked, isZh, refreshEntitlement }) => (
-        <>
-          <CompactRouteIntro
-            eyebrow="AI Humanizer"
-            title="AI Humanizer workspace for rewriting stiff text into more natural phrasing"
-            intro="This route opens the NexusDesk AI Humanizer directly. Paste machine-like or awkward text, keep the original meaning, and smooth the wording inside a focused public workspace that search engines can index."
-          />
+        <ToolLandingPageSection hero={toolPageContent.humanizer}>
           <HumanizerUI isZh={isZh} locked={locked} entitlement={entitlement} onUsageRefresh={refreshEntitlement} />
-        </>
+        </ToolLandingPageSection>
       )}
     </PublicWorkspaceShell>
   );

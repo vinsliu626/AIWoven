@@ -1,11 +1,13 @@
 "use client";
 
 import { StudyUI } from "@/components/workspace/study/StudyUI";
+import { ToolLandingPageSection } from "@/components/seo/ToolLandingPageSection";
 import type { Entitlement } from "@/components/chat/billing/types";
 import type { StudyEntitlement } from "@/components/workspace/study/study-types";
 import { getStudyBasePlanLimits, normalizePlan } from "@/lib/plans/productLimits";
+import { toolPageContent } from "@/lib/seo/toolPageContent";
 
-import { CompactRouteIntro, PublicWorkspaceShell } from "./PublicWorkspaceShell";
+import { PublicWorkspaceShell } from "./PublicWorkspaceShell";
 
 function toStudyEntitlement(entitlement: Entitlement | null): StudyEntitlement | null {
   if (!entitlement) return null;
@@ -33,14 +35,9 @@ export function AiStudyWorkspacePage() {
         const studyEntitlement = toStudyEntitlement(entitlement);
 
         return (
-          <>
-            <CompactRouteIntro
-              eyebrow="AI Study"
-              title="AI Study workspace for generating notes, flashcards, and quizzes from uploaded documents"
-              intro="Use the NexusDesk AI Study workspace directly on this route. Upload PDFs, DOCX files, or slide decks, extract the key material, and turn it into revision-ready outputs from an indexable public page."
-            />
+          <ToolLandingPageSection hero={toolPageContent.study}>
             <StudyUI isZh={isZh} locked={locked} entitlement={studyEntitlement} onUsageRefresh={refreshEntitlement} />
-          </>
+          </ToolLandingPageSection>
         );
       }}
     </PublicWorkspaceShell>
