@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, withPrismaRetry } from "@/lib/prisma";
 import { normalizePlan, planToFlags, type PlanId, type PlanFlags } from "@/lib/billing/planFlags";
 import { ensureRuntimeEntitlement, type RuntimeUserEntitlement } from "@/lib/billing/entitlementDb";
 
@@ -152,7 +152,11 @@ function resolveBasicAccess(userId: string): EffectiveAccess {
 
 export async function resolveEffectiveAccess(userId: string): Promise<{ entitlement: RuntimeUserEntitlement | null; access: EffectiveAccess }> {
   try {
-    const entitlement = await ensureRuntimeEntitlement(prisma, userId);
+    const entitlement = await withPrismaRetry(() => ensureRuntimeEntitlement(prisma, userId), {
+      maxRetries: 2,
+      retryDelayMs: 150,
+      operationName: "billing.resolve-effective-access",
+    });
 
     const access = resolveEffectiveAccessFromEntitlement(userId, entitlement);
     return { entitlement, access };

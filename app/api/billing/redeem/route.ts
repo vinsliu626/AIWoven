@@ -1,15 +1,15 @@
 // app/api/billing/redeem/route.ts
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withPrismaRetry } from "@/lib/prisma";
 import { hashPromoCode, normalizePromoCode } from "@/lib/promo/codeHash";
 import { redeemPromoCodeTx } from "@/lib/promo/service";
 import { planToFlags } from "@/lib/billing/planFlags";
 import { mutationResultSelect } from "@/lib/billing/entitlementDb";
+import { consumeDebugWheelPrizeCode, inspectDebugWheelPrizeCode, isProbableDebugWheelCode } from "@/lib/billing/debugWheelCodeStore";
 import { resolveGiftCampaignPolicy } from "@/lib/billing/giftCampaigns";
+import { getAuthenticatedUserIdentity } from "@/lib/auth/userIdentity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,18 +18,6 @@ function makeRequestId(req: Request): string {
   const headerId = req.headers.get("x-request-id")?.trim();
   if (headerId) return headerId.slice(0, 128);
   return randomUUID();
-}
-
-function resolveUserId(sessionUserId: string | undefined, req: Request): string | undefined {
-  if (sessionUserId) return sessionUserId;
-  if (process.env.NODE_ENV !== "production" && process.env.DEV_BYPASS_AUTH === "true") {
-    const headerUserId = req.headers.get("x-dev-user-id")?.trim();
-    if (headerUserId) return headerUserId.slice(0, 128);
-    const envUser = process.env.DEV_USER_EMAIL?.trim();
-    if (envUser) return envUser.slice(0, 128);
-    return "dev_user";
-  }
-  return undefined;
 }
 
 function isPromoTableMissingError(error: unknown): boolean {
@@ -164,87 +152,235 @@ async function redeemWithGiftTables(input: { userId: string; normalizedCode: str
   const { userId, normalizedCode, requestId, now } = input;
   const policy = resolveGiftCampaignPolicy(normalizedCode);
 
-  const result = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`gift:${normalizedCode}`}))`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`gift-user:${normalizedCode}:${userId}`}))`;
+  const result = await withPrismaRetry(
+    () =>
+      prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`gift:${normalizedCode}`}))`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`gift-user:${normalizedCode}:${userId}`}))`;
 
-    const gift = await tx.giftCode.findUnique({ where: { code: normalizedCode } });
-    if (!gift) return { ok: false as const, error: "INVALID_CODE" as const };
-    if (!gift.isActive) return { ok: false as const, error: "INACTIVE_CODE" as const };
-    if (policy.codeExpiresAt.getTime() <= now.getTime()) return { ok: false as const, error: "CODE_EXPIRED" as const };
-    if (gift.maxUses !== null && gift.usedCount >= gift.maxUses) {
-      return { ok: false as const, error: "CODE_EXHAUSTED" as const };
+        const gift = await tx.giftCode.findUnique({ where: { code: normalizedCode } });
+        if (!gift) return { ok: false as const, error: "INVALID_CODE" as const };
+        if (!gift.isActive) return { ok: false as const, error: "INACTIVE_CODE" as const };
+        if (policy.codeExpiresAt.getTime() <= now.getTime()) return { ok: false as const, error: "CODE_EXPIRED" as const };
+        if (gift.maxUses !== null && gift.usedCount >= gift.maxUses) {
+          return { ok: false as const, error: "CODE_EXHAUSTED" as const };
+        }
+
+        const redeemed = await tx.giftCodeRedemption.findFirst({
+          where: { code: normalizedCode, userId },
+          select: { id: true },
+        });
+        if (redeemed) return { ok: false as const, error: "PER_USER_LIMIT_REACHED" as const };
+
+        await tx.giftCodeRedemption.create({
+          data: { code: normalizedCode, userId },
+        });
+        await tx.giftCode.update({
+          where: { code: normalizedCode },
+          data: { usedCount: { increment: 1 } },
+        });
+
+        const proFlags = planToFlags(policy.plan);
+        const grantEndAt = new Date(now.getTime() + policy.grantDurationDays * 24 * 60 * 60 * 1000);
+        const entitlementSupportsPromoColumns = await supportsPromoEntitlementColumns(tx);
+        if (entitlementSupportsPromoColumns) {
+          await tx.userEntitlement.upsert({
+            where: { userId },
+            update: {
+              ...proFlags,
+              promoPlan: policy.plan,
+              promoAccessStartAt: now,
+              promoAccessEndAt: grantEndAt,
+              promoAccessActive: true,
+            },
+            create: {
+              userId,
+              ...proFlags,
+              promoPlan: policy.plan,
+              promoAccessStartAt: now,
+              promoAccessEndAt: grantEndAt,
+              promoAccessActive: true,
+            },
+            select: mutationResultSelect,
+          });
+        } else {
+          const legacyPlan = policy.plan;
+          const legacyFlags = planToFlags(legacyPlan);
+          await writeLegacyGiftEntitlement(tx, {
+            userId,
+            plan: legacyPlan,
+            grantEndAt,
+            canSeeSuspiciousSentences: legacyFlags.canSeeSuspiciousSentences,
+            chatPerDay: legacyFlags.chatPerDay,
+            detectorWordsPerWeek: legacyFlags.detectorWordsPerWeek,
+            noteSecondsPerWeek: legacyFlags.noteSecondsPerWeek,
+          });
+        }
+
+        return {
+          ok: true as const,
+          plan: policy.plan,
+          grantEndAt,
+          source: "gift" as const,
+          requestId,
+        };
+      }),
+    {
+      maxRetries: 2,
+      retryDelayMs: 180,
+      operationName: "billing.redeem.gift-transaction",
     }
-
-    const redeemed = await tx.giftCodeRedemption.findFirst({
-      where: { code: normalizedCode, userId },
-      select: { id: true },
-    });
-    if (redeemed) return { ok: false as const, error: "PER_USER_LIMIT_REACHED" as const };
-
-    await tx.giftCodeRedemption.create({
-      data: { code: normalizedCode, userId },
-    });
-    await tx.giftCode.update({
-      where: { code: normalizedCode },
-      data: { usedCount: { increment: 1 } },
-    });
-
-    const proFlags = planToFlags(policy.plan);
-    const grantEndAt = new Date(now.getTime() + policy.grantDurationDays * 24 * 60 * 60 * 1000);
-    const entitlementSupportsPromoColumns = await supportsPromoEntitlementColumns(tx);
-    if (entitlementSupportsPromoColumns) {
-      await tx.userEntitlement.upsert({
-        where: { userId },
-        update: {
-          ...proFlags,
-          promoPlan: policy.plan,
-          promoAccessStartAt: now,
-          promoAccessEndAt: grantEndAt,
-          promoAccessActive: true,
-        },
-        create: {
-          userId,
-          ...proFlags,
-          promoPlan: policy.plan,
-          promoAccessStartAt: now,
-          promoAccessEndAt: grantEndAt,
-          promoAccessActive: true,
-        },
-        select: mutationResultSelect,
-      });
-    } else {
-      const legacyPlan = policy.plan;
-      const legacyFlags = planToFlags(legacyPlan);
-      await writeLegacyGiftEntitlement(tx, {
-        userId,
-        plan: legacyPlan,
-        grantEndAt,
-        canSeeSuspiciousSentences: legacyFlags.canSeeSuspiciousSentences,
-        chatPerDay: legacyFlags.chatPerDay,
-        detectorWordsPerWeek: legacyFlags.detectorWordsPerWeek,
-        noteSecondsPerWeek: legacyFlags.noteSecondsPerWeek,
-      });
-    }
-
-    return {
-      ok: true as const,
-      plan: policy.plan,
-      grantEndAt,
-      source: "gift" as const,
-      requestId,
-    };
-  });
+  );
 
   return result;
+}
+
+async function grantTemporaryProAccess(
+  tx: Prisma.TransactionClient,
+  input: {
+    userId: string;
+    grantDurationDays: number;
+    now: Date;
+  }
+) {
+  const { userId, grantDurationDays, now } = input;
+  const proFlags = planToFlags("pro");
+  const grantEndAt = new Date(now.getTime() + grantDurationDays * 24 * 60 * 60 * 1000);
+  const entitlementSupportsPromoColumns = await supportsPromoEntitlementColumns(tx);
+
+  if (entitlementSupportsPromoColumns) {
+    await tx.userEntitlement.upsert({
+      where: { userId },
+      update: {
+        ...proFlags,
+        promoPlan: "pro",
+        promoAccessStartAt: now,
+        promoAccessEndAt: grantEndAt,
+        promoAccessActive: true,
+      },
+      create: {
+        userId,
+        ...proFlags,
+        promoPlan: "pro",
+        promoAccessStartAt: now,
+        promoAccessEndAt: grantEndAt,
+        promoAccessActive: true,
+      },
+      select: mutationResultSelect,
+    });
+  } else {
+    await writeLegacyGiftEntitlement(tx, {
+      userId,
+      plan: "pro",
+      grantEndAt,
+      canSeeSuspiciousSentences: proFlags.canSeeSuspiciousSentences,
+      chatPerDay: proFlags.chatPerDay,
+      detectorWordsPerWeek: proFlags.detectorWordsPerWeek,
+      noteSecondsPerWeek: proFlags.noteSecondsPerWeek,
+    });
+  }
+
+  return grantEndAt;
+}
+
+async function redeemDebugWheelCode(input: { userId: string; normalizedCode: string; requestId: string; now: Date }) {
+  const { userId, normalizedCode, requestId, now } = input;
+
+  const inspected = inspectDebugWheelPrizeCode({
+    code: normalizedCode,
+    userId,
+    now: now.getTime(),
+  });
+
+  if (inspected.kind === "expired") {
+    return {
+      ok: false as const,
+      error: "WHEEL_CODE_EXPIRED" as const,
+      message: "This prize code expired. Spin again to get a new one.",
+      requestId,
+    };
+  }
+
+  if (inspected.kind === "used") {
+    return {
+      ok: false as const,
+      error: "WHEEL_CODE_USED" as const,
+      message: "This prize code has already been redeemed.",
+      requestId,
+    };
+  }
+
+  if (inspected.kind === "wrong_user") {
+    return {
+      ok: false as const,
+      error: "WHEEL_CODE_ACCOUNT_MISMATCH" as const,
+      message: "This prize code belongs to a different account.",
+      requestId,
+    };
+  }
+
+  if (inspected.kind !== "active") {
+    return {
+      ok: false as const,
+      error: "INVALID_CODE" as const,
+      message: "Invalid code.",
+      requestId,
+    };
+  }
+
+  const consumed = consumeDebugWheelPrizeCode({
+    code: normalizedCode,
+    userId,
+    now: now.getTime(),
+  });
+
+  if (!consumed.ok) {
+    return {
+      ok: false as const,
+      error: consumed.status === "expired" ? ("WHEEL_CODE_EXPIRED" as const) : ("WHEEL_CODE_USED" as const),
+      message:
+        consumed.status === "expired"
+          ? "This prize code expired. Spin again to get a new one."
+          : "This prize code has already been redeemed.",
+      requestId,
+    };
+  }
+
+  const grantEndAt = await withPrismaRetry(
+    () =>
+      prisma.$transaction(async (tx) =>
+        grantTemporaryProAccess(tx, {
+          userId,
+          grantDurationDays: consumed.durationDays,
+          now,
+        })
+      ),
+    {
+      maxRetries: 2,
+      retryDelayMs: 180,
+      operationName: "billing.redeem.wheel-transaction",
+    }
+  );
+
+  return {
+    ok: true as const,
+    plan: "pro",
+    grantEndAt,
+    source: "wheel_debug" as const,
+    requestId,
+  };
 }
 
 export async function POST(req: Request) {
   const requestId = makeRequestId(req);
   const now = resolveNow(req);
-  const session = await getServerSession(authOptions);
-  const userId = resolveUserId((session as any)?.user?.id as string | undefined, req);
-  if (!userId) return NextResponse.json({ ok: false, error: "UNAUTHENTICATED", requestId }, { status: 401 });
+  const userId = await getAuthenticatedUserIdentity(req);
+  if (!userId) {
+    return NextResponse.json(
+      { ok: false, error: "UNAUTHENTICATED", message: "Please sign in to redeem prize codes.", requestId },
+      { status: 401 }
+    );
+  }
 
   const body = await req.json().catch(() => null);
   const rawCode = String(body?.code || "");
@@ -252,6 +388,35 @@ export async function POST(req: Request) {
   if (!normalizedCode) return NextResponse.json({ ok: false, error: "MISSING_CODE", requestId }, { status: 400 });
 
   try {
+    if (isProbableDebugWheelCode(normalizedCode)) {
+      const wheelResult = await redeemDebugWheelCode({
+        userId,
+        normalizedCode,
+        requestId,
+        now,
+      });
+
+      if (!wheelResult.ok) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: wheelResult.error,
+            message: wheelResult.message,
+            requestId,
+          },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        plan: wheelResult.plan,
+        grantEndAt: wheelResult.grantEndAt,
+        source: wheelResult.source,
+        requestId,
+      });
+    }
+
     let result:
       | { ok: false; error: "INVALID_CODE" | "INACTIVE_CODE" | "NOT_STARTED" | "CODE_EXPIRED" | "CODE_EXHAUSTED" | "PER_USER_LIMIT_REACHED" | "INVALID_GRANT_WINDOW" }
       | { ok: true; plan: string; grantEndAt: Date | null; source: string };
@@ -260,15 +425,23 @@ export async function POST(req: Request) {
 
     if (promoHash.ok) {
       try {
-        result = await prisma.$transaction(async (tx) => {
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`promo:${promoHash.codeHash}`}))`;
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`promo-user:${promoHash.codeHash}:${userId}`}))`;
+        result = await withPrismaRetry(
+          () =>
+            prisma.$transaction(async (tx) => {
+              await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`promo:${promoHash.codeHash}`}))`;
+              await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`promo-user:${promoHash.codeHash}:${userId}`}))`;
 
-          const promo = await tx.promoCode.findUnique({ where: { codeHash: promoHash.codeHash } });
-          if (!promo) return { ok: false as const, error: "INVALID_CODE" as const };
+              const promo = await tx.promoCode.findUnique({ where: { codeHash: promoHash.codeHash } });
+              if (!promo) return { ok: false as const, error: "INVALID_CODE" as const };
 
-          return redeemPromoCodeTx(tx, userId, promo, now);
-        });
+              return redeemPromoCodeTx(tx, userId, promo, now);
+            }),
+          {
+            maxRetries: 2,
+            retryDelayMs: 180,
+            operationName: "billing.redeem.promo-transaction",
+          }
+        );
       } catch (error) {
         if (!isPromoTableMissingError(error)) throw error;
         console.warn("[billing.redeem] promo tables missing; falling back to GiftCode", { requestId, userId });

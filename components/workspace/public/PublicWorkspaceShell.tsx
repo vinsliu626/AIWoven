@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getProviders, signIn, signOut, useSession, type ClientSafeProvider } from "next-auth/react";
 
 import { useAppLanguage } from "@/components/app/AppLanguageProvider";
+import { ProTrialWheelModal, ProTrialWheelReminderPrompt } from "@/components/billing/ProTrialWheelModal";
 import { PlanModal } from "@/components/chat/billing/PlanModal";
 import { PlanPillButton, PlanPillStyles } from "@/components/chat/billing/PlanPill";
 import { RedeemModal } from "@/components/chat/billing/RedeemModal";
@@ -14,6 +15,7 @@ import { SettingsModal } from "@/components/chat/settings/SettingsModal";
 import { ModeDropdown } from "@/components/chat/ui/workflow/ModeDropdown";
 import type { ChatMode } from "@/components/chat/ui/workflow/types";
 import { NexusOrb } from "@/components/shared/NexusOrb";
+import { useProTrialWheel } from "@/lib/hooks/useProTrialWheel";
 import { routeForMode } from "@/lib/productRoutes";
 
 type RenderContext = {
@@ -258,6 +260,7 @@ export function PublicWorkspaceShell({
 
   const [planOpen, setPlanOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
+  const [redeemCodeValue, setRedeemCodeValue] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemError, setRedeemError] = useState<string | null>(null);
   const [redeemSuccess, setRedeemSuccess] = useState<RedeemSuccessState | null>(null);
@@ -307,6 +310,16 @@ export function PublicWorkspaceShell({
   const userInitial = session?.user?.name?.[0] || session?.user?.email?.[0] || "U";
   const userLabel = session?.user?.name || session?.user?.email || "User";
   const userEmail = session?.user?.email || "";
+  const trialWheel = useProTrialWheel({
+    sessionExists,
+    userId: typeof session?.user?.id === "string" ? session.user.id : null,
+  });
+
+  function openRedeemModal(prefillCode = "") {
+    setRedeemError(null);
+    setRedeemCodeValue(prefillCode);
+    setRedeemOpen(true);
+  }
 
   async function redeemCode(code: string) {
     setRedeemError(null);
@@ -333,6 +346,7 @@ export function PublicWorkspaceShell({
         grantEndAt:
           typeof (data as { grantEndAt?: unknown }).grantEndAt === "string" ? (data as { grantEndAt: string }).grantEndAt : null,
       });
+      setRedeemCodeValue("");
       await refreshEntitlement();
       setTimeout(() => {
         setRedeemOpen(false);
@@ -456,17 +470,44 @@ export function PublicWorkspaceShell({
         ent={entitlement}
         onOpenRedeem={() => {
           if (!sessionExists) return void signIn();
-          setRedeemOpen(true);
+          openRedeemModal();
         }}
         onManageBilling={manageBilling}
         refreshEnt={refreshEntitlement}
+      />
+
+      <ProTrialWheelReminderPrompt
+        open={trialWheel.reminderOpen}
+        dontRemindAgain={trialWheel.reminderDismissed}
+        onDontRemindAgainChange={trialWheel.setReminderDismissed}
+        onSpinNow={trialWheel.openWheelFromReminder}
+        onMaybeLater={() => trialWheel.closeReminder({ dontRemindAgain: trialWheel.reminderDismissed })}
+      />
+
+      <ProTrialWheelModal
+        open={trialWheel.open}
+        onClose={trialWheel.closeWheel}
+        onUseCode={(code) => {
+          openRedeemModal(code);
+          trialWheel.clearSpinResult();
+          trialWheel.closeWheel();
+        }}
+        status={trialWheel.status}
+        spinResult={trialWheel.spinResult}
+        spinSequence={trialWheel.spinSequence}
+        spinning={trialWheel.spinning}
+        error={trialWheel.error}
+        onSpin={trialWheel.spinWheel}
       />
 
       <RedeemModal
         open={redeemOpen}
         onClose={() => setRedeemOpen(false)}
         isZh={isZh}
+        code={redeemCodeValue}
+        onCodeChange={setRedeemCodeValue}
         onRedeem={redeemCode}
+        onOpenTrialWheel={() => void trialWheel.openWheel()}
         loading={redeemLoading}
         error={redeemError}
         success={redeemSuccess}
@@ -488,7 +529,7 @@ export function PublicWorkspaceShell({
         }}
         onOpenRedeem={() => {
           if (!sessionExists) return void signIn();
-          setRedeemOpen(true);
+          openRedeemModal();
         }}
         onSignOut={sessionExists ? () => void signOut() : undefined}
         onClearLocalData={clearLocalData}

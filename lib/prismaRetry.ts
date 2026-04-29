@@ -4,6 +4,7 @@ type RetryOptions = {
   maxRetries?: number;
   retryDelayMs?: number;
   operationName?: string;
+  onRetry?: (error: unknown, attempt: number) => Promise<void> | void;
 };
 
 const TRANSIENT_CODES = new Set(["E57P01", "57P01", "P1001", "P1002", "P1017"]);
@@ -58,6 +59,7 @@ export async function withPrismaConnectionRetry<T>(
   const maxRetries = options.maxRetries ?? 1;
   const retryDelayMs = options.retryDelayMs ?? 120;
   const operationName = options.operationName ?? "prisma-operation";
+  const onRetry = options.onRetry;
 
   let retries = 0;
   while (true) {
@@ -77,6 +79,7 @@ export async function withPrismaConnectionRetry<T>(
         code,
         message: getErrorMessage(error).slice(0, 180),
       });
+      await onRetry?.(error, retries);
       if (retryDelayMs > 0) {
         const backoffMs = retryDelayMs * Math.pow(2, retries - 1);
         await sleep(backoffMs);

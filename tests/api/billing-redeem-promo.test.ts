@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hashPromoCode } from "@/lib/promo/codeHash";
 
 const mocks = vi.hoisted(() => {
-  const getServerSession = vi.fn();
+  const getAuthenticatedUserIdentity = vi.fn();
   const tx = {
     $executeRaw: vi.fn(),
     $queryRaw: vi.fn(),
@@ -30,19 +30,17 @@ const mocks = vi.hoisted(() => {
   const prisma = {
     $transaction: vi.fn(async (fn: (tx: any) => Promise<unknown>) => fn(tx)),
   };
-  return { getServerSession, prisma, tx };
+  const withPrismaRetry = vi.fn(async (fn: () => Promise<unknown>) => fn());
+  return { getAuthenticatedUserIdentity, prisma, tx, withPrismaRetry };
 });
 
-vi.mock("next-auth", () => ({
-  getServerSession: mocks.getServerSession,
-}));
-
-vi.mock("@/lib/auth", () => ({
-  authOptions: {},
+vi.mock("@/lib/auth/userIdentity", () => ({
+  getAuthenticatedUserIdentity: mocks.getAuthenticatedUserIdentity,
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: mocks.prisma,
+  withPrismaRetry: mocks.withPrismaRetry,
 }));
 
 describe("POST /api/billing/redeem promo", () => {
@@ -50,7 +48,7 @@ describe("POST /api/billing/redeem promo", () => {
     vi.resetModules();
     vi.clearAllMocks();
     process.env.PROMO_CODE_SECRET = "unit-test-secret-2026-very-long";
-    mocks.getServerSession.mockResolvedValue({ user: { id: "user_a" } });
+    mocks.getAuthenticatedUserIdentity.mockResolvedValue("user_a");
     mocks.tx.$executeRaw.mockResolvedValue(1);
     mocks.tx.$queryRaw.mockResolvedValue([
       { column_name: "promoPlan" },
@@ -228,5 +226,113 @@ describe("POST /api/billing/redeem promo", () => {
     expect(json.plan).toBe("pro");
     expect(mocks.tx.giftCodeRedemption.create).toHaveBeenCalled();
     expect(mocks.tx.userEntitlement.upsert).toHaveBeenCalled();
+  });
+
+  it("redeems a debug wheel code for the same normalized user identity", async () => {
+    const { createDebugWheelPrizeCode } = await import("@/lib/billing/debugWheelCodeStore");
+    const entry = createDebugWheelPrizeCode({
+      durationDays: 7,
+      userId: "student@example.com",
+      now: Date.now(),
+    });
+
+    mocks.getAuthenticatedUserIdentity.mockResolvedValue("student@example.com");
+
+    const { POST } = await import("@/app/api/billing/redeem/route");
+    const req = new Request("http://localhost/api/billing/redeem", {
+      method: "POST",
+      body: JSON.stringify({ code: entry.code.toLowerCase() }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.ok).toBe(true);
+    expect(json.source).toBe("wheel_debug");
+    expect(mocks.tx.userEntitlement.upsert).toHaveBeenCalled();
+  });
+
+  it("rejects a debug wheel code for a different user identity", async () => {
+    const { createDebugWheelPrizeCode } = await import("@/lib/billing/debugWheelCodeStore");
+    const entry = createDebugWheelPrizeCode({
+      durationDays: 7,
+      userId: "owner@example.com",
+      now: Date.now(),
+    });
+
+    mocks.getAuthenticatedUserIdentity.mockResolvedValue("other@example.com");
+
+    const { POST } = await import("@/app/api/billing/redeem/route");
+    const req = new Request("http://localhost/api/billing/redeem", {
+      method: "POST",
+      body: JSON.stringify({ code: entry.code }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.ok).toBe(false);
+    expect(json.error).toBe("WHEEL_CODE_ACCOUNT_MISMATCH");
+  });
+
+  it("rejects a debug wheel code that was already redeemed", async () => {
+    const { createDebugWheelPrizeCode } = await import("@/lib/billing/debugWheelCodeStore");
+    const entry = createDebugWheelPrizeCode({
+      durationDays: 14,
+      userId: "student@example.com",
+      now: Date.now(),
+    });
+
+    mocks.getAuthenticatedUserIdentity.mockResolvedValue("student@example.com");
+
+    const { POST } = await import("@/app/api/billing/redeem/route");
+    const req = new Request("http://localhost/api/billing/redeem", {
+      method: "POST",
+      body: JSON.stringify({ code: entry.code }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const first = await POST(req);
+    expect(first.status).toBe(200);
+
+    const second = await POST(req);
+    const json = await second.json();
+
+    expect(second.status).toBe(400);
+    expect(json.ok).toBe(false);
+    expect(json.error).toBe("WHEEL_CODE_USED");
+  });
+
+  it("rejects an expired debug wheel code", async () => {
+    const now = Date.now();
+    const { createDebugWheelPrizeCode } = await import("@/lib/billing/debugWheelCodeStore");
+    const entry = createDebugWheelPrizeCode({
+      durationDays: 3,
+      userId: "student@example.com",
+      now: now - 11 * 60 * 1000,
+    });
+
+    mocks.getAuthenticatedUserIdentity.mockResolvedValue("student@example.com");
+
+    const { POST } = await import("@/app/api/billing/redeem/route");
+    const req = new Request("http://localhost/api/billing/redeem", {
+      method: "POST",
+      body: JSON.stringify({ code: entry.code }),
+      headers: {
+        "content-type": "application/json",
+        "x-dev-now": new Date(now).toISOString(),
+      },
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.ok).toBe(false);
+    expect(json.error).toBe("WHEEL_CODE_EXPIRED");
   });
 });

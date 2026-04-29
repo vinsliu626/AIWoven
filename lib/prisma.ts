@@ -67,3 +67,31 @@ function runDevStartupCheck() {
 }
 
 runDevStartupCheck();
+
+export async function reconnectPrisma() {
+  try {
+    await prisma.$disconnect();
+  } catch (error) {
+    console.warn("[prisma] disconnect before reconnect failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  await prisma.$connect();
+}
+
+export async function withPrismaRetry<T>(
+  operation: () => Promise<T>,
+  options: {
+    maxRetries?: number;
+    retryDelayMs?: number;
+    operationName?: string;
+  } = {}
+): Promise<T> {
+  return withPrismaConnectionRetry(operation, {
+    ...options,
+    onRetry: async () => {
+      await reconnectPrisma();
+    },
+  });
+}

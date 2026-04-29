@@ -5,7 +5,8 @@ import { useSession, signIn, signOut, getProviders, type ClientSafeProvider } fr
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-// 缁勪欢锛堜綘鐜版湁锛?
+// Existing components
+import { ProTrialWheelModal, ProTrialWheelReminderPrompt } from "@/components/billing/ProTrialWheelModal";
 import { PlanPillStyles, PlanPillButton } from "@/components/chat/billing/PlanPill";
 import { PlanModal } from "@/components/chat/billing/PlanModal";
 import { RedeemModal } from "@/components/chat/billing/RedeemModal";
@@ -20,6 +21,7 @@ import { AiFormattedText } from "@/components/shared/AiFormattedText";
 import { NexusOrb } from "@/components/shared/NexusOrb";
 import { CopyButton } from "@/components/ui/copy-button";
 import { useAppLanguage } from "@/components/app/AppLanguageProvider";
+import { useProTrialWheel } from "@/lib/hooks/useProTrialWheel";
 
 // workflow UI
 import { Bubble } from "@/components/chat/ui/workflow/Bubble";
@@ -483,12 +485,17 @@ function ChatPageInner() {
   // billing modal
   const [planOpen, setPlanOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
+  const [redeemCodeValue, setRedeemCodeValue] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemError, setRedeemError] = useState<string | null>(null);
   const [redeemSuccess, setRedeemSuccess] = useState<RedeemSuccessState | null>(null);
   const [authProviders, setAuthProviders] = useState<AuthProviderMap>({});
 
   const { ent, refresh: refreshEnt } = useEntitlement(sessionExists);
+  const trialWheel = useProTrialWheel({
+    sessionExists,
+    userId: effectiveSession?.user?.id ?? null,
+  });
 
   // login gating
   const detectorLocked = !sessionExists;
@@ -965,6 +972,7 @@ function ChatPageInner() {
         plan: String(data?.plan || "pro"),
         grantEndAt: data?.grantEndAt ? String(data.grantEndAt) : null,
       });
+      setRedeemCodeValue("");
       await refreshEnt();
     } catch (e: any) {
       setRedeemError(e?.message || (isZh ? "兑换失败" : "Redeem failed"));
@@ -981,9 +989,10 @@ function ChatPageInner() {
     return () => window.clearTimeout(timer);
   }, [redeemOpen, redeemSuccess]);
 
-  function openRedeemModal() {
+  function openRedeemModal(prefillCode = "") {
     setRedeemError(null);
     setRedeemSuccess(null);
+    setRedeemCodeValue(prefillCode);
     setRedeemOpen(true);
   }
 
@@ -1479,11 +1488,38 @@ function ChatPageInner() {
         refreshEnt={refreshEnt}
       />
 
+      <ProTrialWheelReminderPrompt
+        open={trialWheel.reminderOpen}
+        dontRemindAgain={trialWheel.reminderDismissed}
+        onDontRemindAgainChange={trialWheel.setReminderDismissed}
+        onSpinNow={trialWheel.openWheelFromReminder}
+        onMaybeLater={() => trialWheel.closeReminder({ dontRemindAgain: trialWheel.reminderDismissed })}
+      />
+
+      <ProTrialWheelModal
+        open={trialWheel.open}
+        onClose={trialWheel.closeWheel}
+        onUseCode={(code) => {
+          openRedeemModal(code);
+          trialWheel.clearSpinResult();
+          trialWheel.closeWheel();
+        }}
+        status={trialWheel.status}
+        spinResult={trialWheel.spinResult}
+        spinSequence={trialWheel.spinSequence}
+        spinning={trialWheel.spinning}
+        error={trialWheel.error}
+        onSpin={trialWheel.spinWheel}
+      />
+
       <RedeemModal
         open={redeemOpen}
         onClose={() => setRedeemOpen(false)}
         isZh={isZh}
+        code={redeemCodeValue}
+        onCodeChange={setRedeemCodeValue}
         onRedeem={redeemCode}
+        onOpenTrialWheel={() => void trialWheel.openWheel()}
         loading={redeemLoading}
         error={redeemError}
         success={redeemSuccess}
