@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   getFormatsByCategory,
+  getPdfPageLimit,
   getTargetOptions,
   isConversionPairAllowed,
   normalizeConverterPlan,
@@ -10,7 +11,7 @@ import {
   type ConverterCategory,
   type ConverterFormatId,
 } from "@/lib/converter/config";
-import { convertFile, getConverterAccept, isFileCompatibleWithFormat, type ConverterResult } from "@/lib/converter/browser";
+import { ConverterError, convertFile, getConverterAccept, isFileCompatibleWithFormat, type ConverterResult } from "@/lib/converter/browser";
 
 export type ConverterEntitlement = {
   plan: "basic" | "pro" | "ultra" | "gift";
@@ -52,8 +53,16 @@ type Copy = {
   batch: string;
   plan: string;
   quota: string;
+  sourceSoon: string;
   pending: string;
   failed: string;
+  invalidImage: string;
+  invalidPdf: string;
+  encryptedPdf: string;
+  tooManyPages: string;
+  progressLoading: string;
+  progressPackaging: string;
+  progressRendering: string;
   convert: string;
   converting: string;
   done: string;
@@ -105,6 +114,18 @@ type Copy = {
   full: string;
 };
 
+type SelectItem = {
+  id: ConverterFormatId;
+  label: string;
+  disabled?: boolean;
+  badge?: string;
+};
+
+type SelectGroup = {
+  label: string;
+  items: SelectItem[];
+};
+
 const COPY: Record<"en" | "zh", Copy> = {
   en: {
     badge: "Converter",
@@ -129,8 +150,16 @@ const COPY: Record<"en" | "zh", Copy> = {
     batch: "This plan does not allow that many files in one conversion.",
     plan: "This conversion needs a higher plan.",
     quota: "You've used all Converter runs for today. Upgrade your plan or try again tomorrow.",
+    sourceSoon: "Choose one of the live PDF, JPG, PNG, or WEBP workflows to convert now.",
     pending: "Batch conversion is not wired yet. Upload one file at a time.",
     failed: "Unable to complete this conversion.",
+    invalidImage: "This image could not be read. Upload a valid JPG, PNG, or WEBP file.",
+    invalidPdf: "This PDF could not be opened. Try another file or export a standard PDF first.",
+    encryptedPdf: "This PDF is encrypted or password-protected and cannot be converted here.",
+    tooManyPages: "This PDF has too many pages for your current plan. Split the file or upgrade before converting.",
+    progressLoading: "Loading file...",
+    progressPackaging: "Packaging converted pages...",
+    progressRendering: "Rendering pages...",
     convert: "Convert file",
     converting: "Converting...",
     done: "Conversion complete",
@@ -204,8 +233,16 @@ const COPY: Record<"en" | "zh", Copy> = {
     batch: "当前套餐不允许一次转换这么多文件。",
     plan: "此转换需要更高等级的套餐。",
     quota: "你今天的转换次数已用完。请升级套餐或明天再试。",
+    sourceSoon: "当前仅开放 PDF、JPG、PNG、WEBP 的实时转换流程。",
     pending: "批量转换尚未接入，请一次只上传一个文件。",
     failed: "暂时无法完成这次转换。",
+    invalidImage: "无法读取这张图片，请上传有效的 JPG、PNG 或 WEBP 文件。",
+    invalidPdf: "这个 PDF 无法打开，请尝试其他文件或先导出标准 PDF。",
+    encryptedPdf: "这个 PDF 已加密或受密码保护，当前无法转换。",
+    tooManyPages: "这个 PDF 页数超过当前套餐限制。请先拆分文件或升级后再试。",
+    progressLoading: "正在加载文件...",
+    progressPackaging: "正在打包转换结果...",
+    progressRendering: "正在渲染页面...",
     convert: "开始转换",
     converting: "转换中...",
     done: "转换完成",
@@ -321,6 +358,187 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ConverterSelect({
+  label,
+  value,
+  groups,
+  ariaLabel,
+  onChange,
+}: {
+  label: string;
+  value: ConverterFormatId | "";
+  groups: SelectGroup[];
+  ariaLabel: string;
+  onChange: (value: ConverterFormatId) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const flatItems = useMemo(
+    () =>
+      groups.flatMap((group) =>
+        group.items.map((item) => ({
+          ...item,
+          groupLabel: group.label,
+        }))
+      ),
+    [groups]
+  );
+
+  const selected = flatItems.find((item) => item.id === value) ?? null;
+  const enabledIndices = flatItems.flatMap((item, index) => (!item.disabled ? [index] : []));
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!rootRef.current) return;
+      if (!rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const selectedIndex = flatItems.findIndex((item) => item.id === value && !item.disabled);
+    const fallbackIndex = enabledIndices[0];
+    const nextIndex = selectedIndex >= 0 ? selectedIndex : fallbackIndex;
+    if (nextIndex == null) return;
+
+    const timer = window.setTimeout(() => optionRefs.current[nextIndex]?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [enabledIndices, flatItems, open, value]);
+
+  function moveFocus(currentIndex: number, direction: 1 | -1) {
+    if (enabledIndices.length === 0) return;
+    const enabledPosition = enabledIndices.indexOf(currentIndex);
+    const fallbackPosition = direction === 1 ? 0 : enabledIndices.length - 1;
+    const nextPosition =
+      enabledPosition === -1
+        ? fallbackPosition
+        : (enabledPosition + direction + enabledIndices.length) % enabledIndices.length;
+    const nextIndex = enabledIndices[nextPosition];
+    optionRefs.current[nextIndex]?.focus();
+  }
+
+  return (
+    <div ref={rootRef} className="relative block">
+      <span className="mb-2 block text-left text-[11px] uppercase tracking-[0.24em] text-slate-500">{label}</span>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+        className="flex h-14 w-full items-center justify-between rounded-[22px] border border-white/10 bg-white/[0.06] px-4 text-left text-sm font-medium text-slate-100 transition hover:border-white/15 hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+      >
+        <span className="truncate">{selected?.label ?? "--"}</span>
+        <span className={["ml-3 text-xs text-slate-500 transition", open ? "rotate-180" : ""].join(" ")}>▾</span>
+      </button>
+
+      {open ? (
+        <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-[24px] border border-white/10 bg-[#060b14]/98 shadow-[0_28px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+          <div role="listbox" aria-label={ariaLabel} className="max-h-80 overflow-y-auto py-2 custom-scrollbar">
+            {groups.map((group, groupIndex) => (
+              <div key={`${group.label}-${groupIndex}`} className="px-2">
+                <div className="px-3 py-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">{group.label}</div>
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const flatIndex = flatItems.findIndex((flatItem) => flatItem.id === item.id);
+                    const active = item.id === value;
+                    return (
+                      <button
+                        key={item.id}
+                        ref={(node) => {
+                          optionRefs.current[flatIndex] = node;
+                        }}
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        disabled={item.disabled}
+                        onClick={() => {
+                          if (item.disabled) return;
+                          onChange(item.id);
+                          setOpen(false);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "ArrowDown") {
+                            event.preventDefault();
+                            moveFocus(flatIndex, 1);
+                          } else if (event.key === "ArrowUp") {
+                            event.preventDefault();
+                            moveFocus(flatIndex, -1);
+                          } else if (event.key === "Home") {
+                            event.preventDefault();
+                            const firstIndex = enabledIndices[0];
+                            if (firstIndex != null) optionRefs.current[firstIndex]?.focus();
+                          } else if (event.key === "End") {
+                            event.preventDefault();
+                            const lastIndex = enabledIndices[enabledIndices.length - 1];
+                            if (lastIndex != null) optionRefs.current[lastIndex]?.focus();
+                          } else if (event.key === "Escape") {
+                            event.preventDefault();
+                            setOpen(false);
+                          } else if ((event.key === "Enter" || event.key === " ") && !item.disabled) {
+                            event.preventDefault();
+                            onChange(item.id);
+                            setOpen(false);
+                          }
+                        }}
+                        className={[
+                          "flex w-full items-center justify-between rounded-[18px] px-3 py-3 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-400/30",
+                          item.disabled
+                            ? "cursor-not-allowed text-slate-500"
+                            : active
+                              ? "bg-blue-500/16 text-slate-50"
+                              : "text-slate-200 hover:bg-white/[0.06] hover:text-white",
+                        ].join(" ")}
+                      >
+                        <span className="truncate">{item.label}</span>
+                        {item.badge ? (
+                          <span
+                            className={[
+                              "ml-3 shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em]",
+                              item.disabled
+                                ? "border-white/10 bg-white/[0.03] text-slate-500"
+                                : "border-blue-400/15 bg-blue-400/10 text-blue-200",
+                            ].join(" ")}
+                          >
+                            {item.badge}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function ConverterUI({
   isZh,
   locked,
@@ -369,8 +587,42 @@ export function ConverterUI({
   const currentPairValid = !!activeToFormat && isConversionPairAllowed(fromFormat, activeToFormat, entitlement?.plan ?? "basic", !!entitlement?.converterAllowAdvancedVideo);
   const activePlan = normalizeConverterPlan(entitlement?.plan);
   const supportedFormatsValue = useMemo(
-    () => CATEGORY_ORDER.flatMap((category) => sourceGroups[category].map((item) => formatLabel(item.id, copy))).join(" / "),
+    () =>
+      CATEGORY_ORDER.flatMap((category) => sourceGroups[category].filter((item) => item.enabled).map((item) => formatLabel(item.id, copy))).join(" / "),
     [copy, sourceGroups]
+  );
+  const sourceSelectGroups = useMemo(
+    () =>
+      CATEGORY_ORDER.flatMap((category) =>
+        sourceGroups[category].length
+          ? [
+              {
+                label: categoryLabel(category, copy),
+                items: sourceGroups[category].map((format) => ({
+                  id: format.id,
+                  label: formatLabel(format.id, copy),
+                  disabled: !format.enabled,
+                  badge: !format.enabled ? copy.soon : undefined,
+                })),
+              },
+            ]
+          : []
+      ),
+    [copy, sourceGroups]
+  );
+  const targetSelectGroups = useMemo(
+    () => [
+      {
+        label: copy.to,
+        items: targetOptions.map((option) => ({
+          id: option.id,
+          label: formatLabel(option.id, copy),
+          disabled: !option.enabled,
+          badge: !option.enabled ? (option.comingSoon ? copy.soon : copy.upgrade) : undefined,
+        })),
+      },
+    ],
+    [copy, targetOptions]
   );
 
   function setFeedback(tone: "neutral" | "warning" | "success", nextMessage: string | null) {
@@ -389,6 +641,7 @@ export function ConverterUI({
     if (code === "FILE_TOO_LARGE") return copy.tooLarge;
     if (code === "BATCH_LIMIT_EXCEEDED") return copy.batch;
     if (code === "PLAN_REQUIRED" || code === "ADVANCED_VIDEO_REQUIRED") return copy.plan;
+    if (code === "UNSUPPORTED_SOURCE") return copy.sourceSoon;
     return copy.invalid;
   }
 
@@ -437,13 +690,41 @@ export function ConverterUI({
 
     try {
       if (testMode?.forceFailure) throw new Error("FORCED_FAILURE");
-      const nextResult = await convertFile({ file: selectedFiles[0], from: fromFormat, to: activeToFormat });
+      const nextResult = await convertFile({
+        file: selectedFiles[0],
+        from: fromFormat,
+        to: activeToFormat,
+        plan: entitlement?.plan ?? "basic",
+        onProgress: (progress) => {
+          const message =
+            progress.stage === "loading"
+              ? copy.progressLoading
+              : progress.stage === "packaging"
+                ? `${copy.progressPackaging} ${progress.current}/${progress.total}`
+                : `${copy.progressRendering} ${progress.current}/${progress.total}`;
+          setFeedback("neutral", message);
+        },
+      });
       setResult(nextResult);
       setFeedback("success", `${copy.done}. ${copy.done2}`);
       persistUsedToday(usedToday + 1);
     } catch (error) {
       console.error("[converter] conversion failed", error);
-      setFeedback("warning", copy.failed);
+      if (error instanceof ConverterError) {
+        if (error.code === "INVALID_IMAGE_FILE") {
+          setFeedback("warning", copy.invalidImage);
+        } else if (error.code === "INVALID_PDF_FILE" || error.code === "PDF_RENDER_FAILED") {
+          setFeedback("warning", copy.invalidPdf);
+        } else if (error.code === "PDF_ENCRYPTED") {
+          setFeedback("warning", copy.encryptedPdf);
+        } else if (error.code === "PDF_PAGE_LIMIT_EXCEEDED") {
+          setFeedback("warning", `${copy.tooManyPages} (${getPdfPageLimit(entitlement?.plan ?? "basic")} pages max.)`);
+        } else {
+          setFeedback("warning", copy.failed);
+        }
+      } else {
+        setFeedback("warning", copy.failed);
+      }
     } finally {
       setIsConverting(false);
     }
@@ -491,30 +772,21 @@ export function ConverterUI({
           <div className="mx-auto mt-8 max-w-4xl rounded-[30px] border border-white/10 bg-black/20 p-4 md:p-5">
             <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr_auto] md:items-end">
               <label className="block">
-                <span className="mb-2 block text-left text-[11px] uppercase tracking-[0.24em] text-slate-500">{copy.from}</span>
-                <select
+                <ConverterSelect
+                  label={copy.from}
                   value={fromFormat}
-                  onChange={(event) => {
-                    const nextFrom = event.target.value as ConverterFormatId;
-                    const nextTo = getTargetOptions(nextFrom, entitlement?.plan ?? "basic", !!entitlement?.converterAllowAdvancedVideo).find((option) => option.enabled)?.id;
+                  groups={sourceSelectGroups}
+                  ariaLabel={copy.from}
+                  onChange={(nextFrom) => {
+                    const nextTo = getTargetOptions(
+                      nextFrom,
+                      entitlement?.plan ?? "basic",
+                      !!entitlement?.converterAllowAdvancedVideo
+                    ).find((option) => option.enabled)?.id;
                     setFromFormat(nextFrom);
                     if (nextTo) setToFormat(nextTo);
                   }}
-                  className="h-14 w-full rounded-[22px] border border-white/10 bg-white/[0.06] px-4 text-sm font-medium text-slate-100"
-                  aria-label={copy.from}
-                >
-                  {CATEGORY_ORDER.map((category) =>
-                    sourceGroups[category].length ? (
-                      <optgroup key={category} label={categoryLabel(category, copy)}>
-                        {sourceGroups[category].map((format) => (
-                          <option key={format.id} value={format.id}>
-                            {formatLabel(format.id, copy)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null
-                  )}
-                </select>
+                />
               </label>
 
               <div className="flex items-center justify-center pb-1">
@@ -524,15 +796,13 @@ export function ConverterUI({
               </div>
 
               <label className="block">
-                <span className="mb-2 block text-left text-[11px] uppercase tracking-[0.24em] text-slate-500">{copy.to}</span>
-                <select value={activeToFormat ?? ""} onChange={(event) => setToFormat(event.target.value as ConverterFormatId)} className="h-14 w-full rounded-[22px] border border-white/10 bg-white/[0.06] px-4 text-sm font-medium text-slate-100" aria-label={copy.to}>
-                  {targetOptions.map((option) => (
-                    <option key={option.id} value={option.id} disabled={!option.enabled}>
-                      {formatLabel(option.id, copy)}
-                      {!option.enabled ? ` / ${option.comingSoon ? copy.soon : copy.upgrade}` : ""}
-                    </option>
-                  ))}
-                </select>
+                <ConverterSelect
+                  label={copy.to}
+                  value={activeToFormat ?? ""}
+                  groups={targetSelectGroups}
+                  ariaLabel={copy.to}
+                  onChange={setToFormat}
+                />
               </label>
 
               <div className="pb-1 text-left md:text-right">
@@ -624,6 +894,7 @@ export function ConverterUI({
                 {result.previewUrl ? (
                   <div className="mt-4">
                     <p className="mb-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">{copy.preview}</p>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Blob previews are generated at runtime. */}
                     <img src={result.previewUrl} alt={result.fileName} className="max-h-64 rounded-2xl border border-white/10 object-contain" />
                   </div>
                 ) : null}

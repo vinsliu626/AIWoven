@@ -1,6 +1,13 @@
 "use client";
 
-import type { ConverterFormatId } from "@/lib/converter/config";
+import JSZip from "jszip";
+
+import {
+  getPdfPageLimit,
+  getSupportedConversionPair,
+  type ConverterFormatId,
+  type ConverterPlanId,
+} from "@/lib/converter/config";
 
 export type ConverterResult = {
   blob: Blob;
@@ -11,10 +18,40 @@ export type ConverterResult = {
   sizeBytes: number;
 };
 
+export type ConverterProgress =
+  | {
+      stage: "loading";
+      message: string;
+    }
+  | {
+      stage: "rendering";
+      current: number;
+      total: number;
+      message: string;
+    }
+  | {
+      stage: "packaging";
+      current: number;
+      total: number;
+      message: string;
+    };
+
+export class ConverterError extends Error {
+  code: string;
+
+  constructor(code: string, message?: string) {
+    super(message ?? code);
+    this.name = "ConverterError";
+    this.code = code;
+  }
+}
+
 type ConvertArgs = {
   file: File;
   from: ConverterFormatId;
   to: ConverterFormatId;
+  plan?: ConverterPlanId | null;
+  onProgress?: (progress: ConverterProgress) => void;
 };
 
 const formatExtensions: Record<ConverterFormatId, string[]> = {
@@ -33,6 +70,34 @@ const formatExtensions: Record<ConverterFormatId, string[]> = {
   extract_audio: [],
 };
 
+function extensionForFormat(format: ConverterFormatId) {
+  return format === "jpg"
+    ? ".jpg"
+    : format === "png"
+      ? ".png"
+      : format === "webp"
+        ? ".webp"
+        : format === "pdf"
+          ? ".pdf"
+          : format === "docx"
+            ? ".docx"
+            : format === "txt"
+              ? ".txt"
+              : format === "pptx"
+                ? ".pptx"
+                : format === "mp3"
+                  ? ".mp3"
+                  : format === "wav"
+                    ? ".wav"
+                    : format === "m4a"
+                      ? ".m4a"
+                      : format === "mp4"
+                        ? ".mp4"
+                        : format === "mov"
+                          ? ".mov"
+                          : "";
+}
+
 export function getConverterAccept(format: ConverterFormatId) {
   return formatExtensions[format].join(",");
 }
@@ -45,8 +110,13 @@ export function isFileCompatibleWithFormat(file: File, format: ConverterFormatId
 function replaceExtension(fileName: string, to: ConverterFormatId) {
   const lastDot = fileName.lastIndexOf(".");
   const stem = lastDot >= 0 ? fileName.slice(0, lastDot) : fileName;
-  const nextExtension = to === "jpg" ? ".jpg" : to === "png" ? ".png" : to === "webp" ? ".webp" : ".pdf";
-  return `${stem}${nextExtension}`;
+  return `${stem}${extensionForFormat(to)}`;
+}
+
+function replaceWithZip(fileName: string) {
+  const lastDot = fileName.lastIndexOf(".");
+  const stem = lastDot >= 0 ? fileName.slice(0, lastDot) : fileName;
+  return `${stem}.zip`;
 }
 
 async function fileToUint8Array(file: File) {
@@ -67,7 +137,7 @@ function loadImage(file: File) {
     };
     image.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("IMAGE_LOAD_FAILED"));
+      reject(new ConverterError("INVALID_IMAGE_FILE"));
     };
     image.src = url;
   });
@@ -77,7 +147,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality?: num
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
-        reject(new Error("CANVAS_EXPORT_FAILED"));
+        reject(new ConverterError("CANVAS_EXPORT_FAILED"));
         return;
       }
       resolve(blob);
@@ -90,8 +160,14 @@ async function rasterImageToImage(file: File, mimeType: "image/png" | "image/web
   const canvas = document.createElement("canvas");
   canvas.width = image.naturalWidth;
   canvas.height = image.naturalHeight;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("NO_CANVAS_CONTEXT");
+  const ctx = canvas.getContext("2d", { alpha: mimeType !== "image/jpeg" });
+  if (!ctx) throw new ConverterError("NO_CANVAS_CONTEXT");
+  if (mimeType === "image/jpeg") {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
   ctx.drawImage(image, 0, 0);
   return canvasToBlob(canvas, mimeType, mimeType === "image/png" ? undefined : 0.92);
 }
@@ -149,7 +225,7 @@ async function imageToPdf(file: File) {
   canvas.width = image.naturalWidth;
   canvas.height = image.naturalHeight;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("NO_CANVAS_CONTEXT");
+  if (!ctx) throw new ConverterError("NO_CANVAS_CONTEXT");
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(image, 0, 0);
@@ -158,39 +234,161 @@ async function imageToPdf(file: File) {
   return buildSimplePdf(jpegBytes, canvas.width, canvas.height);
 }
 
-async function pdfToImage(file: File, mimeType: "image/jpeg" | "image/png") {
-  const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as any;
-  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
-  }
-  const loadingTask = pdfjs.getDocument({
-    data: await fileToUint8Array(file),
-    disableWorker: true,
-    useWorkerFetch: false,
-    isOffscreenCanvasSupported: false,
-  } as any);
-  const pdf = await loadingTask.promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 1.5 });
+function normalizePdfError(error: unknown) {
+  if (error instanceof ConverterError) return error;
+  const name = typeof error === "object" && error && "name" in error ? String((error as { name?: string }).name) : "";
+  if (name === "PasswordException") return new ConverterError("PDF_ENCRYPTED");
+  if (name === "InvalidPDFException") return new ConverterError("INVALID_PDF_FILE");
+  return new ConverterError("PDF_RENDER_FAILED");
+}
+
+async function renderPdfPage(
+  page: {
+    getViewport: (args: { scale: number }) => { width: number; height: number };
+    render: (args: {
+      canvasContext: CanvasRenderingContext2D;
+      viewport: { width: number; height: number };
+      canvas: HTMLCanvasElement;
+    }) => { promise: Promise<void> };
+    cleanup: () => void;
+  },
+  mimeType: "image/jpeg" | "image/png" | "image/webp"
+) {
+  const viewport = page.getViewport({ scale: 1.75 });
   const canvas = document.createElement("canvas");
   canvas.width = Math.ceil(viewport.width);
   canvas.height = Math.ceil(viewport.height);
   const context = canvas.getContext("2d", { alpha: false });
-  if (!context) throw new Error("NO_CANVAS_CONTEXT");
-  await page.render({ canvasContext: context, viewport, canvas: canvas as any } as any).promise;
-  const blob = await canvasToBlob(canvas, mimeType, mimeType === "image/jpeg" ? 0.92 : undefined);
-  page.cleanup();
-  pdf.cleanup();
-  return blob;
+  if (!context) throw new ConverterError("NO_CANVAS_CONTEXT");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: context, viewport, canvas }).promise;
+  return canvasToBlob(canvas, mimeType, mimeType === "image/jpeg" || mimeType === "image/webp" ? 0.92 : undefined);
 }
 
-export async function convertFile({ file, from, to }: ConvertArgs): Promise<ConverterResult> {
-  let blob: Blob;
+async function pdfToImage({
+  file,
+  to,
+  plan,
+  onProgress,
+}: {
+  file: File;
+  to: "jpg" | "png" | "webp";
+  plan?: ConverterPlanId | null;
+  onProgress?: (progress: ConverterProgress) => void;
+}) {
+  const mimeType = to === "jpg" ? "image/jpeg" : to === "png" ? "image/png" : "image/webp";
+  type PdfPageHandle = {
+    getViewport: (args: { scale: number }) => { width: number; height: number };
+    render: (args: {
+      canvasContext: CanvasRenderingContext2D;
+      viewport: { width: number; height: number };
+      canvas: HTMLCanvasElement;
+    }) => { promise: Promise<void> };
+    cleanup: () => void;
+  };
 
-  if (from === "pdf" && to === "jpg") {
-    blob = await pdfToImage(file, "image/jpeg");
-  } else if (from === "pdf" && to === "png") {
-    blob = await pdfToImage(file, "image/png");
+  try {
+    onProgress?.({ stage: "loading", message: "Loading PDF pages..." });
+    const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as {
+      GlobalWorkerOptions: { workerSrc?: string };
+      getDocument: (args: {
+        data: Uint8Array;
+        disableWorker: boolean;
+        useWorkerFetch: boolean;
+        isOffscreenCanvasSupported: boolean;
+      }) => { promise: Promise<{ numPages: number; getPage: (pageNumber: number) => Promise<PdfPageHandle>; cleanup: () => void; destroy: () => Promise<void> }> };
+    };
+
+    if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
+    }
+
+    const loadingTask = pdfjs.getDocument({
+      data: await fileToUint8Array(file),
+      disableWorker: true,
+      useWorkerFetch: false,
+      isOffscreenCanvasSupported: false,
+    });
+    const pdf = await loadingTask.promise;
+
+    const pageLimit = getPdfPageLimit(plan);
+    if (pdf.numPages > pageLimit) {
+      await pdf.destroy();
+      throw new ConverterError("PDF_PAGE_LIMIT_EXCEEDED");
+    }
+
+    if (pdf.numPages === 1) {
+      onProgress?.({ stage: "rendering", current: 1, total: 1, message: "Rendering page 1 of 1..." });
+      const page = await pdf.getPage(1);
+      try {
+        const blob = await renderPdfPage(page, mimeType);
+        const fileName = replaceExtension(file.name, to);
+        pdf.cleanup();
+        await pdf.destroy();
+        return {
+          blob,
+          fileName,
+          previewUrl: blobToObjectUrl(blob),
+        };
+      } finally {
+        page.cleanup();
+      }
+    }
+
+    const zip = new JSZip();
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      onProgress?.({
+        stage: "rendering",
+        current: pageNumber,
+        total: pdf.numPages,
+        message: `Rendering page ${pageNumber} of ${pdf.numPages}...`,
+      });
+      const page = await pdf.getPage(pageNumber);
+      try {
+        const blob = await renderPdfPage(page, mimeType);
+        const buffer = await blob.arrayBuffer();
+        const pageFileName = `${file.name.replace(/\.pdf$/i, "")}-page-${pageNumber}${extensionForFormat(to)}`;
+        zip.file(pageFileName, buffer);
+      } finally {
+        page.cleanup();
+      }
+    }
+
+    onProgress?.({
+      stage: "packaging",
+      current: pdf.numPages,
+      total: pdf.numPages,
+      message: `Packaging ${pdf.numPages} pages for download...`,
+    });
+    const blob = await zip.generateAsync({ type: "blob" });
+    pdf.cleanup();
+    await pdf.destroy();
+    return {
+      blob,
+      fileName: replaceWithZip(file.name),
+      previewUrl: null,
+    };
+  } catch (error) {
+    throw normalizePdfError(error);
+  }
+}
+
+export async function convertFile({ file, from, to, plan, onProgress }: ConvertArgs): Promise<ConverterResult> {
+  const pair = getSupportedConversionPair(from, to);
+  if (!pair) {
+    throw new ConverterError(`UNSUPPORTED_CONVERSION:${from}->${to}`);
+  }
+
+  let blob: Blob;
+  let fileName = replaceExtension(file.name, to);
+  let previewUrl: string | null = null;
+
+  if (from === "pdf" && (to === "jpg" || to === "png" || to === "webp")) {
+    const result = await pdfToImage({ file, to, plan, onProgress });
+    blob = result.blob;
+    fileName = result.fileName;
+    previewUrl = result.previewUrl;
   } else if (from === "jpg" && to === "png") {
     blob = await rasterImageToImage(file, "image/png");
   } else if (from === "jpg" && to === "webp") {
@@ -210,17 +408,16 @@ export async function convertFile({ file, from, to }: ConvertArgs): Promise<Conv
   } else if (from === "webp" && to === "pdf") {
     blob = await imageToPdf(file);
   } else {
-    throw new Error(`UNSUPPORTED_CONVERSION:${from}->${to}`);
+    throw new ConverterError(`UNSUPPORTED_CONVERSION:${from}->${to}`);
   }
 
-  const fileName = replaceExtension(file.name, to);
-  const previewUrl = blob.type.startsWith("image/") ? blobToObjectUrl(blob) : null;
+  const finalPreviewUrl = previewUrl ?? (blob.type.startsWith("image/") ? blobToObjectUrl(blob) : null);
   return {
     blob,
     downloadUrl: blobToObjectUrl(blob),
-    previewUrl,
+    previewUrl: finalPreviewUrl,
     fileName,
-    mimeType: blob.type || "application/octet-stream",
+    mimeType: blob.type || pair.outputMimeType || "application/octet-stream",
     sizeBytes: blob.size,
   };
 }
