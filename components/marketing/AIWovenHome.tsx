@@ -7,6 +7,7 @@ import { useRef, useState, type PointerEvent } from "react";
 
 import { AIWovenLogo, AIWovenMark } from "@/components/brand/AIWovenLogo";
 import type { PublicImpactStats } from "@/lib/analytics/publicStats";
+import { hasMeaningfulPublicImpactStats } from "@/lib/analytics/publicStatsDisplay";
 
 const tools = [
   ["Chat", "Compare ideas and draft with AIWoven Assistant."],
@@ -18,6 +19,33 @@ const tools = [
 ] as const;
 
 const workflow = ["Lecture", "AI Notes", "Flashcards", "Explained Quiz", "Review"] as const;
+
+const studentNeeds = [
+  {
+    stage: "Listen",
+    title: "Stay focused during lectures",
+    body: "I want to understand the lecture without typing every word the professor says.",
+    capability: "Record → AI Notes",
+  },
+  {
+    stage: "Organize",
+    title: "Make notes easier to review",
+    body: "I need my recordings and documents turned into clear key points, not another wall of text.",
+    capability: "Organized Notes",
+  },
+  {
+    stage: "Practice",
+    title: "Study actively, not passively",
+    body: "I remember more when I can flip through flashcards and test myself instead of rereading pages.",
+    capability: "Flashcards + Quiz",
+  },
+  {
+    stage: "Understand",
+    title: "Understand every mistake",
+    body: "A score is not enough. I need to know why my answer was wrong and how to improve it.",
+    capability: "Explained Answers",
+  },
+] as const;
 
 const faqs = [
   ["Is AIWoven free to use?", "Yes. AIWoven has a Basic plan with usage limits, while paid plans increase limits and unlock additional capacity."],
@@ -34,8 +62,80 @@ function ArrowIcon() {
 }
 
 function Stat({ value, label }: { value: number; label: string }) {
-  const display = value >= 100 ? `${Math.floor(value / 100) * 100}+` : value >= 10 ? `${Math.floor(value / 10) * 10}+` : String(value);
+  const display = new Intl.NumberFormat("en-US").format(value);
   return <div className="min-w-0 border-l border-white/10 pl-4 sm:pl-6"><p className="font-mono text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">{display}</p><p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">{label}</p></div>;
+}
+
+function NeedSignalIcon({ index }: { index: number }) {
+  const paths = [
+    "M3 12h3l2-6 3 12 3-9 2 6h5",
+    "M3 7h18M3 12h14M3 17h10",
+    "M5 5v14l13-7L5 5Z",
+    "M4 12a8 8 0 1 1 4.1 7M8 12l2.5 2.5L16 9",
+  ] as const;
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5">
+      <path d={paths[index]} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function StudentNeeds({ stats }: { stats: PublicImpactStats }) {
+  const showPublicStats = hasMeaningfulPublicImpactStats(stats);
+  const visibleStats = [
+    { value: stats.studentsHelped, label: "Students helped" },
+    { value: stats.studySessionsCompleted, label: "Study activities" },
+    { value: stats.notesGenerated, label: "Notes generated" },
+    { value: stats.flashcardSetsCreated, label: "Flashcard sets" },
+    { value: stats.aiToolsAvailable, label: "AI tools available" },
+  ].filter((item) => item.value > 0);
+
+  return (
+    <section id="student-needs" aria-labelledby="student-needs-title" data-testid="student-needs" className="scroll-mt-24 relative border-y border-white/8 bg-white/[0.018] px-4 py-16 sm:px-6 sm:py-20">
+      <div className="aiwoven-grid pointer-events-none absolute inset-0 opacity-35 [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_82%,transparent)]" aria-hidden />
+      <div className="relative mx-auto max-w-6xl">
+        <div className="grid gap-5 lg:grid-cols-[.85fr_1.15fr] lg:items-end">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">Student needs</p>
+            <h2 id="student-needs-title" className="mt-3 max-w-xl text-3xl font-semibold tracking-[-.05em] text-white sm:text-4xl">Built around the way students actually study.</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-7 text-slate-400 lg:justify-self-end">AIWoven connects the moments students usually lose between listening, organizing, reviewing, and preparing for exams.</p>
+        </div>
+
+        <div className="relative mt-10">
+          <div className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-6 hidden h-px bg-gradient-to-r from-cyan-300/45 via-blue-400/25 to-violet-400/45 lg:block" aria-hidden />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {studentNeeds.map((need, index) => (
+              <article key={need.title} className="group relative flex h-full min-h-64 flex-col border border-white/10 bg-[#080c13]/92 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/25 motion-reduce:transform-none motion-reduce:transition-none sm:p-6">
+                <div className="relative z-10 flex items-center justify-between">
+                  <span className="grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-[#0a111b] text-cyan-300 transition-colors duration-300 group-hover:border-cyan-300/30 group-hover:text-cyan-200 motion-reduce:transition-none"><NeedSignalIcon index={index} /></span>
+                  <span className="font-mono text-[9px] uppercase tracking-[.2em] text-slate-600">0{index + 1}</span>
+                </div>
+                <p className="mt-5 font-mono text-[9px] uppercase tracking-[.22em] text-violet-300/80">{need.stage}</p>
+                <h3 className="mt-2 text-lg font-medium tracking-[-.025em] text-white">{need.title}</h3>
+                <p className="mt-3 flex-1 text-[15px] leading-6 text-slate-400">{need.body}</p>
+                <div className="mt-6"><span className="inline-flex rounded-full border border-cyan-300/15 bg-cyan-300/[0.055] px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.14em] text-cyan-200">{need.capability}</span></div>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-col gap-3 border-t border-white/8 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-slate-200">One workspace for the full path from lecture to mastery.</p>
+          <a href="#workflow" data-testid="student-needs-workflow-link" className="group inline-flex items-center gap-2 text-sm font-medium text-cyan-300 transition-colors hover:text-cyan-200">See how it works <span className="transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"><ArrowIcon /></span></a>
+        </div>
+
+        {showPublicStats ? (
+          <div data-testid="public-impact-stats" className="mt-10 border-t border-white/8 pt-8">
+            <p className="font-mono text-[9px] uppercase tracking-[.22em] text-emerald-300">Live aggregate activity</p>
+            <div className="mt-6 grid grid-cols-2 gap-y-7 sm:grid-cols-3 lg:grid-cols-5">{visibleStats.map((item) => <Stat key={item.label} value={item.value} label={item.label} />)}</div>
+            <p className="mt-6 text-xs text-slate-600">Counts come from successful registered-user tool events and saved study sessions. Anonymous visits are excluded.</p>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
 }
 
 function ProductStage() {
@@ -132,8 +232,9 @@ export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
           </div>
           <motion.div style={{ y: stageY }} className="min-w-0 lg:ml-auto lg:w-full lg:max-w-[760px]"><ProductStage /></motion.div>
         </div>
-        <div className="mx-auto mt-10 grid max-w-6xl grid-cols-2 gap-y-7 sm:grid-cols-5 lg:mt-12"><Stat value={stats.studentsHelped} label="Students helped"/><Stat value={stats.studySessionsCompleted} label="Study activities"/><Stat value={stats.notesGenerated} label="Notes generated"/><Stat value={stats.flashcardSetsCreated} label="Flashcard sets"/><Stat value={stats.aiToolsAvailable} label="AI tools available"/></div>
       </section>
+
+      <StudentNeeds stats={stats} />
 
       <section id="workflow" className="scroll-mt-28 border-y border-white/8 bg-white/[0.018] px-4 py-24 sm:px-6 lg:py-32"><div className="mx-auto max-w-6xl"><div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-center"><div><p className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">Student workflow</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-white sm:text-5xl">One continuous path from class to recall.</h2><p className="mt-5 max-w-md text-sm leading-7 text-slate-400">Each step keeps the context from the step before it, so studying feels like one workflow instead of five disconnected tools.</p></div><div className="relative"><div className="absolute left-[1.15rem] top-6 bottom-6 w-px bg-gradient-to-b from-cyan-300 via-violet-400 to-emerald-300 sm:left-0 sm:right-0 sm:top-1/2 sm:h-px sm:w-auto" aria-hidden/><ol className="relative grid gap-4 sm:grid-cols-5 sm:gap-3">{workflow.map((item,index)=><li key={item} className="group flex items-center gap-4 sm:block"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#090d14] font-mono text-xs text-cyan-300 transition group-hover:scale-110 group-hover:border-cyan-300/40">0{index+1}</span><div className="sm:mt-5"><p className="text-sm font-medium text-white">{item}</p><p className="mt-1 text-xs text-slate-500">{index===0?"Capture":index===1?"Organize":index===2?"Recall":index===3?"Understand":"Improve"}</p></div></li>)}</ol></div></div></div></section>
 
@@ -142,8 +243,6 @@ export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
       <section id="tools" className="scroll-mt-28 px-4 pb-24 sm:px-6 lg:pb-32"><div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(34,211,238,.06),transparent_35%,rgba(139,92,246,.08)),#080b12] p-6 sm:p-10 lg:p-14"><div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-center"><div><p className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">AIWoven workspace</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-white">The right workflow for the moment.</h2><p className="mt-5 text-sm leading-7 text-slate-400">Use direct chat or a structured multi-step workflow while AIWoven handles routing behind the scenes.</p><Link href="/chat" className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-cyan-300">Open AI Chat <ArrowIcon/></Link></div><div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/8 bg-white/8">{[["AIWoven Assistant","Direct, focused answers"],["Multi-step workflow","Plan, draft, and review"],["Study intelligence","Notes, cards, and quizzes"],["Automatic routing","Reliable task handling"]].map(([name,detail])=><div key={name} className="bg-[#0b0f17] p-5"><span className="block h-2 w-2 rounded-full bg-cyan-300"/><p className="mt-8 text-sm font-medium text-white">{name}</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div>)}</div></div></div></section>
 
       <section className="px-4 pb-24 sm:px-6 lg:pb-32"><div className="mx-auto grid max-w-6xl gap-10 border-y border-white/10 py-14 lg:grid-cols-[.8fr_1.2fr] lg:items-center"><div><p className="font-mono text-[10px] uppercase tracking-[.24em] text-violet-400">AI Study showcase</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-white">Study the explanation, not just the score.</h2><p className="mt-5 max-w-md text-sm leading-7 text-slate-400">Upload a lecture document, then move through notes, large 3D flashcards, and a focused quiz route that explains every answer.</p><Link href="/ai-study" className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-cyan-300">Open AI Study <ArrowIcon/></Link></div><div className="grid gap-4 sm:grid-cols-[1.1fr_.9fr]"><div className="flex min-h-72 flex-col items-center justify-center rounded-[1.8rem] border border-cyan-300/20 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.12),transparent_52%),#090e16] p-8 text-center"><span className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">Flashcard</span><p className="mt-7 max-w-sm text-2xl font-medium leading-9 text-white">How do ATP and NADPH support the Calvin cycle?</p><p className="mt-7 text-xs text-slate-500">Click or press Space to flip</p></div><div className="rounded-[1.8rem] border border-white/10 bg-white/[0.025] p-6"><div className="flex items-center justify-between"><span className="text-xs text-slate-500">Question 3 of 8</span><span className="text-xs text-emerald-300">Correct</span></div><div className="mt-4 h-1 rounded-full bg-white/8"><div className="h-full w-[38%] rounded-full bg-violet-400"/></div><p className="mt-8 text-sm font-medium text-white">Why is this correct?</p><p className="mt-3 text-xs leading-6 text-slate-400">ATP supplies energy while NADPH provides reducing power for carbon fixation and carbohydrate synthesis.</p></div></div></div></section>
-
-      <section id="impact" className="scroll-mt-28 border-y border-white/8 bg-white/[0.018] px-4 py-20 sm:px-6"><div className="mx-auto max-w-6xl"><p className="font-mono text-[10px] uppercase tracking-[.24em] text-emerald-400">Verified student impact</p><div className="mt-8 grid grid-cols-2 gap-y-8 sm:grid-cols-5"><Stat value={stats.studentsHelped} label="Students helped"/><Stat value={stats.studySessionsCompleted} label="Study activities"/><Stat value={stats.notesGenerated} label="Notes generated"/><Stat value={stats.flashcardSetsCreated} label="Flashcard sets"/><Stat value={stats.aiToolsAvailable} label="AI tools available"/></div><p className="mt-8 text-xs text-slate-600">Counts come from successful registered-user tool events and saved study sessions. Anonymous visits are excluded.</p></div></section>
 
       <section id="faq" className="scroll-mt-28 px-4 py-24 sm:px-6 lg:py-32"><div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[.65fr_1.35fr]"><div><p className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">FAQ</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-white">Before you weave it into your study routine.</h2></div><div className="divide-y divide-white/10 border-t border-white/10">{faqs.map(([question,answer])=><details key={question} className="group py-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-sm font-medium text-white focus-visible:outline-none"><span>{question}</span><span className="text-xl font-light text-slate-500 transition group-open:rotate-45" aria-hidden>+</span></summary><p className="max-w-2xl pt-4 text-sm leading-7 text-slate-400">{answer}</p></details>)}</div></div></section>
 

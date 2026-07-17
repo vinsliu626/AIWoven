@@ -41,6 +41,26 @@ test("mobile hero keeps the CTA visible without horizontal overflow", async ({ p
   await page.screenshot({ path: path.resolve("output/aiwoven-hero-workflow-375.png"), fullPage: false });
 });
 
+test("student needs replace empty-looking proof and connect to the real workflow", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const needs = page.getByTestId("student-needs");
+  await expect(needs).toBeVisible();
+  await expect(needs).toContainText("Built around the way students actually study.");
+  await expect(needs).toContainText("Stay focused during lectures");
+  await expect(needs).toContainText("Make notes easier to review");
+  await expect(needs).toContainText("Study actively, not passively");
+  await expect(needs).toContainText("Understand every mistake");
+  await expect(page.getByText("0 Students helped", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Verified Student", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Testimonial", { exact: true })).toHaveCount(0);
+
+  await page.getByTestId("student-needs-workflow-link").click();
+  await expect(page.locator("#workflow")).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+});
+
 test("local credentials sign in, survive refresh, return to the product, and sign out", async ({ page }) => {
   test.skip(!localAuthConfigured, "Local credentials are not configured");
   await page.goto("/chat");

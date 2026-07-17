@@ -486,6 +486,8 @@ function ChatPageInner() {
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [workspaceNavOpen, setWorkspaceNavOpen] = useState(false);
+  const [workspaceNavCollapsed, setWorkspaceNavCollapsed] = useState(false);
+  const [workspaceNavTransitionReady, setWorkspaceNavTransitionReady] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
 
@@ -528,10 +530,35 @@ function ChatPageInner() {
     }
   }, [requestedMode]);
 
-  // esc close sidebar
+  useEffect(() => {
+    try {
+      const collapsed = localStorage.getItem("aiwoven:chat-sidebar-collapsed") === "true";
+      setWorkspaceNavCollapsed(collapsed);
+      document.documentElement.dataset.aiwovenChatNav = collapsed ? "collapsed" : "expanded";
+    } catch {
+      document.documentElement.dataset.aiwovenChatNav = "expanded";
+    }
+    setWorkspaceNavTransitionReady(true);
+  }, []);
+
+  function toggleWorkspaceNav() {
+    setWorkspaceNavCollapsed((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem("aiwoven:chat-sidebar-collapsed", String(next));
+      } catch {}
+      document.documentElement.dataset.aiwovenChatNav = next ? "collapsed" : "expanded";
+      return next;
+    });
+  }
+
+  // Escape closes either mobile workspace navigation or the chat-history drawer.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSidebarOpen(false);
+      if (e.key === "Escape") {
+        setSidebarOpen(false);
+        setWorkspaceNavOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -1073,6 +1100,10 @@ function ChatPageInner() {
       <div className="relative z-10 h-full w-full flex">
         <AIWovenAppNav
           isOwner={effectiveSession?.user?.role === "OWNER"}
+          collapsible
+          collapsed={workspaceNavCollapsed}
+          transitionReady={workspaceNavTransitionReady}
+          onToggleCollapsed={toggleWorkspaceNav}
           onBilling={() => { void refreshEnt(); setPlanOpen(true); }}
           onSettings={() => setSettingsOpen(true)}
         />
@@ -1204,7 +1235,7 @@ function ChatPageInner() {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col relative min-w-0 bg-[#030303]">
+        <div data-testid="chat-main-content" className="flex-1 flex flex-col relative min-w-0 bg-[#030303]">
           {/* Header */}
           <header className="h-16 border-b border-white/5 px-2.5 md:px-6 flex items-center justify-between gap-2 md:gap-4 bg-[#080808]/80 backdrop-blur-md z-20 shrink-0">
             {/* Left */}
@@ -1434,7 +1465,11 @@ function ChatPageInner() {
 
               {/* Input Area (Console Style) */}
               <div className="p-4 md:px-8 md:pb-6 pt-2 bg-gradient-to-t from-[#030303] via-[#030303] to-transparent shrink-0">
-                <div id="chat-composer" className="max-w-4xl mx-auto relative flex flex-col gap-2">
+                <div
+                  id="chat-composer"
+                  data-testid="chat-composer"
+                  className={`mx-auto flex w-full flex-col gap-2 transition-[max-width] duration-200 ease-out motion-reduce:transition-none ${workspaceNavCollapsed ? "max-w-6xl" : "max-w-5xl"}`}
+                >
                   <div className="relative flex items-end bg-[#0a0a0a] rounded-3xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all focus-within:border-blue-500/40 focus-within:shadow-[0_0_20px_rgba(59,130,246,0.1)]">
                     <textarea
                       className="flex-1 max-h-40 min-h-[52px] w-full bg-transparent text-slate-100 placeholder:text-slate-600 px-5 py-4 text-sm resize-none focus:outline-none focus:ring-0 custom-scrollbar"
