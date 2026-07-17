@@ -1,7 +1,7 @@
 "use client";
 
 type Mode = "single" | "team";
-type SingleModelKey = "groq_fast" | "groq_quality" | "hf_deepseek" | "hf_kimi";
+type SingleModelKey = "aiwoven";
 
 export function ModeSelector({
   mode,
@@ -33,30 +33,27 @@ export function ModeSelector({
           }`}
           onClick={() => setMode("team")}
         >
-          Team (3-model)
+          Multi-step workflow
         </button>
       </div>
 
       {mode === "single" ? (
         <div className="mt-3">
-          <div className="text-xs text-gray-500">Single model does NOT consume chat quota.</div>
+          <div className="text-xs text-gray-500">Direct chat uses the standard workspace quota.</div>
           <select
             className="mt-2 w-full rounded-xl border px-3 py-2 text-sm"
             value={singleModelKey}
             onChange={(e) => setSingleModelKey(e.target.value as any)}
           >
-            <option value="groq_fast">Groq Fast (llama-3.1-8b)</option>
-            <option value="groq_quality">Groq Quality (llama-3.3-70b)</option>
-            <option value="hf_kimi">HF Kimi</option>
-            <option value="hf_deepseek">HF DeepSeek R1</option>
+            <option value="aiwoven">AIWoven Assistant</option>
           </select>
           <div className="mt-2 text-xs text-amber-700">
-            HF models may return 503/overloaded. Your server should fallback to Groq automatically.
+            AIWoven automatically routes requests and handles service fallback.
           </div>
         </div>
       ) : (
         <div className="mt-3 text-xs text-gray-600">
-          Team mode uses multiple calls (DeepSeek + Kimi + Groq merge). ✅ This mode consumes chat quota.
+          Multi-step mode plans, drafts, and reviews before answering. This mode consumes chat quota.
         </div>
       )}
     </div>

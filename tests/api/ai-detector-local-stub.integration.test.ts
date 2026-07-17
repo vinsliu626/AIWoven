@@ -118,6 +118,7 @@ describe("POST /api/ai-detector local integration", () => {
     expect(res.status).toBe(200);
     expect(json.ok).toBe(true);
     expect(json.aiGenerated).toBe(37);
-    expect(json.python?.metrics?.source).toBe("integration-local-stub");
+    expect(json.python).toBeUndefined();
+    expect(json.meta?.provider).toBeUndefined();
   });
 });

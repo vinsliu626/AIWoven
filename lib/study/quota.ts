@@ -31,11 +31,13 @@ export async function getStudyUsageStatus(userId: string) {
     limits,
     usedToday,
     remainingToday: Math.max(0, limits.generationsPerDay - usedToday),
+    unlimited: access.unlimited,
   };
 }
 
 export async function assertStudyQuotaOrThrow(userId: string) {
   const status = await getStudyUsageStatus(userId);
+  if (status.unlimited) return status;
   if (status.usedToday >= status.limits.generationsPerDay) {
     if (process.env.NODE_ENV !== "production") {
       console.debug("[study.quota] quota exceeded", {
@@ -54,7 +56,8 @@ export async function assertStudyQuotaOrThrow(userId: string) {
   return status;
 }
 
-export function assertStudyCooldownOrThrow(userId: string, cooldownMs: number) {
+export function assertStudyCooldownOrThrow(userId: string, cooldownMs: number, unlimited = false) {
+  if (unlimited) return;
   const now = Date.now();
   const last = lastStudyAttemptByUser.get(userId) ?? 0;
   const remainingMs = cooldownMs - (now - last);

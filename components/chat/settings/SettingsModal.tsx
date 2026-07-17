@@ -428,7 +428,7 @@ export function SettingsModal({
 
               <Section title={copy.help} description={copy.helpDesc}>
                 <div className="space-y-2">
-                  <StatRow label={copy.supportEmail} value="support@nexusdesk.app" />
+                  <StatRow label={copy.supportEmail} value="support@aiwoven.app" />
                   <div className="flex flex-wrap gap-2">
                     <a
                       href="/account"

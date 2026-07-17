@@ -3,18 +3,19 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import { SITE_NAME, getSiteUrl } from "@/lib/seo";
+import { SiteVisitTracker } from "@/components/analytics/SiteVisitTracker";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   applicationName: SITE_NAME,
   title: {
-    default: "NexusDesk | AI Note, AI Detector, AI Study, and Converter Tools",
+    default: "AIWoven | AI Note, AI Detector, AI Study, and Converter Tools",
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    "NexusDesk is an AI workspace with public landing pages for AI Note, AI Detector, AI Study, Humanizer, and file conversion tools.",
+    "Every study tool, woven into one AI workspace. Record lectures, organize notes, build flashcards and explained quizzes, improve writing, convert files, and work with AIWoven Assistant.",
   keywords: [
-    "NexusDesk",
+    "AIWoven",
     "AI note generator",
     "AI detector",
     "AI study tools",
@@ -34,17 +35,22 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
-    title: "NexusDesk | AI Note, AI Detector, AI Study, and Converter Tools",
-    description:
-      "AI workspace with note generation, AI detection, study tools, humanizing, and file conversion workflows.",
+    title: "AIWoven | AI Note, AI Detector, AI Study, and Converter Tools",
+    description: "Every study tool, woven into one AI workspace.",
     url: getSiteUrl(),
     locale: "en_US",
+    images: [{ url: "/brand/aiwoven-image2-concept.png", width: 1536, height: 1024, alt: "AIWoven interwoven W brand identity" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NexusDesk | AI Note, AI Detector, AI Study, and Converter Tools",
-    description:
-      "AI workspace with note generation, AI detection, study tools, humanizing, and file conversion workflows.",
+    title: "AIWoven | AI Note, AI Detector, AI Study, and Converter Tools",
+    description: "Every study tool, woven into one AI workspace.",
+    images: ["/brand/aiwoven-image2-concept.png"],
+  },
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
   },
 };
 
@@ -56,7 +62,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-slate-950">
-        <Providers>{children}</Providers>
+        <Providers><SiteVisitTracker />{children}</Providers>
       </body>
     </html>
   );

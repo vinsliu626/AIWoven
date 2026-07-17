@@ -28,6 +28,7 @@ export const runtimeEntitlementSelect = Prisma.validator<Prisma.UserEntitlementS
   promoAccessStartAt: true,
   promoAccessEndAt: true,
   promoAccessActive: true,
+  role: true,
 });
 
 export type RuntimeUserEntitlement = {
@@ -57,6 +58,7 @@ export type RuntimeUserEntitlement = {
   promoAccessStartAt: Date | null;
   promoAccessEndAt: Date | null;
   promoAccessActive: boolean;
+  role?: "USER" | "OWNER";
 };
 
 export const mutationResultSelect = Prisma.validator<Prisma.UserEntitlementSelect>()({
@@ -191,6 +193,7 @@ function fromLegacyRow(row: Record<string, unknown>, userId: string): RuntimeUse
     promoAccessStartAt: null,
     promoAccessEndAt: null,
     promoAccessActive: false,
+    role: "USER",
   };
 }
 

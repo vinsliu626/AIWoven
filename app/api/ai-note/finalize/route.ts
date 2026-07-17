@@ -22,6 +22,7 @@ import { parseEnvInt } from "@/lib/env/number";
 
 import { assertQuotaOrThrow, QuotaError } from "@/lib/billing/guard";
 import { addUsageEvent } from "@/lib/billing/usage";
+import { trackFeatureUsage } from "@/lib/analytics/track";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -637,6 +638,15 @@ export async function POST(req: Request) {
           });
 
           await prisma.aiNoteChunk.deleteMany({ where: { noteId } }).catch(() => {});
+          void trackFeatureUsage({
+            userId,
+            featureKey: "note",
+            featureName: "AI Note",
+            actionType: "NOTE_USED",
+            pagePath: "/ai-note",
+            metadata: { mode: "staged-offline", duration_ms: Date.now() - t0 },
+            request: req,
+          });
 
           return NextResponse.json({
             ok: true,
@@ -803,6 +813,15 @@ export async function POST(req: Request) {
         });
 
         await prisma.aiNoteChunk.deleteMany({ where: { noteId } }).catch(() => {});
+        void trackFeatureUsage({
+          userId,
+          featureKey: "note",
+          featureName: "AI Note",
+          actionType: "NOTE_USED",
+          pagePath: "/ai-note",
+          metadata: { mode: "staged", duration_ms: Date.now() - t0 },
+          request: req,
+        });
 
         return NextResponse.json({
           ok: true,

@@ -19,6 +19,11 @@ enum PromoTargetPlan {
   ULTRA
 }
 
+enum UserRole {
+  USER
+  OWNER
+}
+
 /// *
 /// * ===================== Chat =====================
 model ChatSession {
@@ -77,6 +82,7 @@ model UserEntitlement {
   promoAccessEndAt          DateTime?
   promoAccessActive         Boolean   @default(false)
   promoRedemptions          PromoRedemption[]
+  role                      UserRole  @default(USER)
 
   @@index([developerBypass])
   @@index([promoAccessActive, promoAccessEndAt])
@@ -163,6 +169,68 @@ model UsageEvent {
 
   @@index([userId, type, createdAt])
   @@index([createdAt])
+}
+
+/// *
+/// * ===================== Internal Analytics =====================
+model FeatureUsageEvent {
+  id           String   @id @default(cuid())
+  userId       String?  @map("user_id")
+  anonymousVisitorId String? @map("anonymous_visitor_id")
+  sessionId    String?  @map("session_id")
+  featureKey   String   @map("feature_key")
+  featureName  String   @map("feature_name")
+  pagePath     String?  @map("page_path")
+  actionType   String   @map("action_type")
+  metadata     Json?
+  success      Boolean  @default(true)
+  errorMessage String?  @map("error_message")
+  userAgent    String?  @map("user_agent")
+  ipHash       String?  @map("ip_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([featureKey, createdAt])
+  @@index([userId, createdAt])
+  @@index([anonymousVisitorId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([actionType, createdAt])
+  @@map("feature_usage_events")
+}
+
+model DailyUserActivity {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  activityDate     DateTime @map("activity_date") @db.Date
+  firstSeenAt      DateTime @default(now()) @map("first_seen_at")
+  lastSeenAt       DateTime @default(now()) @map("last_seen_at")
+  sessionCount     Int      @default(1) @map("session_count")
+  featureCallCount Int      @default(0) @map("feature_call_count")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, activityDate])
+  @@index([activityDate])
+  @@index([lastSeenAt])
+  @@map("daily_user_activity")
+}
+
+model FeatureDailyStat {
+  id           String   @id @default(cuid())
+  featureKey   String   @map("feature_key")
+  featureName  String   @map("feature_name")
+  statDate     DateTime @map("stat_date") @db.Date
+  totalCalls   Int      @default(0) @map("total_calls")
+  uniqueUsers  Int      @default(0) @map("unique_users")
+  successCount Int      @default(0) @map("success_count")
+  errorCount   Int      @default(0) @map("error_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([featureKey, statDate])
+  @@index([statDate])
+  @@index([featureKey])
+  @@map("feature_daily_stats")
 }
 
 model StudySession {

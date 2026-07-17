@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getStudyPlanLimits } from "@/lib/study/limits";
-import { sanitizeStudyText, truncateStudyText } from "@/lib/study/service";
+import { sanitizeStudyText, truncateStudyText, validateGeneratedQuizItem } from "@/lib/study/service";
 
 describe("study limits", () => {
   it("returns conservative limits for basic users", () => {
@@ -34,5 +34,17 @@ describe("study limits", () => {
     expect(result.truncated).toBe(true);
     expect(result.text).toContain("Question 1.");
     expect(result.text).toContain("Question 2.");
+  });
+});
+
+describe("generated quiz validation", () => {
+  it("requires explanation and a correct answer present in unique options", () => {
+    expect(validateGeneratedQuizItem({ type: "multiple_choice", question: "Q?", options: ["A", "B"], answer: "A" })).toBeNull();
+    expect(validateGeneratedQuizItem({ type: "multiple_choice", question: "Q?", options: ["A", "A"], answer: "A", explanation: "Because A." })).toBeNull();
+    expect(validateGeneratedQuizItem({ type: "multiple_choice", question: "Q?", options: ["A", "B"], answer: "C", explanation: "Because C." })).toBeNull();
+  });
+
+  it("accepts a fully explained valid question", () => {
+    expect(validateGeneratedQuizItem({ type: "multiple_choice", question: "Q?", options: ["A", "B"], answer: "A", explanation: "The document identifies A." })).toMatchObject({ answer: "A", explanation: "The document identifies A." });
   });
 });

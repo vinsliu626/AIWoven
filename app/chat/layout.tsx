@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "AI Chat Workspace | NexusDesk",
-  description: "Public NexusDesk chat workspace for direct AI chat, drafting, and workflow collaboration.",
+  title: "AI Chat Workspace | AIWoven",
+  description: "Public AIWoven chat workspace for direct AI chat, drafting, and workflow collaboration.",
   path: "/chat",
   robots: {
     index: true,

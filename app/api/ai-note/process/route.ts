@@ -33,8 +33,8 @@ function asErrorInfo(error: unknown) {
   };
 }
 
-function bad(code: ApiErr, status = 400, message?: string, extra?: unknown) {
-  return NextResponse.json({ ok: false, error: code, message: message ?? code, ...(extra ? { extra } : {}) }, { status });
+function bad(code: ApiErr, status = 400, message?: string) {
+  return NextResponse.json({ ok: false, error: code, message: message ?? code }, { status });
 }
 
 function splitByChars(s: string, partChars: number) {
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     const isZh = body?.lang === "zh";
     const language = isZh ? "zh" : "en";
     const groqKey = process.env.GROQ_API_KEY;
-    if (!groqKey) return bad("MISSING_KEYS", 500, "Missing GROQ_API_KEY");
+    if (!groqKey) return bad("MISSING_KEYS", 503, "AIWoven note processing is not configured for this environment.");
     const openrouterKey = process.env.OPENROUTER_API_KEY || undefined;
 
     const note = await prisma.aiNoteSession.findUnique({
@@ -130,7 +130,7 @@ export async function POST(req: Request) {
     } catch (e: unknown) {
       const info = asErrorInfo(e);
       console.error("[ai-note] ASR failed:", info.code || info.message, info.extra);
-      return bad("ASR_FAILED", 502, "ASR failed", { code: info.code, message: info.message, extra: info.extra });
+      return bad("ASR_FAILED", 502, "AIWoven could not transcribe this recording.");
     }
 
     const partChars = parseEnvInt("AI_NOTE_TRANSCRIPT_CHARS_PER_PART", 6000);
@@ -196,7 +196,7 @@ export async function POST(req: Request) {
     } catch (e: unknown) {
       const info = asErrorInfo(e);
       console.error("[ai-note] LLM final failed:", info.code || info.message, info.extra);
-      return bad("LLM_FAILED", 502, "LLM failed", { code: info.code, message: info.message, extra: info.extra });
+      return bad("LLM_FAILED", 502, "AIWoven could not finish this note.");
     }
 
     await prisma.aiNoteJob.upsert({
@@ -228,6 +228,6 @@ export async function POST(req: Request) {
   } catch (e: unknown) {
     const info = asErrorInfo(e);
     console.error("[/api/ai-note/process] fatal:", info.code || info.message, info.extra);
-    return bad("INTERNAL_ERROR", 500, typeof info.message === "string" ? info.message : "Internal error");
+    return bad("INTERNAL_ERROR", 500, "AIWoven could not process this note right now. Please try again.");
   }
 }

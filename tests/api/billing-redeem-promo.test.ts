@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => {
     },
   };
   const prisma = {
-    $transaction: vi.fn(async (fn: (tx: any) => Promise<unknown>) => fn(tx)),
+    $transaction: vi.fn(async (fn: (transaction: typeof tx) => Promise<unknown>) => fn(tx)),
   };
   const withPrismaRetry = vi.fn(async (fn: () => Promise<unknown>) => fn());
   return { getAuthenticatedUserIdentity, prisma, tx, withPrismaRetry };
@@ -214,7 +214,10 @@ describe("POST /api/billing/redeem promo", () => {
     const req = new Request("http://localhost/api/billing/redeem", {
       method: "POST",
       body: JSON.stringify({ code: "newapp" }),
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-dev-now": "2026-03-01T12:00:00.000Z",
+      },
     });
 
     const res = await POST(req);
@@ -290,16 +293,17 @@ describe("POST /api/billing/redeem promo", () => {
     mocks.getAuthenticatedUserIdentity.mockResolvedValue("student@example.com");
 
     const { POST } = await import("@/app/api/billing/redeem/route");
-    const req = new Request("http://localhost/api/billing/redeem", {
-      method: "POST",
-      body: JSON.stringify({ code: entry.code }),
-      headers: { "content-type": "application/json" },
-    });
+    const makeRequest = () =>
+      new Request("http://localhost/api/billing/redeem", {
+        method: "POST",
+        body: JSON.stringify({ code: entry.code }),
+        headers: { "content-type": "application/json" },
+      });
 
-    const first = await POST(req);
+    const first = await POST(makeRequest());
     expect(first.status).toBe(200);
 
-    const second = await POST(req);
+    const second = await POST(makeRequest());
     const json = await second.json();
 
     expect(second.status).toBe(400);

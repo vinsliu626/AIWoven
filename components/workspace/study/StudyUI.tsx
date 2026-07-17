@@ -282,7 +282,7 @@ export function StudyUI({
             </div>
 
             {ctl.result ? (
-              <StudyResults result={ctl.result} />
+              <StudyResults key={`${ctl.activeHistoryId ?? "new"}-${ctl.result.meta.usedCharCount}`} result={ctl.result} sessionId={ctl.activeHistoryId} />
             ) : (
               <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-6 py-10 text-center">
                 <div className="mx-auto h-12 w-12 rounded-2xl border border-white/10 bg-white/5 flex items-center justify-center text-slate-300">

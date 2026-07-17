@@ -22,7 +22,7 @@ type Message = { role: Role; content: string };
 
 type Mode = "single" | "team" | "detector" | "note";
 type ModelKind = "fast" | "quality";
-type SingleModelKey = "groq_fast" | "groq_quality" | "hf_deepseek" | "hf_kimi";
+type SingleModelKey = "aiwoven";
 type Lang = "zh" | "en";
 
 type ChatSession = {
@@ -96,7 +96,7 @@ export function WorkspaceShell() {
 
   const [mode, setMode] = useState<Mode>("single");
   const [modelKind, setModelKind] = useState<ModelKind>("fast");
-  const [singleModelKey, setSingleModelKey] = useState<SingleModelKey>("groq_fast");
+  const [singleModelKey, setSingleModelKey] = useState<SingleModelKey>("aiwoven");
 
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
 
@@ -303,18 +303,13 @@ export function WorkspaceShell() {
   }
 
   const modeOptions: PillOption[] = [
-    { value: "single", label: isZh ? "单模型" : "Single model" },
+    { value: "single", label: isZh ? "AIWoven 助手" : "AIWoven Assistant" },
     { value: "team", label: isZh ? "团队协作" : "Team / multi-agent" },
     { value: "detector", label: isZh ? "AI 检测器" : "AI Detector" },
     { value: "note", label: isZh ? "AI 笔记" : "AI Note" },
   ];
 
-  const singleModelOptions: PillOption[] = [
-    { value: "groq_fast", label: `Groq · ${isZh ? "快速" : "Fast"}` },
-    { value: "groq_quality", label: `Groq · ${isZh ? "高质量" : "Pro"}` },
-    { value: "hf_deepseek", label: "DeepSeek" },
-    { value: "hf_kimi", label: "Kimi" },
-  ];
+  const singleModelOptions: PillOption[] = [{ value: "aiwoven", label: "AIWoven Assistant" }];
 
   const teamQualityOptions: PillOption[] = [
     { value: "fast", label: isZh ? "快速" : "Fast" },
@@ -403,7 +398,7 @@ export function WorkspaceShell() {
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-2xl bg-gradient-to-br from-blue-500 via-cyan-400 to-emerald-400 animate-pulse shadow-lg shadow-blue-500/40" />
               <div className="leading-tight">
-                <p className="text-xs uppercase tracking-widest text-slate-400">Multi-Model</p>
+                <p className="text-xs uppercase tracking-widest text-slate-400">AIWoven</p>
                 <p className="text-sm font-semibold text-slate-50">{isZh ? "AI 工作台" : "AI Workspace"}</p>
               </div>
             </div>
@@ -500,8 +495,8 @@ export function WorkspaceShell() {
 
               <div className="h-8 w-8 rounded-2xl bg-gradient-to-br from-blue-500 via-sky-500 to-emerald-400 shadow-md shadow-blue-500/40" />
               <div className="flex flex-col gap-0.5">
-                <h1 className="font-semibold text-sm text-slate-100">{isZh ? "多模型 AI 助手 · 工作台" : "Multi-Model AI Workspace"}</h1>
-                <p className="text-[11px] text-slate-400">Groq · DeepSeek · Kimi · Multi-Agent</p>
+                <h1 className="font-semibold text-sm text-slate-100">{isZh ? "AIWoven 助手 · 工作台" : "AIWoven Assistant"}</h1>
+                <p className="text-[11px] text-slate-400">Direct chat · Multi-step workflow</p>
               </div>
             </div>
 
@@ -546,7 +541,7 @@ export function WorkspaceShell() {
                     {mode === "single"
                       ? isZh
                         ? "单模型选择"
-                        : "Model"
+                        : "Assistant"
                       : mode === "team"
                       ? isZh
                         ? "团队质量"
@@ -637,7 +632,7 @@ export function WorkspaceShell() {
                 {isLoading && (
                   <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    {mode === "team" ? (isZh ? "多模型团队正在协作思考中……" : "Multi-agent team is thinking…") : isZh ? "模型正在思考中……" : "Model is thinking…"}
+                    {mode === "team" ? (isZh ? "AIWoven 工作流正在协作处理……" : "AIWoven workflow is working…") : isZh ? "AIWoven 助手正在思考……" : "AIWoven Assistant is thinking…"}
                   </div>
                 )}
               </div>

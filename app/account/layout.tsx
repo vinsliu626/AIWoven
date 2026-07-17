@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Account | NexusDesk",
-  description: "Private NexusDesk account, billing, and usage dashboard.",
+  title: "Account | AIWoven",
+  description: "Private AIWoven account, billing, and usage dashboard.",
   path: "/account",
   robots: {
     index: false,

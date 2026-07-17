@@ -32,6 +32,7 @@ export async function getHumanizerQuotaStatus(userId: string) {
     limits,
     usedThisWeek,
     remainingThisWeek: Math.max(0, limits.wordsPerWeek - usedThisWeek),
+    unlimited: access.unlimited,
   };
 }
 
@@ -45,15 +46,15 @@ export async function assertHumanizerRequestAllowed(userId: string, inputWords: 
     throw new HumanizerLimitError("HUMANIZER_INPUT_TOO_SHORT", "Please enter at least 20 words.", 400);
   }
 
-  if (inputWords > status.limits.maxInputWords) {
+  if (!status.unlimited && inputWords > status.limits.maxInputWords) {
     throw new HumanizerLimitError("HUMANIZER_INPUT_TOO_LARGE", "This request exceeds your plan's Humanizer limit.", 400);
   }
 
-  if (cooldownRemainingMs > 0) {
+  if (!status.unlimited && cooldownRemainingMs > 0) {
     throw new HumanizerLimitError("HUMANIZER_COOLDOWN_ACTIVE", "Please wait a moment before submitting another Humanizer request.", 429);
   }
 
-  if (status.usedThisWeek + inputWords > status.limits.wordsPerWeek) {
+  if (!status.unlimited && status.usedThisWeek + inputWords > status.limits.wordsPerWeek) {
     throw new HumanizerLimitError("HUMANIZER_WEEKLY_LIMIT_REACHED", "You've reached your weekly Humanizer limit.", 429);
   }
 

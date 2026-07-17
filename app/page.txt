@@ -177,7 +177,7 @@ function ChatBubble({
   );
 }
 
-/** NexusDesk 球体 Logo：轻微抖动 + 变色渐变 */
+/** AIWoven 球体 Logo：轻微抖动 + 变色渐变 */
 function NeuroOrb() {
   return (
     <div className="relative h-9 w-9">
@@ -265,7 +265,7 @@ export default function Home() {
             <NeuroOrb />
             <div className="leading-tight">
               <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">
-                NexusDesk
+                AIWoven
               </p>
               <p className="text-sm font-semibold text-slate-100">
                 {isZh ? "多模型学习工作台" : "Multi-model study workspace"}
@@ -325,7 +325,7 @@ export default function Home() {
 
             <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-bold leading-[1.08]">
               <span className="ai-title">
-                {isZh ? "NexusDesk：更像团队的 AI" : "NexusDesk, AI that works like a team"}
+                {isZh ? "AIWoven：更像团队的 AI" : "AIWoven, AI that works like a team"}
               </span>
               <span className="block mt-3 text-slate-200 text-xl sm:text-2xl font-semibold">
                 {isZh
@@ -337,14 +337,14 @@ export default function Home() {
             <p className="mt-6 text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl mx-auto lg:mx-0">
               {isZh ? (
                 <>
-                  NexusDesk 把多模型协作做成“可用的流程”：笔记总结、检测写作痕迹、
+                  AIWoven 把多模型协作做成“可用的流程”：笔记总结、检测写作痕迹、
                   学习任务拆解与复习清单。
                   <br />
                   不需要你会提示词，直接像发消息一样描述需求。
                 </>
               ) : (
                 <>
-                  NexusDesk turns multi-model orchestration into a practical workflow:
+                  AIWoven turns multi-model orchestration into a practical workflow:
                   notes summarization, AI detection, task breakdown, and review checklists.
                   <br />
                   No prompt-crafting needed — just describe what you want.
@@ -390,7 +390,7 @@ export default function Home() {
                 <div className="flex items-center justify-between text-[11px] text-slate-300">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>{isZh ? "实时协作演示" : "Live collaboration demo"}</span>
+                    <span>{isZh ? "实时协作流程" : "Live collaboration workflow"}</span>
                   </div>
                   <span className="text-slate-400">{isZh ? "自动循环" : "Auto-loop"}</span>
                 </div>
@@ -427,7 +427,7 @@ export default function Home() {
 
                 <div className="mt-4 flex items-center justify-between">
                   <div className="text-[10px] text-slate-400">
-                    {isZh ? "提示：此处为演示动画" : "Tip: this is a scripted demo"}
+                    {isZh ? "提示：此处为流程动画" : "Tip: this is a scripted workflow"}
                   </div>
                   <Link
                     href="/chat"
@@ -458,7 +458,7 @@ export default function Home() {
           <div className="flex items-end justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold text-white">
-                {isZh ? "用 NexusDesk 做什么？" : "What can you do with NexusDesk?"}
+                {isZh ? "用 AIWoven 做什么？" : "What can you do with AIWoven?"}
               </h2>
               <p className="mt-2 text-slate-400 text-sm max-w-2xl">
                 {isZh
@@ -566,7 +566,7 @@ export default function Home() {
             href="/chat"
             className="inline-block mt-7 px-10 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/25 hover:scale-[1.03] transition text-sm font-medium"
           >
-            {isZh ? "进入 NexusDesk →" : "Enter NexusDesk →"}
+            {isZh ? "进入 AIWoven →" : "Enter AIWoven →"}
           </Link>
 
           <div className="mt-4 text-[11px] text-slate-500">
@@ -576,7 +576,7 @@ export default function Home() {
       </section>
 
       <footer className="py-7 text-center text-slate-500 text-xs bg-slate-950 border-t border-white/5">
-        © {new Date().getFullYear()} NexusDesk · Made by vins
+        © {new Date().getFullYear()} AIWoven · Made by vins
       </footer>
 
       {/* Global styles */}

@@ -17,7 +17,7 @@ export function FeatureAudienceCards({
         <h2 className="text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">{title}</h2>
         <p className="mt-3 text-base leading-8 text-slate-400">
           Built for real workflows, not vague AI promises. Each group gets a clear reason to use the tool and a practical next
-          action inside NexusDesk.
+          action inside AIWoven.
         </p>
       </div>
 

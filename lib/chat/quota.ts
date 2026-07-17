@@ -39,30 +39,31 @@ export async function getChatQuotaStatus(userId: string) {
     limits,
     usedToday: usedTodayAgg._sum.amount ?? 0,
     usedBudgetCharsInWindow: windowRows.reduce((sum, entry) => sum + entry.chars, 0),
+    unlimited: access.unlimited,
   };
 }
 
 export async function assertChatRequestAllowed(userId: string, input: string) {
   const trimmed = input.trim();
-  const { limits, usedToday, usedBudgetCharsInWindow } = await getChatQuotaStatus(userId);
+  const { limits, usedToday, usedBudgetCharsInWindow, unlimited } = await getChatQuotaStatus(userId);
   const now = Date.now();
   const last = lastChatAtByUser.get(userId) ?? 0;
   const inputChars = trimmed.length;
 
-  if (inputChars > limits.maxInputChars) {
+  if (!unlimited && inputChars > limits.maxInputChars) {
     throw new ChatLimitError("CHAT_INPUT_TOO_LARGE", "This message is too long for your current plan.", 400);
   }
 
   const cooldownRemainingMs = limits.cooldownMs - (now - last);
-  if (cooldownRemainingMs > 0) {
+  if (!unlimited && cooldownRemainingMs > 0) {
     throw new ChatLimitError("CHAT_COOLDOWN_ACTIVE", "Please wait a moment before sending another request.", 429);
   }
 
-  if (usedToday >= limits.messagesPerDay) {
+  if (!unlimited && usedToday >= limits.messagesPerDay) {
     throw new ChatLimitError("CHAT_DAILY_LIMIT_REACHED", "You've reached your AI Chat limit for now. Please try again later.", 429);
   }
 
-  if (usedBudgetCharsInWindow + inputChars > limits.budgetCharsPerWindow) {
+  if (!unlimited && usedBudgetCharsInWindow + inputChars > limits.budgetCharsPerWindow) {
     throw new ChatLimitError("CHAT_WINDOW_BUDGET_REACHED", "You've reached your AI Chat limit for now. Please try again later.", 429);
   }
 

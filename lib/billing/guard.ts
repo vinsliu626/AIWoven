@@ -69,12 +69,12 @@ export async function assertQuotaOrThrow(input: {
 
   if (process.env.DEV_BYPASS_QUOTA === "true") return;
 
-  let ent = await ensureRuntimeEntitlement(prisma, userId);
+  const ent = await ensureRuntimeEntitlement(prisma, userId);
 
   const access = resolveEffectiveAccessFromEntitlement(userId, ent);
   const plan = access.plan;
 
-  if (access.source === "developer_override") return;
+  if (access.source === "owner" || access.source === "developer_override") return;
   if (access.unlimited || plan === "ultra") return;
 
   if (plan !== "basic") {
@@ -90,7 +90,8 @@ export async function assertQuotaOrThrow(input: {
 
     try {
       const subResp = await stripe.subscriptions.retrieve(ent.stripeSubId);
-      const sub = (subResp as any).data ?? subResp;
+      const subCandidate = subResp as unknown as { data?: { status?: string; current_period_end?: number; cancel_at_period_end?: boolean }; status?: string; current_period_end?: number; cancel_at_period_end?: boolean };
+      const sub = subCandidate.data ?? subCandidate;
 
       const status = (sub?.status as string | undefined) ?? null;
       const periodEnd = sub?.current_period_end ? new Date(sub.current_period_end * 1000) : null;

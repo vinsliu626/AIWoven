@@ -99,7 +99,7 @@ export function SeoLandingPage({
           </div>
 
           <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
-            <h2 className="text-xl font-semibold text-slate-50">Explore more NexusDesk tools</h2>
+            <h2 className="text-xl font-semibold text-slate-50">Explore more AIWoven tools</h2>
             <div className="mt-5 grid gap-3">
               {relatedLinks.map((item) => (
                 <Link

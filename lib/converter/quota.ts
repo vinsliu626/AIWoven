@@ -25,11 +25,13 @@ export async function getConverterUsageStatus(userId: string) {
     limits,
     usedToday,
     remainingToday: Math.max(0, limits.conversionsPerDay - usedToday),
+    unlimited: access.unlimited,
   };
 }
 
 export async function assertConverterQuotaOrThrow(userId: string) {
   const status = await getConverterUsageStatus(userId);
+  if (status.unlimited) return status;
   if (status.usedToday >= status.limits.conversionsPerDay) {
     throw new QuotaError(
       "CONVERTER_QUOTA_EXCEEDED",

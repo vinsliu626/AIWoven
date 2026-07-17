@@ -1,8 +1,9 @@
 import { prisma, withPrismaRetry } from "@/lib/prisma";
 import { normalizePlan, planToFlags, type PlanId, type PlanFlags } from "@/lib/billing/planFlags";
 import { ensureRuntimeEntitlement, type RuntimeUserEntitlement } from "@/lib/billing/entitlementDb";
+import { isOwnerIdentity } from "@/lib/auth/owner";
 
-export type AccessSource = "developer_override" | "paid_subscription" | "promo" | "free";
+export type AccessSource = "owner" | "developer_override" | "paid_subscription" | "promo" | "free";
 
 export type EffectiveAccess = {
   plan: PlanId;
@@ -30,7 +31,7 @@ function hasAllowlistBypass(userId: string): boolean {
 }
 
 function hasDeveloperBypass(userId: string, _ent: RuntimeUserEntitlement): boolean {
-  return Boolean((_ent as any)?.developerBypass) || hasAllowlistBypass(userId);
+  return _ent.developerBypass || hasAllowlistBypass(userId);
 }
 
 function hasActivePaidSubscription(ent: RuntimeUserEntitlement, now: Date): boolean {
@@ -60,6 +61,18 @@ function hasLegacyGiftAccess(ent: RuntimeUserEntitlement, now: Date): boolean {
 }
 
 export function resolveEffectiveAccessFromEntitlement(userId: string, ent: RuntimeUserEntitlement, now = new Date()): EffectiveAccess {
+  if (isOwnerIdentity({ id: userId, email: userId.includes("@") ? userId : null, role: ent.role })) {
+    const plan = normalizePlan("ultra");
+    return {
+      plan,
+      source: "owner",
+      unlimited: true,
+      entitled: true,
+      promoExpiresAt: null,
+      subscriptionExpiresAt: null,
+      flags: planToFlags(plan),
+    };
+  }
   if (hasDeveloperBypass(userId, ent)) {
     const plan = normalizePlan("ultra");
     return {
@@ -125,6 +138,10 @@ export function resolveEffectiveAccessFromEntitlement(userId: string, ent: Runti
 }
 
 function resolveBasicAccess(userId: string): EffectiveAccess {
+  if (isOwnerIdentity({ id: userId, email: userId.includes("@") ? userId : null })) {
+    const plan = normalizePlan("ultra");
+    return { plan, source: "owner", unlimited: true, entitled: true, promoExpiresAt: null, subscriptionExpiresAt: null, flags: planToFlags(plan) };
+  }
   if (hasAllowlistBypass(userId)) {
     const plan = normalizePlan("ultra");
     return {

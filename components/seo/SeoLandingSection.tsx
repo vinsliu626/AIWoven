@@ -234,7 +234,7 @@ export function SeoLandingSection({ content }: { content: ToolSeoContent }) {
                 <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Internal links</p>
                 <h2 className="mt-3 text-3xl font-semibold tracking-tight">Keep the workflow connected</h2>
                 <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300">
-                  The strongest NexusDesk pages do not end at one result. Move into the next step immediately, whether that means
+                  The strongest AIWoven pages do not end at one result. Move into the next step immediately, whether that means
                   rewriting flagged passages, building flashcards, or converting a file for class.
                 </p>
               </div>

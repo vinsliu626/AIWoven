@@ -105,7 +105,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
     trustParagraphs: [
       "Students and educators both need a review tool that supports context instead of replacing it. The healthiest use of AI Detector is as an editing and oversight layer. It helps you slow down and look closely at the sections that deserve attention without pretending software can perfectly determine intent or authorship on its own.",
       <>
-        That is also why NexusDesk works better as a connected system. You can build cleaner source material in{" "}
+        That is also why AIWoven works better as a connected system. You can build cleaner source material in{" "}
         <Link href="/ai-note">AI Note</Link>, strengthen understanding in <Link href="/ai-study">AI Study</Link>, inspect a
         final draft here, and then smooth tone in <Link href="/ai-humanizer">AI Humanizer</Link>. If you are working from
         exported documents or screenshots, <Link href="/converter">Converter</Link> keeps the input side manageable too.
@@ -186,7 +186,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
         answer: "No. The healthier approach is to combine detector output with source review, draft history, and conversation with the student when needed.",
       },
       {
-        question: "How does this fit with the rest of NexusDesk?",
+        question: "How does this fit with the rest of AIWoven?",
         answer: "AI Detector works best after note cleanup and study prep, and it often feeds directly into AI Humanizer for final wording improvements.",
       },
     ],
@@ -339,7 +339,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
       },
       {
         question: "How does it connect with the other tools?",
-        answer: "AI Note is often the front door. It organizes source material that later becomes study assets, writing drafts, or review checkpoints in the rest of NexusDesk.",
+        answer: "AI Note is often the front door. It organizes source material that later becomes study assets, writing drafts, or review checkpoints in the rest of AIWoven.",
       },
     ],
   },
@@ -407,7 +407,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
     trustParagraphs: [
       "AI Study is strongest when it gets you to active recall faster. That means the tool should reduce setup time, not turn studying into another passive reading exercise. If the generated outputs become one more pile of text you never use, the workflow becomes decorative instead of effective.",
       <>
-        NexusDesk keeps the study flow grounded by linking it to the other products. You can clean source material in{" "}
+        AIWoven keeps the study flow grounded by linking it to the other products. You can clean source material in{" "}
         <Link href="/ai-note">AI Note</Link>, study here, inspect any note-based writing in{" "}
         <Link href="/ai-detector">AI Detector</Link>, refine awkward phrasing in <Link href="/ai-humanizer">AI Humanizer</Link>,
         and handle document prep in <Link href="/converter">Converter</Link> when needed.
@@ -432,7 +432,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
       {
         title: "Works with existing material",
         description:
-          "You do not need a perfect note system first. The tool can work from uploaded documents or from cleaned notes already created elsewhere in NexusDesk.",
+          "You do not need a perfect note system first. The tool can work from uploaded documents or from cleaned notes already created elsewhere in AIWoven.",
       },
     ],
     limitations: [
@@ -558,7 +558,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
     trustParagraphs: [
       "AI Humanizer works best when the paragraph already contains your actual thinking. It can improve flow, soften template-like phrasing, and make the draft feel more believable, but it cannot turn weak reasoning into strong writing by itself. That part still depends on understanding and revision.",
       <>
-        That is why NexusDesk works as a stack rather than a single box. You can build cleaner source material with{" "}
+        That is why AIWoven works as a stack rather than a single box. You can build cleaner source material with{" "}
         <Link href="/ai-note">AI Note</Link>, understand the content better with <Link href="/ai-study">AI Study</Link>, use{" "}
         <Link href="/ai-detector">AI Detector</Link> to identify passages that still sound machine-like, and rely on{" "}
         <Link href="/converter">Converter</Link> when the raw materials need prep before any writing begins.
@@ -648,7 +648,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
     heroEyebrow: "Converter",
     heroTitle: "File Converter for PDFs, Images, Audio, and Quick Format Changes",
     heroSubtitle:
-      "Convert common files without leaving the NexusDesk workspace, then keep moving through notes, study prep, or writing review.",
+      "Convert common files without leaving the AIWoven workspace, then keep moving through notes, study prep, or writing review.",
     guideLabel: "FILE CONVERSION GUIDE",
     seoTitle: "File Converter Guide",
     productName: "Converter",
@@ -656,7 +656,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
       "This page keeps the actual converter in front and upgrades the lower SEO layer into a more visual product explanation, built around school and work file tasks instead of one long wall of text.",
     whatIs: [
       "A file converter solves one of the most common workflow problems: the file you have is not the format you need. Students run into this with PDFs, images, scanned worksheets, slide exports, and upload portals all the time. A clean converter keeps that small technical issue from turning into a deadline problem.",
-      "The reason it belongs inside NexusDesk is simple. Conversion is rarely the end goal. It is usually the step that lets you move into notes, study prep, or writing without leaving the workspace to solve a basic format issue somewhere else.",
+      "The reason it belongs inside AIWoven is simple. Conversion is rarely the end goal. It is usually the step that lets you move into notes, study prep, or writing without leaving the workspace to solve a basic format issue somewhere else.",
     ],
     howItWorks: [
       "You choose a source format, pick a supported target format, upload the file, and run the conversion directly in the tool. That gives you a cleaner handoff to whatever comes next, whether that is sending the file, uploading it, embedding it, or reusing its content elsewhere.",
@@ -728,7 +728,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
       {
         title: "Better downstream workflow",
         description:
-          "Once the file is in the right format, it becomes easier to reuse it for notes, study assets, or written explanations inside NexusDesk.",
+          "Once the file is in the right format, it becomes easier to reuse it for notes, study assets, or written explanations inside AIWoven.",
       },
       {
         title: "Less deadline friction",
@@ -769,7 +769,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
     ],
     faqs: [
       {
-        question: "When should I use Converter instead of another NexusDesk tool?",
+        question: "When should I use Converter instead of another AIWoven tool?",
         answer: "Use it when the main problem is file format. Once the format is fixed, move into notes, study prep, or writing tools if needed.",
       },
       {

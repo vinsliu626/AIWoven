@@ -4,6 +4,8 @@ export type Entitlement = {
   ok: true;
   plan: PlanId;
   unlimited: boolean;
+  role?: "USER" | "OWNER";
+  isOwner?: boolean;
 
   detectorWordsPerWeek: number | null;
   noteSecondsPerWeek: number | null;

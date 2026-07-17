@@ -113,7 +113,7 @@ export function BlogArticlePage({ post }: { post: BlogPost }) {
 
             <aside className="space-y-5">
               <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
-                <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Related NexusDesk tools</h2>
+                <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Related AIWoven tools</h2>
                 <div className="mt-4 grid gap-3">
                   {post.ctaLinks.map((link) => (
                     <Link

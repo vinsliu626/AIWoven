@@ -28,10 +28,10 @@ const copyByLang: Record<
   en: {
     legal: "Legal",
     title: "Privacy Policy",
-    back: "Back to NexusDesk",
+    back: "Back to AIWoven",
     summaryTitle: "Your privacy matters to us.",
     summary: [
-      "NexusDesk is designed to minimize storage and reduce unnecessary data collection.",
+      "AIWoven is designed to minimize storage and reduce unnecessary data collection.",
       "Most inputs such as chat, audio, documents, and detector text are processed temporarily and are not stored long-term.",
       "We only collect the information required to operate the product, manage accounts, and enforce usage limits.",
     ],
@@ -54,7 +54,7 @@ const copyByLang: Record<
       {
         title: "Third-Party Services",
         body: "We use services such as:",
-        items: ["Vercel (hosting)", "Neon/Postgres (database)", "NextAuth (authentication)", "Stripe (billing)", "AI providers (Groq, OpenRouter, etc.)"],
+        items: ["Vercel (hosting)", "Neon/Postgres (database)", "NextAuth (authentication)", "Stripe (billing)", "Supported AI processing services"],
         footer: "These services may process data as needed to provide product functionality.",
       },
       {
@@ -69,7 +69,7 @@ const copyByLang: Record<
       },
       {
         title: "AI Disclaimer",
-        items: ["AI-generated outputs may be inaccurate or incomplete.", "Users should verify important results independently.", "NexusDesk does not replace professional, academic, legal, or medical advice."],
+        items: ["AI-generated outputs may be inaccurate or incomplete.", "Users should verify important results independently.", "AIWoven does not replace professional, academic, legal, or medical advice."],
       },
       {
         title: "Children",
@@ -81,17 +81,17 @@ const copyByLang: Record<
       },
       {
         title: "Contact",
-        body: "support@nexusdesk.app",
+        body: "support@aiwoven.app",
       },
     ],
   },
   zh: {
     legal: "法律",
     title: "隐私政策",
-    back: "返回 NexusDesk",
+    back: "返回 AIWoven",
     summaryTitle: "你的隐私对我们很重要。",
     summary: [
-      "NexusDesk 会尽量减少存储，并避免不必要的数据收集。",
+      "AIWoven 会尽量减少存储，并避免不必要的数据收集。",
       "聊天、音频、文档、检测文本等大多数输入仅会被临时处理，不会长期保存。",
       "我们只收集运行产品、管理账户和执行用量限制所必需的信息。",
     ],
@@ -114,7 +114,7 @@ const copyByLang: Record<
       {
         title: "第三方服务",
         body: "我们会使用以下服务：",
-        items: ["Vercel（托管）", "Neon/Postgres（数据库）", "NextAuth（认证）", "Stripe（计费）", "AI 服务商（Groq、OpenRouter 等）"],
+        items: ["Vercel（托管）", "Neon/Postgres（数据库）", "NextAuth（认证）", "Stripe（计费）", "受支持的 AI 处理服务"],
         footer: "这些服务可能会在提供产品功能所需的范围内处理相关数据。",
       },
       {
@@ -129,7 +129,7 @@ const copyByLang: Record<
       },
       {
         title: "AI 免责声明",
-        items: ["AI 生成结果可能不准确或不完整。", "重要内容请自行独立核实。", "NexusDesk 不替代专业、学术、法律或医疗建议。"],
+        items: ["AI 生成结果可能不准确或不完整。", "重要内容请自行独立核实。", "AIWoven 不替代专业、学术、法律或医疗建议。"],
       },
       {
         title: "未成年人",
@@ -141,7 +141,7 @@ const copyByLang: Record<
       },
       {
         title: "联系方式",
-        body: "support@nexusdesk.app",
+        body: "support@aiwoven.app",
       },
     ],
   },

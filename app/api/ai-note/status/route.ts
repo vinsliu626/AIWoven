@@ -43,13 +43,9 @@ export async function POST(req: Request) {
   if (!job) return NextResponse.json({ ok: false, error: "JOB_NOT_FOUND" }, { status: 404 });
   if (job.userId !== userId) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
-  let parsedError: Record<string, unknown> | null = null;
-  if (job.error) {
-    try {
-      const value = JSON.parse(job.error);
-      if (value && typeof value === "object") parsedError = value as Record<string, unknown>;
-    } catch {}
-  }
+  const publicError = job.error
+    ? { code: "AI_NOTE_PROCESSING_FAILED", message: "AIWoven could not finish this note. Please try again." }
+    : null;
 
   const partialNote =
     job.stage === "llm" || job.stage === "merge"
@@ -68,14 +64,14 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    job,
+    job: { ...job, error: publicError?.code ?? null },
     partialNote,
     progressDetail: {
       completedSegments: job.asrNextIndex,
       totalSegments: job.segmentsTotal,
       completedSummaryParts: job.llmNextPart,
       totalSummaryParts: job.llmPartsTotal,
-      parsedError,
+      parsedError: publicError,
     },
   });
 }

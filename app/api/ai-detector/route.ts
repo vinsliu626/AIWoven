@@ -57,7 +57,7 @@ type DetectorSuccessPayload = {
   python: {
     url: string;
     message: string;
-    metrics: Record<string, any>;
+    metrics: Record<string, unknown>;
   };
   meta: {
     words: number;
@@ -73,6 +73,23 @@ type DetectorCacheEntry = {
   expiresAt: number;
   payload: DetectorSuccessPayload;
 };
+
+function publicDetectorPayload(payload: DetectorSuccessPayload) {
+  return {
+    ok: payload.ok,
+    aiGenerated: payload.aiGenerated,
+    humanAiRefined: payload.humanAiRefined,
+    humanWritten: payload.humanWritten,
+    sentences: payload.sentences,
+    highlights: payload.highlights,
+    meta: {
+      words: payload.meta.words,
+      timeoutMs: payload.meta.timeoutMs,
+      retryCount: payload.meta.retryCount,
+      attemptCount: payload.meta.attemptCount,
+    },
+  };
+}
 
 const detectorResultCache = new Map<string, DetectorCacheEntry>();
 
@@ -253,19 +270,25 @@ function dbUnavailableResponse() {
   );
 }
 
-function isConnectionRefused(error: any) {
-  const causeCode = String(error?.cause?.code ?? "").toUpperCase();
+function errorDetails(error: unknown) {
+  return error && typeof error === "object" ? error as { cause?: { code?: unknown }; code?: unknown; name?: unknown; message?: unknown } : {};
+}
+
+function isConnectionRefused(error: unknown) {
+  const details = errorDetails(error);
+  const causeCode = String(details.cause?.code ?? "").toUpperCase();
   if (causeCode === "ECONNREFUSED") return true;
-  const msg = String(error?.message ?? "").toUpperCase();
+  const msg = String(details.message ?? "").toUpperCase();
   return msg.includes("ECONNREFUSED");
 }
 
-function normalizeErrorCode(error: any) {
-  const causeCode = String(error?.cause?.code ?? "").toUpperCase();
+function normalizeErrorCode(error: unknown) {
+  const details = errorDetails(error);
+  const causeCode = String(details.cause?.code ?? "").toUpperCase();
   if (causeCode) return causeCode;
-  const ownCode = String(error?.code ?? "").toUpperCase();
+  const ownCode = String(details.code ?? "").toUpperCase();
   if (ownCode) return ownCode;
-  const msg = String(error?.message ?? "").toUpperCase();
+  const msg = String(details.message ?? "").toUpperCase();
   if (msg.includes("SOCKET HANG UP")) return "SOCKET_HANG_UP";
   if (msg.includes("ECONNRESET")) return "ECONNRESET";
   if (msg.includes("ETIMEDOUT")) return "ETIMEDOUT";
@@ -540,10 +563,11 @@ function findPhraseHighlights(text: string): Highlight[] {
 // ---------- Python client ----------
 type PyDetectResponse = {
   ok: boolean;
+  error?: unknown;
   result: [
     {
       "AI overall"?: number;
-      [k: string]: any;
+      [k: string]: unknown;
     },
     string
   ];
@@ -621,7 +645,7 @@ async function callPythonDetectorWithFastRetry(text: string, target: DetectorTar
           );
         }
         if (data?.ok === false) {
-          const upstreamMessage = sanitizeSnippet(String((data as any)?.error ?? "Detector rejected input."), 120);
+          const upstreamMessage = sanitizeSnippet(String(data.error ?? "Detector rejected input."), 120);
           throw new HttpRouteError(
             400,
             "DETECTOR_INPUT_REJECTED",
@@ -687,22 +711,23 @@ async function callPythonDetectorWithFastRetry(text: string, target: DetectorTar
       );
       if (!transientHttp || attempt >= RETRY_MAX_ATTEMPTS) throw lastError;
       if (allowFastStaleFallback) throw lastError;
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof HttpRouteError) {
         lastError = e;
       } else {
-        const errorCode = e?.name === "AbortError" ? "ABORT_TIMEOUT" : normalizeErrorCode(e);
+        const errorName = String(errorDetails(e).name ?? "");
+        const errorCode = errorName === "AbortError" ? "ABORT_TIMEOUT" : normalizeErrorCode(e);
         const isRefused = isConnectionRefused(e);
-        const transient = e?.name === "AbortError" || isRefused || isTransientErrorCode(errorCode);
-        const status = e?.name === "AbortError" ? 504 : isRefused ? 503 : transient ? 503 : 502;
-        const code = e?.name === "AbortError"
+        const transient = errorName === "AbortError" || isRefused || isTransientErrorCode(errorCode);
+        const status = errorName === "AbortError" ? 504 : isRefused ? 503 : transient ? 503 : 502;
+        const code = errorName === "AbortError"
           ? "DETECTOR_TIMEOUT"
           : isRefused
             ? "DETECTOR_UNAVAILABLE"
             : transient
               ? "DETECTOR_FETCH_FAILED"
               : "DETECTOR_FETCH_ERROR";
-        const message = e?.name === "AbortError"
+        const message = errorName === "AbortError"
           ? isLocalUrl(target.url)
             ? "Detector request timed out."
             : remoteDetectorUnavailableMessage()
@@ -779,7 +804,7 @@ async function callPythonDetectorWithFastRetry(text: string, target: DetectorTar
   });
 }
 
-function readAiOverallScore(metrics: Record<string, any> | null | undefined) {
+function readAiOverallScore(metrics: Record<string, unknown> | null | undefined) {
   if (!metrics || typeof metrics !== "object") return null;
   for (const field of DETECTOR_SCORE_FIELDS) {
     const value = Number(metrics[field]);
@@ -864,7 +889,7 @@ export async function POST(req: Request) {
     const authStart = Date.now();
     const session = await getServerSession(authOptions);
     authMs = Date.now() - authStart;
-    let userId = (session as any)?.user?.id as string | undefined;
+    let userId = (session as { user?: { id?: string } } | null)?.user?.id;
     if (!userId && !isProduction && process.env.AI_DETECTOR_DEV_BYPASS_AUTH === "1") {
       userId = "dev_local_user";
     }
@@ -929,7 +954,7 @@ export async function POST(req: Request) {
     const cacheLookup = readDetectorCache(cacheKey);
     if (cacheLookup.fresh) {
       cacheHeader = "hit";
-      return finish(NextResponse.json(cacheLookup.fresh));
+      return finish(NextResponse.json(publicDetectorPayload(cacheLookup.fresh)));
     }
 
     if (isHfSpaceHost(detectorTarget.host) && !cacheLookup.stale) {
@@ -984,7 +1009,7 @@ export async function POST(req: Request) {
 
           if (cacheLookup.stale) {
             cacheHeader = "hit-stale";
-            return finish(NextResponse.json(cacheLookup.stale));
+            return finish(NextResponse.json(publicDetectorPayload(cacheLookup.stale)));
           }
           return finish(NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status }));
         }
@@ -1049,8 +1074,9 @@ export async function POST(req: Request) {
     };
 
     writeDetectorCache(cacheKey, payload);
-    return finish(NextResponse.json(payload));
-  } catch (e: any) {
+    void import("@/lib/analytics/track").then(({ trackFeatureUsage }) => trackFeatureUsage({ userId, featureKey: "detect", featureName: "AI Detector", actionType: "DETECT_USED", pagePath: "/ai-detector", metadata: { input_words: words, provider: payload.meta.provider }, request: req }));
+    return finish(NextResponse.json(publicDetectorPayload(payload)));
+  } catch (e: unknown) {
     if (e instanceof HttpRouteError) {
       upstreamStatus = e.upstreamStatus ?? e.status;
       errorCode = e.errorCode ?? e.code;
@@ -1067,7 +1093,7 @@ export async function POST(req: Request) {
     }
     errorCode = normalizeErrorCode(e) || "INTERNAL_ERROR";
     return finish(NextResponse.json(
-      { ok: false, error: "INTERNAL_ERROR", message: e?.message ?? "Unknown error." },
+      { ok: false, error: "INTERNAL_ERROR", message: e instanceof Error ? e.message : "Unknown error." },
       { status: 500 }
     ));
   }

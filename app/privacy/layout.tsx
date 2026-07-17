@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Privacy Policy | NexusDesk",
+  title: "Privacy Policy | AIWoven",
   description:
-    "Read the NexusDesk privacy policy, including how account data, temporary processing, cookies, billing systems, and AI providers are handled.",
+    "Read the AIWoven privacy policy, including how account data, temporary processing, cookies, billing systems, and AI providers are handled.",
   path: "/privacy",
-  keywords: ["NexusDesk privacy policy", "AI privacy policy", "NexusDesk data handling"],
+  keywords: ["AIWoven privacy policy", "AI privacy policy", "AIWoven data handling"],
   robots: {
     index: true,
     follow: true,

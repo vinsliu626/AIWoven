@@ -13,6 +13,7 @@ import {
   ensureRuntimeEntitlement,
   isLegacyUserEntitlementColumnError,
   runtimeEntitlementSelect,
+  type RuntimeUserEntitlement,
 } from "@/lib/billing/entitlementDb";
 import { getChatPlanLimits, getConverterPlanLimits, getHumanizerPlanLimits, getNotePlanLimits } from "@/lib/plans/productLimits";
 import { getUserIdOrDev } from "@/lib/auth/devUser";
@@ -104,7 +105,7 @@ function emptyUsageSnapshot() {
 async function updateEntitlementSnapshot(
   userId: string,
   data: Record<string, unknown>,
-  fallback: typeof runtimeEntitlementSelect extends never ? never : any
+  fallback: RuntimeUserEntitlement
 ) {
   try {
     return await prisma.userEntitlement.update({
@@ -135,7 +136,8 @@ export async function GET() {
           if (ent.stripeSubId) {
             try {
               const subResp = await stripe.subscriptions.retrieve(ent.stripeSubId);
-              const sub: any = (subResp as any).data ?? subResp;
+              const subCandidate = subResp as unknown as { data?: { status?: string; current_period_end?: number; cancel_at_period_end?: boolean }; status?: string; current_period_end?: number; cancel_at_period_end?: boolean };
+              const sub = subCandidate.data ?? subCandidate;
 
               const stripeStatus = (sub?.status as string | undefined) ?? ent.stripeStatus ?? null;
               const currentPeriodEnd = sub?.current_period_end
@@ -251,6 +253,8 @@ export async function GET() {
             entitled,
             source: access.source,
             unlimited: access.unlimited,
+            role: access.source === "owner" ? "OWNER" : ent.role,
+            isOwner: access.source === "owner",
             unlimitedSource: ent.unlimitedSource ?? null,
             promoAccessEndAt: null,
             developerBypass: access.source === "developer_override",

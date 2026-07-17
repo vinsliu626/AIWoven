@@ -154,7 +154,7 @@ export function ProTrialWheelReminderPrompt({
       <div className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(180deg,rgba(15,23,42,0.97),rgba(2,6,23,0.94))] p-5 shadow-[0_30px_110px_rgba(0,0,0,0.58)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),rgba(15,23,42,0)_34%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.12),rgba(15,23,42,0)_40%)]" />
         <div className="relative">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-sky-200/80">NexusDesk Reward</p>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-sky-200/80">AIWoven Reward</p>
           <h3 className="mt-2 text-[26px] font-semibold tracking-tight text-white">Try your luck for a Pro trial?</h3>
           <p className="mt-3 text-sm leading-7 text-slate-300">
             Spin the wheel for a chance to unlock free Pro access.
@@ -640,7 +640,7 @@ export function ProTrialWheelModal({
 
         <div className="relative px-5 pb-2 pt-5 pr-16 sm:px-6 sm:pt-6 sm:pr-20">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.28em] text-sky-200/80">NexusDesk Pro Trial</p>
+            <p className="text-[11px] uppercase tracking-[0.28em] text-sky-200/80">AIWoven Pro Trial</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[30px]">Win a Free Pro Trial</h2>
           </div>
         </div>

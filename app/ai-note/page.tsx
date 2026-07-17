@@ -2,9 +2,9 @@ import { AiNoteWorkspacePage } from "@/components/workspace/public/AiNoteWorkspa
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "AI Note Generator | NexusDesk",
+  title: "AI Note Generator | AIWoven",
   description:
-    "Turn transcripts, lecture recordings, and source text into structured AI notes with NexusDesk. Generate cleaner study notes from audio or text.",
+    "Turn transcripts, lecture recordings, and source text into structured AI notes with AIWoven. Generate cleaner study notes from audio or text.",
   path: "/ai-note",
   keywords: ["AI note generator", "lecture note generator", "transcript to notes", "audio to notes"],
   robots: {

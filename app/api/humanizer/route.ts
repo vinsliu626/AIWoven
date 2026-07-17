@@ -5,6 +5,7 @@ import { getRouteSessionUser } from "@/lib/auth/routeSession";
 import { HumanizerLimitError, assertHumanizerRequestAllowed, getHumanizerQuotaStatus, markHumanizerAttempt, recordHumanizerSuccess } from "@/lib/humanizer/quota";
 import { runHumanizerPipeline } from "@/lib/humanizer/pipeline";
 import { countHumanizerWords, normalizeHumanizerInput } from "@/lib/humanizer/text";
+import { trackFeatureUsage } from "@/lib/analytics/track";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
     const result = await runHumanizerPipeline({ text });
     await recordHumanizerSuccess(userId, result.usage.inputWords);
     const freshUsage = await getHumanizerQuotaStatus(userId);
+    void trackFeatureUsage({ userId, featureKey: "humanizer", featureName: "AI Humanizer", actionType: "HUMANIZER_USED", pagePath: "/ai-humanizer", metadata: { input_words: result.usage.inputWords, output_words: result.usage.outputWords }, request: req });
 
     return NextResponse.json({
       success: true,
@@ -55,7 +57,6 @@ export async function POST(req: NextRequest) {
         remainingWeeklyWords: freshUsage.remainingThisWeek,
         weeklyLimit: freshUsage.limits.wordsPerWeek,
       },
-      meta: result.meta,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

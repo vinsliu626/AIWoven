@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { absoluteUrl, getSiteUrl } from "@/lib/site-url";
 
-export const SITE_NAME = "NexusDesk";
+export const SITE_NAME = "AIWoven";
 export { absoluteUrl, getSiteUrl } from "@/lib/site-url";
 
 type MetadataInput = {
@@ -15,7 +15,7 @@ type MetadataInput = {
 export function buildMetadata({ title, description, path, keywords, robots }: MetadataInput): Metadata {
   return {
     metadataBase: new URL(getSiteUrl()),
-    title,
+    title: { absolute: title },
     description,
     keywords,
     alternates: {
@@ -41,7 +41,7 @@ export function buildMetadata({ title, description, path, keywords, robots }: Me
 export function buildArticleMetadata({ title, description, path, keywords, robots }: MetadataInput): Metadata {
   return {
     metadataBase: new URL(getSiteUrl()),
-    title,
+    title: { absolute: title },
     description,
     keywords,
     alternates: {

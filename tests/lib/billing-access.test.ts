@@ -32,6 +32,7 @@ function entitlement(overrides: Partial<UserEntitlement> = {}): UserEntitlement 
     promoAccessStartAt: null,
     promoAccessEndAt: null,
     promoAccessActive: false,
+    role: "USER",
     ...overrides,
   };
 }

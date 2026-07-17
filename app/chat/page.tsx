@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSession, signIn, signOut, getProviders, type ClientSafeProvider } from "next-auth/react";
@@ -19,7 +19,9 @@ import { StudyUI } from "@/components/workspace/study/StudyUI";
 import { ConverterUI } from "@/components/workspace/converter/ConverterUI";
 import { AiFormattedText } from "@/components/shared/AiFormattedText";
 import { NexusOrb } from "@/components/shared/NexusOrb";
+import { AIWovenAppNav } from "@/components/app/AIWovenAppNav";
 import { CopyButton } from "@/components/ui/copy-button";
+import { LocalCredentialsForm } from "@/components/auth/LocalCredentialsForm";
 import { useAppLanguage } from "@/components/app/AppLanguageProvider";
 import { useProTrialWheel } from "@/lib/hooks/useProTrialWheel";
 
@@ -144,7 +146,7 @@ function workflowFailureMessage(error: any, isZh: boolean) {
     return isZh ? "Workflow 超时，请重试。" : "Workflow timed out. Please try again.";
   }
   if (code === "ALL_WORKFLOW_MODELS_FAILED") {
-    return isZh ? "Workflow 所有模型都失败了，请稍后再试。" : "All workflow models failed. Please try again later.";
+    return isZh ? "AIWoven 工作流暂时不可用，请稍后再试。" : "The AIWoven workflow is temporarily unavailable. Please try again later.";
   }
   return isZh ? "Workflow 生成失败，请重试。" : "Workflow generation failed. Please try again.";
 }
@@ -347,6 +349,7 @@ function HeaderAuthMenu({
     <div ref={menuRef} className="relative">
       {sessionExists ? (
         <button
+          data-testid="header-auth-account"
           onClick={() => setMenuOpen((current) => (current === "account" ? null : "account"))}
           className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1.5 shadow-[0_10px_30px_rgba(2,6,23,0.2)] backdrop-blur-xl transition hover:bg-white/[0.07]"
         >
@@ -361,6 +364,7 @@ function HeaderAuthMenu({
         </button>
       ) : (
         <button
+          data-testid="header-auth-signin"
           onClick={() => setMenuOpen((current) => (current === "signin" ? null : "signin"))}
           className="rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 px-3 py-1.5 text-xs font-medium text-white shadow-md shadow-blue-500/40 transition-all hover:brightness-110"
         >
@@ -374,7 +378,9 @@ function HeaderAuthMenu({
             <p className="text-sm font-semibold text-slate-50">{copy.signIn}</p>
           </div>
           <div className="space-y-1 px-1 py-2">
-            {visibleAuthProviders.map((provider) => (
+            {visibleAuthProviders.map((provider) => provider.id === "e2e-credentials" ? (
+              <LocalCredentialsForm key={provider.id} isZh={isZh} />
+            ) : (
               <button
                 key={provider.id}
                 onClick={() => {
@@ -405,7 +411,7 @@ function HeaderAuthMenu({
       {menuOpen === "account" && sessionExists && (
         <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-56 rounded-3xl border border-white/10 bg-[#080808]/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
           <div className="border-b border-white/8 px-3 py-2">
-            <p className="truncate text-sm font-semibold text-slate-50">NexusDesk</p>
+            <p className="truncate text-sm font-semibold text-slate-50">AIWoven</p>
             <p className="truncate text-[11px] text-slate-500">{userEmail}</p>
           </div>
           <div className="space-y-1 px-1 py-2">
@@ -479,6 +485,7 @@ function ChatPageInner() {
   // sessions sidebar
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [workspaceNavOpen, setWorkspaceNavOpen] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
 
@@ -1026,7 +1033,7 @@ function ChatPageInner() {
     }
   }
 
-  const visibleAuthProviders = ["google", "github"]
+  const visibleAuthProviders = ["google", "github", "e2e-credentials"]
     .map((id) => authProviders[id])
     .filter((provider): provider is ClientSafeProvider => Boolean(provider));
   const userInitial = effectiveSession?.user?.name?.[0] || effectiveSession?.user?.email?.[0] || "U";
@@ -1058,12 +1065,17 @@ function ChatPageInner() {
 
   // Keep the workspace locked to the existing dark premium shell.
   return (
-    <main className="h-screen w-screen overflow-hidden text-slate-200 bg-[#030303] font-sans selection:bg-blue-500/30 selection:text-blue-100 relative">
+    <main className="aiwoven-workspace h-screen w-screen overflow-hidden text-slate-200 bg-[#05070b] font-sans selection:bg-cyan-400/25 selection:text-cyan-50 relative">
       <PlanPillStyles />
 
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none base-grid" />
 
       <div className="relative z-10 h-full w-full flex">
+        <AIWovenAppNav
+          isOwner={effectiveSession?.user?.role === "OWNER"}
+          onBilling={() => { void refreshEnt(); setPlanOpen(true); }}
+          onSettings={() => setSettingsOpen(true)}
+        />
         {/* Global overlay shown only while the sidebar is open. */}
         {sidebarOpen && (
           <div
@@ -1194,9 +1206,10 @@ function ChatPageInner() {
         {/* Main Content */}
         <div className="flex-1 flex flex-col relative min-w-0 bg-[#030303]">
           {/* Header */}
-          <header className="h-16 border-b border-white/5 px-4 md:px-6 flex items-center justify-between gap-4 bg-[#080808]/80 backdrop-blur-md z-20 shrink-0">
+          <header className="h-16 border-b border-white/5 px-2.5 md:px-6 flex items-center justify-between gap-2 md:gap-4 bg-[#080808]/80 backdrop-blur-md z-20 shrink-0">
             {/* Left */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
+              <button onClick={() => setWorkspaceNavOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-slate-300 lg:hidden" aria-label="Open workspace navigation">⌘</button>
               <button
                 onClick={() => {
                   if (mode === "study") {
@@ -1211,10 +1224,10 @@ function ChatPageInner() {
                 ☰
               </button>
 
-              <div className="ml-1 flex items-center gap-3">
+              <div className="ml-1 hidden items-center gap-3 sm:flex">
                 <NexusOrb sizeClass="h-7 w-7" />
                 <div className="flex flex-col">
-                  <h1 className="font-semibold text-sm text-slate-100 tracking-wide">NexusDesk</h1>
+                  <h1 className="font-semibold text-sm text-slate-100 tracking-wide">AIWoven</h1>
                   <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">{modeTitle(mode, isZh)}</p>
                 </div>
               </div>
@@ -1236,7 +1249,7 @@ function ChatPageInner() {
             </div>
 
             {/* Right */}
-            <div className="mr-1 flex items-center gap-3 md:mr-2">
+            <div className="flex items-center gap-1.5 md:mr-2 md:gap-3">
               <ModeDropdown value={mode} onChange={setModeSafely} lang={lang} disabled={isLoading} />
               <HeaderAuthMenu
                 isZh={isZh}
@@ -1346,9 +1359,9 @@ function ChatPageInner() {
 
           <div className="sr-only">
             <p>AI Chat</p>
-            <h1>NexusDesk AI chat workspace for direct conversations and workflow collaboration</h1>
+            <h1>AIWoven AI chat workspace for direct conversations and workflow collaboration</h1>
             <p>
-              Use this route for direct chat with NexusDesk. You can stay in normal chat, switch to workflow chat, or jump into the dedicated tool routes for AI Note, AI Detector, AI Study, AI Humanizer, and Converter.
+              Use this route for direct chat with AIWoven. You can stay in normal chat, switch to workflow chat, or jump into the dedicated tool routes for AI Note, AI Detector, AI Study, AI Humanizer, and Converter.
             </p>
           </div>
 
@@ -1472,6 +1485,8 @@ function ChatPageInner() {
           )}
         </div>
       </div>
+
+      {workspaceNavOpen ? <div className="fixed inset-0 z-[80] lg:hidden"><button type="button" className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setWorkspaceNavOpen(false)} aria-label="Close workspace navigation"/><div className="absolute inset-y-0 left-0"><AIWovenAppNav mobile isOwner={effectiveSession?.user?.role === "OWNER"} onClose={() => setWorkspaceNavOpen(false)} onBilling={() => { void refreshEnt(); setPlanOpen(true); }} onSettings={() => setSettingsOpen(true)} /></div></div> : null}
 
       {/* Modals */}
       <PlanModal

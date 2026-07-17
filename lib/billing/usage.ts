@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { startOfThisWeekUTC, startOfTodayUTC } from "./time";
 import type { UsageType } from "./constants";
+import { resolveEffectiveAccess } from "./access";
 
 export async function getUsage(userId: string) {
   const weekStart = startOfThisWeekUTC();
@@ -67,6 +68,8 @@ export async function getUsage(userId: string) {
 
 export async function addUsageEvent(userId: string, type: UsageType, amount: number) {
   if (!Number.isFinite(amount) || amount <= 0) return;
+  const { access } = await resolveEffectiveAccess(userId);
+  if (access.unlimited) return;
   await prisma.usageEvent.create({
     data: { userId, type, amount: Math.floor(amount) },
   });

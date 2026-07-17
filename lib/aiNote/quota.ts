@@ -31,6 +31,7 @@ export async function getNoteQuotaStatus(userId: string) {
     limits,
     usedToday: usedAgg._sum.amount ?? 0,
     remainingToday: Math.max(0, limits.generatesPerDay - (usedAgg._sum.amount ?? 0)),
+    unlimited: access.unlimited,
   };
 }
 
@@ -39,7 +40,7 @@ export async function assertNoteRequestAllowed(
   inputChars: number,
   opts?: { allowStaged?: boolean }
 ) {
-  const { limits, usedToday } = await getNoteQuotaStatus(userId);
+  const { limits, usedToday, unlimited } = await getNoteQuotaStatus(userId);
   const now = Date.now();
   const last = lastNoteAttemptByUser.get(userId) ?? 0;
   const stagedAllowed = Boolean(opts?.allowStaged);
@@ -47,16 +48,16 @@ export async function assertNoteRequestAllowed(
   const stagedTriggerChars = Math.min(stagedMaxChars, Math.max(6_000, Math.floor(stagedMaxChars * 0.55)));
   const requiresStaged = stagedAllowed && inputChars > stagedTriggerChars;
 
-  if (inputChars > stagedMaxChars) {
+  if (!unlimited && inputChars > stagedMaxChars) {
     throw new NoteLimitError("NOTE_INPUT_TOO_LARGE", "This text is too long for your current plan.", 400);
   }
 
   const cooldownRemainingMs = limits.cooldownMs - (now - last);
-  if (cooldownRemainingMs > 0) {
+  if (!unlimited && cooldownRemainingMs > 0) {
     throw new NoteLimitError("NOTE_COOLDOWN_ACTIVE", "Please wait a moment before sending another request.", 429);
   }
 
-  if (usedToday >= limits.generatesPerDay) {
+  if (!unlimited && usedToday >= limits.generatesPerDay) {
     throw new NoteLimitError("NOTE_DAILY_LIMIT_REACHED", "You've used all AI Note generations for today.", 429);
   }
 

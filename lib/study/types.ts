@@ -35,21 +35,21 @@ export type StudyQuizMultipleChoiceItem = {
   question: string;
   options: string[];
   answer: string;
-  explanation?: string;
+  explanation: string;
 };
 
 export type StudyQuizFillBlankItem = {
   type: "fill_blank";
   question: string;
   answer: string;
-  explanation?: string;
+  explanation: string;
 };
 
 export type StudyQuizMatchingItem = {
   type: "matching";
   prompt: string;
   pairs: Array<{ left: string; right: string }>;
-  explanation?: string;
+  explanation: string;
 };
 
 export type StudyQuizItem = StudyQuizMultipleChoiceItem | StudyQuizFillBlankItem | StudyQuizMatchingItem;

@@ -1,9 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getProviders, signIn, signOut, useSession, type ClientSafeProvider } from "next-auth/react";
+import { LocalCredentialsForm } from "@/components/auth/LocalCredentialsForm";
+import { AIWovenAppNav } from "@/components/app/AIWovenAppNav";
 
 import { useAppLanguage } from "@/components/app/AppLanguageProvider";
 import { ProTrialWheelModal, ProTrialWheelReminderPrompt } from "@/components/billing/ProTrialWheelModal";
@@ -48,7 +50,7 @@ function modeTitle(mode: ChatMode, isZh: boolean) {
     case "converter":
       return isZh ? "🔄 转换器" : "🔄 Converter";
     default:
-      return "NexusDesk";
+      return "AIWoven";
   }
 }
 
@@ -73,6 +75,7 @@ function HeaderAuthMenu({
   onOpenAccount,
   onOpenBilling,
   onOpenSettings,
+  isOwner,
   onSignOut,
 }: {
   isZh: boolean;
@@ -84,6 +87,7 @@ function HeaderAuthMenu({
   onOpenAccount: () => void;
   onOpenBilling: () => void;
   onOpenSettings: () => void;
+  isOwner: boolean;
   onSignOut: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState<"signin" | "account" | null>(null);
@@ -124,6 +128,7 @@ function HeaderAuthMenu({
     <div ref={menuRef} className="relative">
       {sessionExists ? (
         <button
+          aria-label="Open account menu"
           onClick={() => setMenuOpen((current) => (current === "account" ? null : "account"))}
           className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1.5 shadow-[0_10px_30px_rgba(2,6,23,0.2)] backdrop-blur-xl transition hover:bg-white/[0.07]"
         >
@@ -151,7 +156,9 @@ function HeaderAuthMenu({
             <p className="text-sm font-semibold text-slate-50">{copy.signIn}</p>
           </div>
           <div className="space-y-1 px-1 py-2">
-            {visibleAuthProviders.map((provider) => (
+            {visibleAuthProviders.map((provider) => provider.id === "e2e-credentials" ? (
+              <LocalCredentialsForm key={provider.id} isZh={isZh} />
+            ) : (
               <button
                 key={provider.id}
                 onClick={() => {
@@ -182,7 +189,7 @@ function HeaderAuthMenu({
       {menuOpen === "account" && sessionExists ? (
         <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-56 rounded-3xl border border-white/10 bg-[#080808]/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
           <div className="border-b border-white/8 px-3 py-2">
-            <p className="truncate text-sm font-semibold text-slate-50">NexusDesk</p>
+            <p className="truncate text-sm font-semibold text-slate-50">AIWoven</p>
             <p className="truncate text-[11px] text-slate-500">{userEmail}</p>
           </div>
           <div className="space-y-1 px-1 py-2">
@@ -213,6 +220,7 @@ function HeaderAuthMenu({
             >
               {copy.settings}
             </button>
+            {isOwner ? <a href="/owner/analytics" onClick={() => setMenuOpen(null)} className="flex w-full items-center rounded-2xl border border-sky-400/30 bg-sky-400/10 px-3 py-2.5 text-sm font-medium text-sky-200 transition hover:bg-sky-400/15">Owner Analytics</a> : null}
             <button
               onClick={() => {
                 setMenuOpen(null);
@@ -265,13 +273,14 @@ export function PublicWorkspaceShell({
   const [redeemError, setRedeemError] = useState<string | null>(null);
   const [redeemSuccess, setRedeemSuccess] = useState<RedeemSuccessState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [authProviders, setAuthProviders] = useState<Record<string, ClientSafeProvider>>({});
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
 
   const sessionExists = !!session;
   const authLoading = status === "loading";
 
-  async function refreshEntitlement() {
+  const refreshEntitlement = useCallback(async () => {
     if (!sessionExists) {
       setEntitlement(null);
       return;
@@ -281,11 +290,11 @@ export function PublicWorkspaceShell({
     if (res.ok && data && typeof data === "object" && "ok" in data) {
       setEntitlement(data as Entitlement);
     }
-  }
+  }, [sessionExists]);
 
   useEffect(() => {
     void refreshEntitlement();
-  }, [sessionExists]);
+  }, [refreshEntitlement]);
 
   useEffect(() => {
     if (sessionExists) return;
@@ -304,7 +313,7 @@ export function PublicWorkspaceShell({
     };
   }, [sessionExists]);
 
-  const visibleAuthProviders = ["google", "github"]
+  const visibleAuthProviders = ["google", "github", "e2e-credentials"]
     .map((id) => authProviders[id])
     .filter((provider): provider is ClientSafeProvider => Boolean(provider));
   const userInitial = session?.user?.name?.[0] || session?.user?.email?.[0] || "U";
@@ -391,19 +400,26 @@ export function PublicWorkspaceShell({
   }
 
   return (
-    <main className="min-h-screen w-screen overflow-hidden bg-[#030303] font-sans text-slate-200 selection:bg-blue-500/30 selection:text-blue-100">
+    <main className="aiwoven-workspace min-h-screen w-full overflow-hidden bg-[#05070b] font-sans text-slate-200 selection:bg-cyan-400/25 selection:text-cyan-50">
       <PlanPillStyles />
 
       <div className="pointer-events-none absolute inset-0 z-0 opacity-20 base-grid" />
       <div className="pointer-events-none absolute -top-16 left-1/2 h-[520px] w-[760px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.14)_0%,rgba(56,189,248,0.08)_25%,rgba(16,185,129,0.05)_45%,rgba(2,6,23,0)_72%)] blur-3xl" />
 
-      <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-white/5 bg-[#080808]/80 px-4 backdrop-blur-md md:px-6">
+      <div className="relative z-10 flex min-h-screen">
+        <AIWovenAppNav
+          isOwner={session?.user?.role === "OWNER"}
+          onBilling={() => { void refreshEntitlement(); setPlanOpen(true); }}
+          onSettings={() => setSettingsOpen(true)}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+        <header className="relative z-50 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-white/5 bg-[#080808]/80 px-4 backdrop-blur-md md:px-6">
           <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setMobileNavOpen(true)} className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 lg:hidden" aria-label="Open workspace navigation">☰</button>
             <div className="ml-1 flex items-center gap-3">
               <NexusOrb sizeClass="h-7 w-7" />
               <div className="flex flex-col">
-                <p className="text-sm font-semibold tracking-wide text-slate-100">NexusDesk</p>
+                <p className="text-sm font-semibold tracking-wide text-slate-100">AIWoven</p>
                 <p className="font-mono text-[10px] uppercase tracking-wider text-slate-500">{modeTitle(mode, isZh)}</p>
               </div>
             </div>
@@ -411,7 +427,7 @@ export function PublicWorkspaceShell({
 
           <div className="hidden flex-1 items-center justify-center md:flex">
             <div className="rounded-full border border-white/5 bg-[#050505] p-0.5 shadow-inner">
-              <PlanPillButton
+              {entitlement?.isOwner ? <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-4 py-2 text-xs font-semibold text-sky-200">Owner · Unlimited</span> : <PlanPillButton
                 isZh={isZh}
                 plan={entitlement?.plan ?? "basic"}
                 unlimited={!!entitlement?.unlimited}
@@ -419,7 +435,7 @@ export function PublicWorkspaceShell({
                   void refreshEntitlement();
                   setPlanOpen(true);
                 }}
-              />
+              />}
             </div>
           </div>
 
@@ -438,6 +454,7 @@ export function PublicWorkspaceShell({
                 setPlanOpen(true);
               }}
               onOpenSettings={() => setSettingsOpen(true)}
+              isOwner={session?.user?.role === "OWNER"}
               onSignOut={() => void signOut()}
             />
           </div>
@@ -457,10 +474,13 @@ export function PublicWorkspaceShell({
           </div>
         ) : null}
 
-        <div className="relative z-10 flex-1 pb-4">
+        <div className="app-workspace-content relative z-10 flex-1 overflow-hidden pb-4">
           {children({ entitlement, locked: !sessionExists, isZh, authLoading, refreshEntitlement })}
         </div>
+        </div>
       </div>
+
+      {mobileNavOpen ? <div className="fixed inset-0 z-[80] lg:hidden"><button type="button" className="absolute inset-0 bg-black/70 backdrop-blur-sm" aria-label="Close workspace navigation" onClick={() => setMobileNavOpen(false)} /><div className="absolute inset-y-0 left-0 shadow-[24px_0_80px_rgba(0,0,0,.45)]"><AIWovenAppNav mobile isOwner={session?.user?.role === "OWNER"} onClose={() => setMobileNavOpen(false)} onBilling={() => { void refreshEntitlement(); setPlanOpen(true); }} onSettings={() => setSettingsOpen(true)} /></div></div> : null}
 
       <PlanModal
         open={planOpen}

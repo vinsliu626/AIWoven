@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -15,6 +15,7 @@ import { ConverterError, convertFile, getConverterAccept, isFileCompatibleWithFo
 
 export type ConverterEntitlement = {
   plan: "basic" | "pro" | "ultra" | "gift";
+  unlimited?: boolean;
   usedConverterCountToday?: number;
   converterConversionsPerDay?: number;
   converterMaxFileSizeBytes?: number;
@@ -132,7 +133,7 @@ const COPY: Record<"en" | "zh", Copy> = {
     title: "Convert files with a clear FROM to TO flow",
     subtitle: "Supported live conversions currently focus on lightweight PDF and image workflows. Media paths stay visible but intentionally disabled until they are wired.",
     lockedTitle: "Sign in to open Converter",
-    lockedBody: "Use a dedicated NexusDesk workspace for flexible file conversion with plan-aware limits and a cleaner upload flow.",
+    lockedBody: "Use a dedicated AIWoven workspace for flexible file conversion with plan-aware limits and a cleaner upload flow.",
     from: "From",
     to: "To",
     swap: "Swap formats",
@@ -215,7 +216,7 @@ const COPY: Record<"en" | "zh", Copy> = {
     title: "按 FROM → TO 的清晰流程转换文件",
     subtitle: "当前已支持的在线转换以轻量 PDF 和图片流程为主。媒体路径会先展示，但在真正接入前仍保持禁用状态。",
     lockedTitle: "登录后使用转换器",
-    lockedBody: "进入独立的 NexusDesk 转换工作区，按套餐限制进行更清晰的文件转换操作。",
+    lockedBody: "进入独立的 AIWoven 转换工作区，按套餐限制进行更清晰的文件转换操作。",
     from: "源格式",
     to: "目标格式",
     swap: "交换格式",
@@ -648,25 +649,25 @@ export function ConverterUI({
   function validate(files: File[]) {
     if (files.length === 0) return { ok: false as const, message: copy.empty };
 
-    const maxBatchFiles = entitlement?.converterBatchMaxFiles ?? 1;
+    const maxBatchFiles = entitlement?.unlimited ? 10 : (entitlement?.converterBatchMaxFiles ?? 1);
     if (files.length > 1 && maxBatchFiles > 1) {
       return { ok: false as const, message: copy.pending };
     }
 
     const validation = validateConverterRequest({
-      plan: entitlement?.plan ?? "basic",
-      allowAdvancedVideo: entitlement?.converterAllowAdvancedVideo,
+      plan: entitlement?.unlimited ? "ultra" : (entitlement?.plan ?? "basic"),
+      allowAdvancedVideo: entitlement?.unlimited || entitlement?.converterAllowAdvancedVideo,
       from: fromFormat,
       to: activeToFormat,
       fileCount: files.length,
       batchMaxFiles: maxBatchFiles,
       fileSizeBytes: files.reduce((max, file) => Math.max(max, file.size), 0),
-      maxFileSizeBytes: entitlement?.converterMaxFileSizeBytes ?? 10 * 1024 * 1024,
+      maxFileSizeBytes: entitlement?.unlimited ? 200 * 1024 * 1024 : (entitlement?.converterMaxFileSizeBytes ?? 10 * 1024 * 1024),
     });
 
     if (!validation.ok) return { ok: false as const, message: validationMessage(validation.code) };
     if (files.some((file) => !isFileCompatibleWithFormat(file, fromFormat))) return { ok: false as const, message: copy.badFile };
-    if ((entitlement?.converterConversionsPerDay ?? 0) > 0 && usedToday >= (entitlement?.converterConversionsPerDay ?? 0)) return { ok: false as const, message: copy.quota };
+    if (!entitlement?.unlimited && (entitlement?.converterConversionsPerDay ?? 0) > 0 && usedToday >= (entitlement?.converterConversionsPerDay ?? 0)) return { ok: false as const, message: copy.quota };
     return { ok: true as const };
   }
 
@@ -708,6 +709,7 @@ export function ConverterUI({
       setResult(nextResult);
       setFeedback("success", `${copy.done}. ${copy.done2}`);
       persistUsedToday(usedToday + 1);
+      void fetch("/api/converter/complete", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ from: fromFormat, to: activeToFormat, fileSizeBytes: selectedFiles[0]?.size ?? 0 }) }).catch(() => undefined);
     } catch (error) {
       console.error("[converter] conversion failed", error);
       if (error instanceof ConverterError) {

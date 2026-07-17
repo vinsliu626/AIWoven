@@ -20,20 +20,20 @@ export function BlogIndexPage() {
       <div className="relative mx-auto max-w-6xl space-y-10">
         <section className="overflow-hidden rounded-[32px] border border-white/10 bg-[#060606]/95 shadow-[0_24px_90px_rgba(0,0,0,0.45)]">
           <div className="border-b border-white/10 bg-gradient-to-r from-white/[0.04] via-blue-500/[0.06] to-emerald-400/[0.06] px-6 py-8 sm:px-8">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">NexusDesk Blog</p>
+            <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">AIWoven Blog</p>
             <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">
               Practical AI guides for students
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-8 text-slate-300">
               Useful articles on studying, note-taking, AI writing review, and file workflows. Every post connects back to
-              the tools students actually use inside NexusDesk.
+              the tools students actually use inside AIWoven.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/ai-study"
                 className="inline-flex items-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:scale-[1.02]"
               >
-                Try NexusDesk for free
+                Try AIWoven for free
               </Link>
               <Link
                 href="/"

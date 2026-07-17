@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { normalizePlan, planToFlags } from "@/lib/billing/planFlags";
 import { ensureRuntimeEntitlement, mutationResultSelect, runtimeEntitlementSelect } from "@/lib/billing/entitlementDb";
+import { resolveEffectiveAccessFromEntitlement } from "@/lib/billing/access";
 
 export type UsageType = "chat_count" | "detector_words" | "note_seconds";
 
@@ -58,6 +59,8 @@ export async function requireAndConsume(userId: string, type: UsageType, amount:
     await prisma.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
 
     const ent = await ensureRuntimeEntitlement(prisma, userId);
+    const access = resolveEffectiveAccessFromEntitlement(userId, ent);
+    if (access.unlimited) return { ok: true, plan: access.plan, unlimited: true, stripeStatus: ent.stripeStatus ?? null };
 
     // 重置（跨天/跨周）
     const needDailyReset = ent.dailyUsageKey !== today;

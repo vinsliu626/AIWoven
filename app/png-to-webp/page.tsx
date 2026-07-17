@@ -2,9 +2,9 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "PNG to WEBP Converter | NexusDesk",
+  title: "PNG to WEBP Converter | AIWoven",
   description:
-    "Convert PNG to WEBP with NexusDesk to prepare lighter image files for web delivery and modern asset pipelines.",
+    "Convert PNG to WEBP with AIWoven to prepare lighter image files for web delivery and modern asset pipelines.",
   path: "/png-to-webp",
   keywords: ["png to webp", "convert png to webp", "png webp converter"],
   robots: {
@@ -18,10 +18,10 @@ export default function PngToWebpPage() {
     <SeoLandingPage
       eyebrow="PNG to WEBP"
       title="Convert PNG to WEBP for lighter web-ready images"
-      intro="PNG to WEBP is a high-intent conversion path for people optimizing images for sites, apps, and performance-focused delivery. This NexusDesk page explains the workflow and links to the converter."
+      intro="PNG to WEBP is a high-intent conversion path for people optimizing images for sites, apps, and performance-focused delivery. This AIWoven page explains the workflow and links to the converter."
       paragraphs={[
-        "WEBP is commonly chosen when users want smaller image files and a format that fits modern web delivery. That makes PNG to WEBP a strong search-intent route and a practical addition to the NexusDesk public surface.",
-        "The page gives search engines direct text about PNG to WEBP conversion instead of forcing discovery through the interactive app alone. It also keeps the visual treatment consistent with the existing NexusDesk design language.",
+        "WEBP is commonly chosen when users want smaller image files and a format that fits modern web delivery. That makes PNG to WEBP a strong search-intent route and a practical addition to the AIWoven public surface.",
+        "The page gives search engines direct text about PNG to WEBP conversion instead of forcing discovery through the interactive app alone. It also keeps the visual treatment consistent with the existing AIWoven design language.",
         "Use the CTA below to open the converter workspace and handle the actual image conversion inside the product.",
       ]}
       ctaHref="/converter"
@@ -31,7 +31,7 @@ export default function PngToWebpPage() {
       highlights={[
         "Built for web-ready image optimization intent.",
         "Creates a dedicated indexable route for PNG to WEBP queries.",
-        "Routes users into the existing NexusDesk converter workflow.",
+        "Routes users into the existing AIWoven converter workflow.",
       ]}
       relatedLinks={[
         { href: "/jpg-to-png", label: "JPG to PNG landing page" },
@@ -46,7 +46,7 @@ export default function PngToWebpPage() {
         },
         {
           question: "How do I start the conversion?",
-          answer: "Open the NexusDesk converter from the CTA, choose PNG as the source format, and select WEBP as the target format.",
+          answer: "Open the AIWoven converter from the CTA, choose PNG as the source format, and select WEBP as the target format.",
         },
       ]}
     />

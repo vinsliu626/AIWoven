@@ -7,6 +7,7 @@ import { assertNoteRequestAllowed, getNoteQuotaStatus, markNoteAttempt, NoteLimi
 import { devBypassUserId } from "@/lib/auth/devBypass";
 import { getRouteSessionUser } from "@/lib/auth/routeSession";
 import type { NextRequest } from "next/server";
+import { trackFeatureUsage } from "@/lib/analytics/track";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -116,13 +117,12 @@ export async function POST(req: NextRequest) {
 
     await recordNoteGenerateSuccess(userId);
     const usage = await getNoteQuotaStatus(userId);
+    void trackFeatureUsage({ userId, featureKey: "note", featureName: "AI Note", actionType: "NOTE_USED", pagePath: "/ai-note", metadata: { input_chars: generated.meta.inputChars, mode: generated.meta.mode }, request: req });
 
     return NextResponse.json({
       ok: true,
       note,
       meta: {
-        provider: generated.meta.provider,
-        model: generated.meta.model,
         mode: generated.meta.mode,
         chunkCount: generated.meta.chunkCount,
         inputType,

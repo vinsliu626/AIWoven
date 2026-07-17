@@ -7,6 +7,7 @@ import { assertQuotaOrThrow, QuotaError } from "@/lib/billing/guard";
 import { addUsageEvent } from "@/lib/billing/usage";
 import { assertChatRequestAllowed, ChatLimitError } from "@/lib/chat/quota";
 import { normalizeAiText } from "@/lib/ui/aiTextFormat";
+import { AIWOVEN_IDENTITY_PROMPT, toPublicAiStage } from "@/lib/ai/identity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,8 +53,12 @@ const STREAM_IDLE_TIMEOUT_MS = 12000;
 const STREAM_MAX_TOKENS = 1200;
 const NON_STREAM_MAX_TOKENS = 900;
 
-function jsonErr(status: number, code: string, message: string, extra?: unknown) {
-  return NextResponse.json({ ok: false, error: code, message, ...(extra ? { extra } : {}) }, { status });
+function jsonErr(status: number, code: string, message: string) {
+  return NextResponse.json({ ok: false, error: code, message }, { status });
+}
+
+function publicStage(result: { stage: Stage; content: string }) {
+  return toPublicAiStage(result);
 }
 
 function mapUpstreamError(e: any): { status: number; error: string; message: string; extra?: any } {
@@ -61,7 +66,7 @@ function mapUpstreamError(e: any): { status: number; error: string; message: str
   const httpStatus = Number(e?.httpStatus || 0);
 
   if (code === "OR_CREDIT_DEPLETED" || httpStatus === 402) {
-    return { status: 402, error: "OR_CREDIT_DEPLETED", message: "OpenRouter credit depleted.", extra: e?.extra };
+    return { status: 402, error: "AI_SERVICE_CREDIT_DEPLETED", message: "The AI service is temporarily unavailable." };
   }
   if (code === "UPSTREAM_RATE_LIMIT" || httpStatus === 429) {
     return { status: 429, error: "UPSTREAM_RATE_LIMIT", message: "Upstream rate limited. Please retry later.", extra: e?.extra };
@@ -82,8 +87,7 @@ function mapUpstreamError(e: any): { status: number; error: string; message: str
   return {
     status: 500,
     error: "INTERNAL_ERROR",
-    message: e?.message ?? "Unknown error",
-    extra: e?.extra,
+    message: "AIWoven Assistant is temporarily unavailable. Please try again.",
   };
 }
 
@@ -281,7 +285,7 @@ function systemWorkflowReviewer(isZh: boolean) {
 }
 
 function buildStageMessages(baseHistory: ChatMessage[], system: string, userTask: string): ChatMessage[] {
-  return [{ role: "system", content: system }, ...trimHistory(baseHistory, 20), { role: "user", content: userTask }];
+  return [{ role: "system", content: `${AIWOVEN_IDENTITY_PROMPT}\n\n${system}` }, ...trimHistory(baseHistory, 20), { role: "user", content: userTask }];
 }
 
 async function ensureSessionId(opts: { userId: string; chatSessionId: string | null; userRequest: string }) {
@@ -851,7 +855,7 @@ export async function POST(request: Request) {
     }
 
     const groqKey = process.env.GROQ_API_KEY;
-    if (!groqKey) return jsonErr(500, "MISSING_GROQ_API_KEY", "Missing GROQ_API_KEY");
+    if (!groqKey) return jsonErr(503, "AI_SERVICE_UNAVAILABLE", "AIWoven Assistant is not configured for this environment.");
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     const groqModel = modelKind === "quality" ? QUALITY_MODEL : FAST_MODEL;
 
@@ -917,14 +921,14 @@ export async function POST(request: Request) {
                 openrouterCandidates: OR_WRITER_CANDIDATES,
               });
               const reply = normalizeAiText(writer.content);
-              send("stage_done", { ...writer, content: reply });
+              send("stage_done", publicStage({ ...writer, content: reply }));
               if (shouldSaveChat && chatSessionId) {
                 await safeSave(() => saveChatMessage(chatSessionId!, "assistant", reply));
               }
               if (shouldBillChat) {
                 addUsageEvent(userId!, "chat_count", 1).catch((error) => console.error("usageEvent write failed:", error));
               }
-              send("done", { ok: true, chatSessionId, stages: [{ ...writer, content: reply }], reply });
+              send("done", { ok: true, chatSessionId, stages: [publicStage({ ...writer, content: reply })], reply });
               controller.close();
               return;
             }
@@ -948,9 +952,9 @@ export async function POST(request: Request) {
               },
             });
 
-            send("stage_done", team.planner);
-            send("stage_done", team.writer);
-            send("stage_done", team.final);
+            send("stage_done", publicStage(team.planner));
+            send("stage_done", publicStage(team.writer));
+            send("stage_done", publicStage(team.final));
 
             if (shouldSaveChat && chatSessionId) {
               await safeSave(() => saveChatMessage(chatSessionId!, "assistant", team.final.content));
@@ -962,7 +966,7 @@ export async function POST(request: Request) {
             send("done", {
               ok: true,
               chatSessionId,
-              stages: [team.planner, team.writer, team.final],
+              stages: [publicStage(team.planner), publicStage(team.writer), publicStage(team.final)],
               reviewSummary: team.reviewer.content,
               reply: team.final.content,
             });
@@ -970,7 +974,7 @@ export async function POST(request: Request) {
           } catch (error: any) {
             console.error("[/api/chat] pipeline error:", error?.message || error);
             const mapped = mapUpstreamError(error);
-            send("error", { ok: false, error: mapped.error, message: mapped.message, extra: mapped.extra });
+            send("error", { ok: false, error: mapped.error, message: mapped.message });
             controller.close();
           }
         },
@@ -1007,7 +1011,7 @@ export async function POST(request: Request) {
         addUsageEvent(userId!, "chat_count", 1).catch((error) => console.error("usageEvent write failed:", error));
       }
 
-      return NextResponse.json({ ok: true, chatSessionId, stages: [{ ...writer, content: reply }], reply });
+      return NextResponse.json({ ok: true, chatSessionId, stages: [publicStage({ ...writer, content: reply })], reply });
     }
 
     const team = await buildTeamOutputs({
@@ -1029,13 +1033,13 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       chatSessionId,
-      stages: [team.planner, team.writer, team.final],
+      stages: [publicStage(team.planner), publicStage(team.writer), publicStage(team.final)],
       reviewSummary: team.reviewer.content,
       reply: team.final.content,
     });
   } catch (error: any) {
     console.error("[/api/chat] error:", error?.message || error);
     const mapped = mapUpstreamError(error);
-    return jsonErr(mapped.status, mapped.error, mapped.message, mapped.extra);
+    return jsonErr(mapped.status, mapped.error, mapped.message);
   }
 }

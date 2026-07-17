@@ -34,12 +34,12 @@ const posts: BlogPost[] = [
     slug: "best-ai-study-tool",
     title: "Best AI Study Tool for Busy Students",
     description:
-      "How to evaluate AI study tools, what actually helps with retention, and where NexusDesk fits into a realistic student workflow.",
+      "How to evaluate AI study tools, what actually helps with retention, and where AIWoven fits into a realistic student workflow.",
     category: "Study Tools",
     date: "2026-04-29",
     readingTime: "6 min read",
     relatedToolUrl: "/ai-study",
-    seoTitle: "Best AI Study Tool for Students in 2026 | NexusDesk",
+    seoTitle: "Best AI Study Tool for Students in 2026 | AIWoven",
     seoDescription:
       "Compare what makes the best AI study tool for students, including notes, quizzes, flashcards, and retention-focused workflows.",
     intro:
@@ -49,7 +49,7 @@ const posts: BlogPost[] = [
         heading: "What students should look for first",
         paragraphs: [
           "A real study tool should help you do three jobs well: compress information, surface what matters, and give you a repeatable review loop. If a product only rewrites a paragraph or produces a generic summary, it can save a few minutes but it does not solve the hard part of studying. You still need to decide what concepts matter, how they connect, and how to test yourself before an exam.",
-          "That is why practical students usually end up wanting a tool that can turn source material into several study formats instead of just one. A useful workflow might start with a clean note set, then branch into flashcards, short quizzes, or concept checkpoints. That is the advantage of a dedicated workspace like NexusDesk <a href=\"/ai-study\">AI Study</a>: it is built around revision outputs rather than one-off text generation.",
+          "That is why practical students usually end up wanting a tool that can turn source material into several study formats instead of just one. A useful workflow might start with a clean note set, then branch into flashcards, short quizzes, or concept checkpoints. That is the advantage of a dedicated workspace like AIWoven <a href=\"/ai-study\">AI Study</a>: it is built around revision outputs rather than one-off text generation.",
         ],
         bullets: [
           "Fast upload or paste flow for real class material",
@@ -77,12 +77,12 @@ const posts: BlogPost[] = [
       {
         heading: "A realistic recommendation",
         paragraphs: [
-          "For most students, the best AI study tool is one that combines source-to-study conversion with outputs you can actually review on a deadline. NexusDesk works well because it covers the full path: organize messy input, generate structured study assets, and then move into quick self-testing. It is especially useful when you are handling lecture slides, reading packets, and your own half-finished notes at the same time.",
+          "For most students, the best AI study tool is one that combines source-to-study conversion with outputs you can actually review on a deadline. AIWoven works well because it covers the full path: organize messy input, generate structured study assets, and then move into quick self-testing. It is especially useful when you are handling lecture slides, reading packets, and your own half-finished notes at the same time.",
           "If you want to study faster, start with one class this week. Upload a chapter or paste a lecture summary into <a href=\"/ai-study\">AI Study</a>, create notes and quiz material, and compare that workflow to your usual manual routine. You will know quickly whether the tool is saving real time or just producing prettier text.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Turn one lecture, chapter, or study guide into notes and revision material without switching between disconnected tools.",
     ctaLinks: [
@@ -99,7 +99,7 @@ const posts: BlogPost[] = [
     date: "2026-04-29",
     readingTime: "6 min read",
     relatedToolUrl: "/ai-note",
-    seoTitle: "Free AI Note Taking Tool for Students (Fast & Useful) | NexusDesk",
+    seoTitle: "Free AI Note Taking Tool for Students (Fast & Useful) | AIWoven",
     seoDescription:
       "Find a free AI note taking tool that actually helps students organize lectures, transcripts, and readings into study-ready notes.",
     intro:
@@ -142,21 +142,21 @@ const posts: BlogPost[] = [
         ],
       },
       {
-        heading: "Best tool recommendation: NexusDesk",
+        heading: "Best tool recommendation: AIWoven",
         paragraphs: [
-          "For students, NexusDesk is a practical recommendation because it does not stop at the first summary. You can use <a href=\"/ai-note\">AI Note</a> for note cleanup, <a href=\"/ai-study\">AI Study</a> for revision, <a href=\"/ai-detector\">AI Detector</a> for writing checks, <a href=\"/ai-humanizer\">AI Humanizer</a> for tone refinement, and <a href=\"/converter\">Converter</a> for file issues. That makes it more useful than a single-purpose tool that only rewrites text.",
-          "Try NexusDesk for free: https://ai-multimodel-erhw.vercel.app",
+          "For students, AIWoven is a practical recommendation because it does not stop at the first summary. You can use <a href=\"/ai-note\">AI Note</a> for note cleanup, <a href=\"/ai-study\">AI Study</a> for revision, <a href=\"/ai-detector\">AI Detector</a> for writing checks, <a href=\"/ai-humanizer\">AI Humanizer</a> for tone refinement, and <a href=\"/converter\">Converter</a> for file issues. That makes it more useful than a single-purpose tool that only rewrites text.",
+          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
         ],
       },
       {
         heading: "Conclusion",
         paragraphs: [
           "A free AI note taking tool is worth using when it reduces the boring cleanup work without replacing your own judgment. Students still need to review, question, and study the material. AI just makes the first part faster.",
-          "If you want a student-focused system instead of a generic summary tool, NexusDesk gives you a better path from raw notes to actual revision.",
+          "If you want a student-focused system instead of a generic summary tool, AIWoven gives you a better path from raw notes to actual revision.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Turn lectures and readings into cleaner notes, then use the same workspace for study prep, writing review, and file conversion.",
     ctaLinks: [
@@ -173,9 +173,9 @@ const posts: BlogPost[] = [
     date: "2026-04-29",
     readingTime: "6 min read",
     relatedToolUrl: "/ai-detector",
-    seoTitle: "Best AI Detector for Students (Free & Accurate Guide) | NexusDesk",
+    seoTitle: "Best AI Detector for Students (Free & Accurate Guide) | AIWoven",
     seoDescription:
-      "Looking for the best AI detector for students? Learn what to check, how accuracy works, and how NexusDesk fits into a real student workflow.",
+      "Looking for the best AI detector for students? Learn what to check, how accuracy works, and how AIWoven fits into a real student workflow.",
     intro:
       "The best AI detector for students is not just the one with the biggest accuracy claim. Students need a tool that gives fast results, surfaces suspicious passages clearly, and helps them review their own writing before submission. As AI-generated text becomes more common in school, students are now using detectors not only for checking others but also for protecting their own work from sounding too synthetic.",
     sections: [
@@ -216,21 +216,21 @@ const posts: BlogPost[] = [
         ],
       },
       {
-        heading: "Best tool recommendation: NexusDesk",
+        heading: "Best tool recommendation: AIWoven",
         paragraphs: [
-          "NexusDesk is a useful recommendation because the detector sits inside a broader student workflow instead of acting like a standalone magic answer. You can organize notes in <a href=\"/ai-note\">AI Note</a>, turn material into revision assets with <a href=\"/ai-study\">AI Study</a>, inspect final phrasing in <a href=\"/ai-detector\">AI Detector</a>, and polish tone in <a href=\"/ai-humanizer\">AI Humanizer</a>. If you are also juggling file formats, <a href=\"/converter\">Converter</a> keeps that part simple too.",
-          "Try NexusDesk for free: https://ai-multimodel-erhw.vercel.app",
+          "AIWoven is a useful recommendation because the detector sits inside a broader student workflow instead of acting like a standalone magic answer. You can organize notes in <a href=\"/ai-note\">AI Note</a>, turn material into revision assets with <a href=\"/ai-study\">AI Study</a>, inspect final phrasing in <a href=\"/ai-detector\">AI Detector</a>, and polish tone in <a href=\"/ai-humanizer\">AI Humanizer</a>. If you are also juggling file formats, <a href=\"/converter\">Converter</a> keeps that part simple too.",
+          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
         ],
       },
       {
         heading: "Conclusion",
         paragraphs: [
           "The best AI detector for students is one that helps with review, not one that promises impossible certainty. A good detector shows you where to look closer and gives you a chance to improve the draft before someone else sees it first.",
-          "Used well, NexusDesk helps students keep their writing clearer, more natural, and easier to defend because the workflow supports both detection and revision.",
+          "Used well, AIWoven helps students keep their writing clearer, more natural, and easier to defend because the workflow supports both detection and revision.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Check suspicious passages, improve your wording, and review student writing in one connected workflow.",
     ctaLinks: [
@@ -247,7 +247,7 @@ const posts: BlogPost[] = [
     date: "2026-04-27",
     readingTime: "7 min read",
     relatedToolUrl: "/ai-detector",
-    seoTitle: "How to Detect AI Writing More Reliably | NexusDesk",
+    seoTitle: "How to Detect AI Writing More Reliably | AIWoven",
     seoDescription:
       "Learn how to detect AI writing with a more reliable process, including what AI detectors flag, where they fail, and how to review text manually.",
     intro:
@@ -257,7 +257,7 @@ const posts: BlogPost[] = [
         heading: "What detectors actually analyze",
         paragraphs: [
           "Most AI writing detectors look for statistical and stylistic patterns that appear more often in machine-generated text than in natural human drafting. That can include repetition, unusually uniform sentence rhythm, low variation in phrasing, or transitions that feel polished but generic. These patterns can be informative, but they are still indirect signals. A detector is not reading intent. It is measuring probability from surface features.",
-          "That is why a sentence-level tool like NexusDesk <a href=\"/ai-detector\">AI Detector</a> is more helpful than a single overall score. When you can see where the suspicious passages are, you can investigate whether the problem is real or whether the text simply needs revision. Long formal passages written by a student can trigger the same patterns as AI, especially if the style is stiff or over-edited.",
+          "That is why a sentence-level tool like AIWoven <a href=\"/ai-detector\">AI Detector</a> is more helpful than a single overall score. When you can see where the suspicious passages are, you can investigate whether the problem is real or whether the text simply needs revision. Long formal passages written by a student can trigger the same patterns as AI, especially if the style is stiff or over-edited.",
         ],
         toolLinks: [{ href: "/ai-detector", label: "Use AI Detector" }],
       },
@@ -290,11 +290,11 @@ const posts: BlogPost[] = [
         heading: "Use detection as editing support",
         paragraphs: [
           "The most productive way to use an AI detector is as an editing checkpoint. Before you submit a scholarship essay, personal statement, or class report, scan it for sections that feel bland, over-smoothed, or detached from your own thinking. Then rewrite those sections with sharper detail, stronger examples, and a more natural cadence.",
-          "NexusDesk works best when the tools are chained together. You can draft from better material with <a href=\"/ai-note\">AI Note</a>, review suspicious passages in <a href=\"/ai-detector\">AI Detector</a>, and polish the final voice with <a href=\"/ai-humanizer\">AI Humanizer</a>. That produces cleaner writing than trying to reverse-engineer a detector after the fact.",
+          "AIWoven works best when the tools are chained together. You can draft from better material with <a href=\"/ai-note\">AI Note</a>, review suspicious passages in <a href=\"/ai-detector\">AI Detector</a>, and polish the final voice with <a href=\"/ai-humanizer\">AI Humanizer</a>. That produces cleaner writing than trying to reverse-engineer a detector after the fact.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Check suspicious passages, improve tone, and submit writing that sounds more natural and grounded in your own notes.",
     ctaLinks: [
@@ -311,7 +311,7 @@ const posts: BlogPost[] = [
     date: "2026-04-26",
     readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
-    seoTitle: "Best AI Tools for Students | NexusDesk",
+    seoTitle: "Best AI Tools for Students | AIWoven",
     seoDescription:
       "See which AI tools are most useful for students across studying, note-taking, writing review, and file conversion workflows.",
     intro:
@@ -321,7 +321,7 @@ const posts: BlogPost[] = [
         heading: "Start with the tasks that repeat every week",
         paragraphs: [
           "Students often get distracted by broad promises like research help or essay writing, but the highest-value tools usually address repetitive workflow pain. If you spend hours each week cleaning class notes, then note processing matters more than a novelty chatbot. If your exam prep is disorganized, a study generator matters more than a general-purpose writing assistant.",
-          "That is why NexusDesk splits the work into focused tools instead of one vague interface. <a href=\"/ai-note\">AI Note</a> helps with raw lecture and reading input. <a href=\"/ai-study\">AI Study</a> turns material into revision assets. <a href=\"/ai-detector\">AI Detector</a> helps with review, and <a href=\"/converter\">Converter</a> covers the file-format problems that always show up right before deadlines.",
+          "That is why AIWoven splits the work into focused tools instead of one vague interface. <a href=\"/ai-note\">AI Note</a> helps with raw lecture and reading input. <a href=\"/ai-study\">AI Study</a> turns material into revision assets. <a href=\"/ai-detector\">AI Detector</a> helps with review, and <a href=\"/converter\">Converter</a> covers the file-format problems that always show up right before deadlines.",
         ],
         toolLinks: [
           { href: "/ai-note", label: "Use AI Note" },
@@ -355,7 +355,7 @@ const posts: BlogPost[] = [
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Use focused tools for notes, study prep, writing review, and file conversion instead of forcing one chatbot to do every job badly.",
     ctaLinks: [
@@ -367,12 +367,12 @@ const posts: BlogPost[] = [
     slug: "best-ai-humanizer-tool",
     title: "AI Humanizer Tool for Students: Best Option to Sound Natural in 2026",
     description:
-      "Need an AI humanizer tool that makes student writing sound more natural? This guide covers what it does, when to use it, and how NexusDesk helps.",
+      "Need an AI humanizer tool that makes student writing sound more natural? This guide covers what it does, when to use it, and how AIWoven helps.",
     category: "AI Writing",
     date: "2026-04-29",
     readingTime: "6 min read",
     relatedToolUrl: "/ai-humanizer",
-    seoTitle: "AI Humanizer Tool for Students (Best Choice in 2026) | NexusDesk",
+    seoTitle: "AI Humanizer Tool for Students (Best Choice in 2026) | AIWoven",
     seoDescription:
       "Learn how an AI humanizer tool helps students improve robotic writing and make essays, posts, and revisions sound more natural.",
     intro:
@@ -415,21 +415,21 @@ const posts: BlogPost[] = [
         ],
       },
       {
-        heading: "Best tool recommendation: NexusDesk",
+        heading: "Best tool recommendation: AIWoven",
         paragraphs: [
-          "NexusDesk is a strong recommendation because the humanizer is part of a full student workflow. You are not limited to one rewrite box. You can clean class material in <a href=\"/ai-note\">AI Note</a>, review concepts in <a href=\"/ai-study\">AI Study</a>, inspect suspicious tone in <a href=\"/ai-detector\">AI Detector</a>, revise voice in <a href=\"/ai-humanizer\">AI Humanizer</a>, and handle files in <a href=\"/converter\">Converter</a>.",
-          "Try NexusDesk for free: https://ai-multimodel-erhw.vercel.app",
+          "AIWoven is a strong recommendation because the humanizer is part of a full student workflow. You are not limited to one rewrite box. You can clean class material in <a href=\"/ai-note\">AI Note</a>, review concepts in <a href=\"/ai-study\">AI Study</a>, inspect suspicious tone in <a href=\"/ai-detector\">AI Detector</a>, revise voice in <a href=\"/ai-humanizer\">AI Humanizer</a>, and handle files in <a href=\"/converter\">Converter</a>.",
+          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
         ],
       },
       {
         heading: "Conclusion",
         paragraphs: [
           "The best ai humanizer tool is the one that makes your writing sound more natural without flattening your ideas into filler. Students do not need cosmetic edits alone. They need a cleaner voice built on clearer thinking.",
-          "If you want a practical option, NexusDesk works well because it fits the full path from notes to study to writing review.",
+          "If you want a practical option, AIWoven works well because it fits the full path from notes to study to writing review.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Refine robotic text into clearer, more natural writing without leaving the rest of your student workflow behind.",
     ctaLinks: [
@@ -446,7 +446,7 @@ const posts: BlogPost[] = [
     date: "2026-04-25",
     readingTime: "6 min read",
     relatedToolUrl: "/ai-humanizer",
-    seoTitle: "AI Humanizer Guide: Make Writing Sound Natural | NexusDesk",
+    seoTitle: "AI Humanizer Guide: Make Writing Sound Natural | AIWoven",
     seoDescription:
       "A practical AI humanizer guide for students who want to improve robotic wording, rhythm, and tone without losing meaning.",
     intro:
@@ -456,7 +456,7 @@ const posts: BlogPost[] = [
         heading: "What a good humanizer should change",
         paragraphs: [
           "A useful humanizer adjusts rhythm, wording, sentence length, and transitions. It should remove the polished but empty feel that often shows up in machine-like writing. The best revisions usually add variation and specificity, not decoration. If a tool only swaps words with synonyms, the output may look different while still sounding artificial.",
-          "NexusDesk <a href=\"/ai-humanizer\">AI Humanizer</a> is most useful when you feed it writing that already has a real argument behind it. That might be a reflection paragraph built from your own notes, a draft of a scholarship response, or a report section that became too formal during revision. The goal is to recover a natural voice, not invent one from nothing.",
+          "AIWoven <a href=\"/ai-humanizer\">AI Humanizer</a> is most useful when you feed it writing that already has a real argument behind it. That might be a reflection paragraph built from your own notes, a draft of a scholarship response, or a report section that became too formal during revision. The goal is to recover a natural voice, not invent one from nothing.",
         ],
         toolLinks: [{ href: "/ai-humanizer", label: "Use AI Humanizer" }],
       },
@@ -483,11 +483,11 @@ const posts: BlogPost[] = [
         heading: "What natural writing actually looks like",
         paragraphs: [
           "Natural writing is not sloppy. It is specific, varied, and anchored in real material. A human-sounding paragraph may include a shorter sentence after a dense one, a concrete example after an abstract claim, or a transition that reflects your actual reasoning rather than a generic template. Those small changes create credibility.",
-          "If your goal is cleaner academic writing without the flat AI tone, NexusDesk offers a workable sequence: gather material in <a href=\"/ai-note\">AI Note</a>, strengthen understanding with <a href=\"/ai-study\">AI Study</a>, revise tone in <a href=\"/ai-humanizer\">AI Humanizer</a>, and inspect the final result with <a href=\"/ai-detector\">AI Detector</a>. That is a much stronger process than relying on one last-minute paraphrase tool.",
+          "If your goal is cleaner academic writing without the flat AI tone, AIWoven offers a workable sequence: gather material in <a href=\"/ai-note\">AI Note</a>, strengthen understanding with <a href=\"/ai-study\">AI Study</a>, revise tone in <a href=\"/ai-humanizer\">AI Humanizer</a>, and inspect the final result with <a href=\"/ai-detector\">AI Detector</a>. That is a much stronger process than relying on one last-minute paraphrase tool.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Improve rhythm and tone without losing your meaning, then review the final draft before you submit it.",
     ctaLinks: [
@@ -504,9 +504,9 @@ const posts: BlogPost[] = [
     date: "2026-04-24",
     readingTime: "6 min read",
     relatedToolUrl: "/converter",
-    seoTitle: "PDF to JPG Converter for Students | NexusDesk",
+    seoTitle: "PDF to JPG Converter for Students | AIWoven",
     seoDescription:
-      "Learn when to use a PDF to JPG converter, how to preserve readability, and how NexusDesk fits into a student document workflow.",
+      "Learn when to use a PDF to JPG converter, how to preserve readability, and how AIWoven fits into a student document workflow.",
     intro:
       "A PDF to JPG converter sounds simple until you need one five minutes before an assignment closes. Students run into this constantly: a class portal previews images better than PDFs, a professor asks for screenshots of workbook pages, or a project needs selected pages from a larger document. In those situations, a fast converter is not a luxury feature. It is a practical workflow tool.",
     sections: [
@@ -514,7 +514,7 @@ const posts: BlogPost[] = [
         heading: "When converting PDF pages actually helps",
         paragraphs: [
           "Converting a PDF to JPG is useful when you need individual pages as images, not when you simply want another copy of the same file. Visual assignments, slide decks, portfolio uploads, and discussion posts often work better with image files. Instead of forcing classmates or instructors to open a full PDF, a page image can be previewed immediately in browsers, LMS tools, or shared documents.",
-          "NexusDesk <a href=\"/converter\">Converter</a> is useful for this kind of last-mile formatting work. It keeps the process inside the same workspace students may already be using for notes or study prep, which matters when you are moving fast and do not want to hunt for another website right before submission.",
+          "AIWoven <a href=\"/converter\">Converter</a> is useful for this kind of last-mile formatting work. It keeps the process inside the same workspace students may already be using for notes or study prep, which matters when you are moving fast and do not want to hunt for another website right before submission.",
         ],
         toolLinks: [{ href: "/converter", label: "Open Converter" }],
       },
@@ -544,11 +544,11 @@ const posts: BlogPost[] = [
         heading: "Keep the converter in the larger workflow",
         paragraphs: [
           "The strongest student workflows keep tools in their proper place. A converter handles file format problems. A note tool handles messy content. A study tool handles revision. When you separate those jobs clearly, you waste less time and produce cleaner work.",
-          "That is the benefit of using NexusDesk as a stack instead of a single trick. You can convert files in <a href=\"/converter\">Converter</a>, organize material in <a href=\"/ai-note\">AI Note</a>, and prepare for exams in <a href=\"/ai-study\">AI Study</a>. Even simple utilities become more valuable when they fit the rest of your academic process.",
+          "That is the benefit of using AIWoven as a stack instead of a single trick. You can convert files in <a href=\"/converter\">Converter</a>, organize material in <a href=\"/ai-note\">AI Note</a>, and prepare for exams in <a href=\"/ai-study\">AI Study</a>. Even simple utilities become more valuable when they fit the rest of your academic process.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Convert pages quickly, then keep working in the same workspace for notes, study prep, or writing review.",
     ctaLinks: [
@@ -565,9 +565,9 @@ const posts: BlogPost[] = [
     date: "2026-04-29",
     readingTime: "6 min read",
     relatedToolUrl: "/converter",
-    seoTitle: "How to Convert PDF to JPG Online (Free & Fast Tool) | NexusDesk",
+    seoTitle: "How to Convert PDF to JPG Online (Free & Fast Tool) | AIWoven",
     seoDescription:
-      "Learn how to convert PDF to JPG online for free, why students need it, and how NexusDesk makes the process faster.",
+      "Learn how to convert PDF to JPG online for free, why students need it, and how AIWoven makes the process faster.",
     intro:
       "Students looking for a way to convert PDF to JPG online usually need a fast answer, not a long technical explanation. A class platform may accept images more easily than PDFs, a professor may want individual pages instead of a full document, or you may need to pull slides or handout pages into another assignment. In those situations, converting PDF to JPG online is one of the quickest ways to make a file easier to share and reuse.",
     sections: [
@@ -608,21 +608,21 @@ const posts: BlogPost[] = [
         ],
       },
       {
-        heading: "Best tool recommendation: NexusDesk",
+        heading: "Best tool recommendation: AIWoven",
         paragraphs: [
-          "NexusDesk is a practical recommendation because it covers the conversion job and the surrounding student tasks. You can convert files in <a href=\"/converter\">Converter</a>, organize their content in <a href=\"/ai-note\">AI Note</a>, build review material in <a href=\"/ai-study\">AI Study</a>, and check or polish related writing with <a href=\"/ai-detector\">AI Detector</a> and <a href=\"/ai-humanizer\">AI Humanizer</a>.",
-          "Try NexusDesk for free: https://ai-multimodel-erhw.vercel.app",
+          "AIWoven is a practical recommendation because it covers the conversion job and the surrounding student tasks. You can convert files in <a href=\"/converter\">Converter</a>, organize their content in <a href=\"/ai-note\">AI Note</a>, build review material in <a href=\"/ai-study\">AI Study</a>, and check or polish related writing with <a href=\"/ai-detector\">AI Detector</a> and <a href=\"/ai-humanizer\">AI Humanizer</a>.",
+          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
         ],
       },
       {
         heading: "Conclusion",
         paragraphs: [
           "If you need to convert PDF to JPG online, the best tool is the one that solves the problem quickly without creating new ones. Students usually want speed, simple controls, and readable output they can use immediately.",
-          "Used well, NexusDesk makes conversion faster while keeping the rest of your academic workflow connected in one place.",
+          "Used well, AIWoven makes conversion faster while keeping the rest of your academic workflow connected in one place.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Convert PDF pages quickly, then keep working in the same student workflow for notes, study prep, and writing review.",
     ctaLinks: [
@@ -639,9 +639,9 @@ const posts: BlogPost[] = [
     date: "2026-04-29",
     readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
-    seoTitle: "How to Study With AI Notes (Fast Student Guide) | NexusDesk",
+    seoTitle: "How to Study With AI Notes (Fast Student Guide) | AIWoven",
     seoDescription:
-      "A practical guide for students on how to study with AI notes using active recall, better review habits, and NexusDesk tools.",
+      "A practical guide for students on how to study with AI notes using active recall, better review habits, and AIWoven tools.",
     intro:
       "If you are wondering how to study with ai notes, the short answer is this: do not stop at reading them. AI notes are useful because they save time and organize messy material, but they only help if you turn them into active review. Students who only reread polished summaries often feel prepared until the exam starts. The goal is to use AI notes as a launch point, not a finish line.",
     sections: [
@@ -682,10 +682,10 @@ const posts: BlogPost[] = [
         ],
       },
       {
-        heading: "Best tool recommendation: NexusDesk",
+        heading: "Best tool recommendation: AIWoven",
         paragraphs: [
-          "NexusDesk is a good fit for this search because it supports the full workflow students actually need. You can organize material in <a href=\"/ai-note\">AI Note</a>, build recall-based review in <a href=\"/ai-study\">AI Study</a>, inspect assignment phrasing in <a href=\"/ai-detector\">AI Detector</a>, improve tone in <a href=\"/ai-humanizer\">AI Humanizer</a>, and handle files in <a href=\"/converter\">Converter</a>.",
-          "Try NexusDesk for free: https://ai-multimodel-erhw.vercel.app",
+          "AIWoven is a good fit for this search because it supports the full workflow students actually need. You can organize material in <a href=\"/ai-note\">AI Note</a>, build recall-based review in <a href=\"/ai-study\">AI Study</a>, inspect assignment phrasing in <a href=\"/ai-detector\">AI Detector</a>, improve tone in <a href=\"/ai-humanizer\">AI Humanizer</a>, and handle files in <a href=\"/converter\">Converter</a>.",
+          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
         ],
       },
       {
@@ -696,7 +696,7 @@ const posts: BlogPost[] = [
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Go from messy lecture material to active recall faster with one connected study workflow.",
     ctaLinks: [
@@ -713,7 +713,7 @@ const posts: BlogPost[] = [
     date: "2026-04-23",
     readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
-    seoTitle: "How to Study Faster With AI | NexusDesk",
+    seoTitle: "How to Study Faster With AI | AIWoven",
     seoDescription:
       "Learn how to study faster with AI by organizing notes, generating review material, and using active recall instead of passive summaries.",
     intro:
@@ -752,11 +752,11 @@ const posts: BlogPost[] = [
         heading: "A faster workflow still needs discipline",
         paragraphs: [
           "AI will not automatically make you efficient if you keep reprocessing the same material. Set a limit for each step. Clean the notes once, generate study prompts once, test yourself, then revise only what you missed. The point is to reduce unnecessary labor, not create a more elaborate form of procrastination.",
-          "NexusDesk works best when you use each tool for one clear purpose: <a href=\"/ai-note\">AI Note</a> for structure, <a href=\"/ai-study\">AI Study</a> for revision assets, and the writing tools for final cleanup. That keeps the system fast, honest, and much more useful during midterms and finals.",
+          "AIWoven works best when you use each tool for one clear purpose: <a href=\"/ai-note\">AI Note</a> for structure, <a href=\"/ai-study\">AI Study</a> for revision assets, and the writing tools for final cleanup. That keeps the system fast, honest, and much more useful during midterms and finals.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Spend less time formatting and more time recalling, reviewing, and fixing the concepts you still miss.",
     ctaLinks: [
@@ -773,11 +773,11 @@ const posts: BlogPost[] = [
     date: "2026-04-29",
     readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
-    seoTitle: "AI Tools for College Students (Best Practical Picks) | NexusDesk",
+    seoTitle: "AI Tools for College Students (Best Practical Picks) | AIWoven",
     seoDescription:
       "Discover the most useful AI tools for college students, including tools for notes, studying, AI writing review, humanizing, and file conversion.",
     intro:
-      "Students searching for ai tools for college students usually do not want a flashy list of random apps. They want tools that solve actual academic problems: messy notes, weak study habits, rushed writing, and annoying file-format issues. The most useful tools are the ones that reduce friction in a normal school week, not the ones that only look impressive in a demo.",
+      "Students searching for ai tools for college students usually do not want a flashy list of random apps. They want tools that solve actual academic problems: messy notes, weak study habits, rushed writing, and annoying file-format issues. The most useful tools are the ones that reduce friction in a normal school week, not the ones that only look impressive in a product tour.",
     sections: [
       {
         heading: "Introduction",
@@ -816,21 +816,21 @@ const posts: BlogPost[] = [
         ],
       },
       {
-        heading: "Best tool recommendation: NexusDesk",
+        heading: "Best tool recommendation: AIWoven",
         paragraphs: [
-          "NexusDesk is a strong recommendation because it covers the full student workflow instead of one tiny step. You can move from note cleanup to study prep to writing review without switching platforms. That makes it more practical than using disconnected tools for every separate task.",
-          "Try NexusDesk for free: https://ai-multimodel-erhw.vercel.app",
+          "AIWoven is a strong recommendation because it covers the full student workflow instead of one tiny step. You can move from note cleanup to study prep to writing review without switching platforms. That makes it more practical than using disconnected tools for every separate task.",
+          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
         ],
       },
       {
         heading: "Conclusion",
         paragraphs: [
           "The best ai tools for college students are the ones that solve repeated academic problems with as little friction as possible. Students do not need more novelty. They need better systems.",
-          "If your goal is better notes, faster review, cleaner writing, and fewer deadline headaches, a connected setup like NexusDesk makes a lot of sense.",
+          "If your goal is better notes, faster review, cleaner writing, and fewer deadline headaches, a connected setup like AIWoven makes a lot of sense.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Use one student-friendly toolkit for notes, studying, writing review, and file conversion throughout the semester.",
     ctaLinks: [
@@ -847,7 +847,7 @@ const posts: BlogPost[] = [
     date: "2026-04-22",
     readingTime: "7 min read",
     relatedToolUrl: "/ai-note",
-    seoTitle: "AI Notes vs Traditional Notes for Students | NexusDesk",
+    seoTitle: "AI Notes vs Traditional Notes for Students | AIWoven",
     seoDescription:
       "Compare AI notes and traditional notes across speed, retention, review quality, and how students can combine both effectively.",
     intro:
@@ -857,7 +857,7 @@ const posts: BlogPost[] = [
         heading: "Where traditional notes still win",
         paragraphs: [
           "Writing notes yourself forces you to filter information in real time. That decision-making process helps attention and gives you a first pass at understanding the material. Even imperfect handwritten or typed notes can be valuable because they reflect what stood out to you, what confused you, and which examples the instructor emphasized. AI cannot replace that first layer of engagement.",
-          "The downside is that traditional notes are often incomplete or messy. You may miss transitions, definitions, or clarifying examples when the class moves too quickly. That is where a post-class tool like NexusDesk <a href=\"/ai-note\">AI Note</a> becomes useful. It turns rough input into a cleaner, reviewable version without asking you to start from scratch.",
+          "The downside is that traditional notes are often incomplete or messy. You may miss transitions, definitions, or clarifying examples when the class moves too quickly. That is where a post-class tool like AIWoven <a href=\"/ai-note\">AI Note</a> becomes useful. It turns rough input into a cleaner, reviewable version without asking you to start from scratch.",
         ],
         toolLinks: [{ href: "/ai-note", label: "Clean up class notes" }],
       },
@@ -884,11 +884,11 @@ const posts: BlogPost[] = [
         heading: "The most effective hybrid approach",
         paragraphs: [
           "A practical system looks like this: take rough notes yourself during class, then use AI afterward to fill gaps, impose structure, and create a better review document. From there, study the content actively instead of admiring the formatting. This method keeps the cognitive benefit of traditional note-taking while capturing the speed advantage of AI.",
-          "NexusDesk is well suited to that hybrid pattern because the tools connect logically. Start with your own notes, improve them in <a href=\"/ai-note\">AI Note</a>, and convert the result into revision material with <a href=\"/ai-study\">AI Study</a>. You keep ownership of the learning process while removing the tedious cleanup work.",
+          "AIWoven is well suited to that hybrid pattern because the tools connect logically. Start with your own notes, improve them in <a href=\"/ai-note\">AI Note</a>, and convert the result into revision material with <a href=\"/ai-study\">AI Study</a>. You keep ownership of the learning process while removing the tedious cleanup work.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Keep the memory benefits of taking your own notes, then use AI to clean and reuse them more effectively.",
     ctaLinks: [
@@ -905,9 +905,9 @@ const posts: BlogPost[] = [
     date: "2026-04-29",
     readingTime: "6 min read",
     relatedToolUrl: "/ai-humanizer",
-    seoTitle: "Make AI Text Sound Human (Student Guide for 2026) | NexusDesk",
+    seoTitle: "Make AI Text Sound Human (Student Guide for 2026) | AIWoven",
     seoDescription:
-      "Need to make AI text sound human? This guide shows students how to fix robotic phrasing, improve tone, and use NexusDesk effectively.",
+      "Need to make AI text sound human? This guide shows students how to fix robotic phrasing, improve tone, and use AIWoven effectively.",
     intro:
       "Students who want to make ai text sound human usually run into the same issue: the writing is clear, but it does not feel natural. The sentences may be too smooth, too balanced, or too generic. That often happens after using AI for summaries, outlines, or rough drafts. The fix is not to randomly swap words. The fix is to revise for voice, rhythm, and specificity.",
     sections: [
@@ -948,10 +948,10 @@ const posts: BlogPost[] = [
         ],
       },
       {
-        heading: "Best tool recommendation: NexusDesk",
+        heading: "Best tool recommendation: AIWoven",
         paragraphs: [
-          "NexusDesk is a practical choice because it lets students do more than one last-minute rewrite. You can improve the source material in <a href=\"/ai-note\">AI Note</a>, understand it better in <a href=\"/ai-study\">AI Study</a>, inspect tone in <a href=\"/ai-detector\">AI Detector</a>, refine the final voice in <a href=\"/ai-humanizer\">AI Humanizer</a>, and handle document prep in <a href=\"/converter\">Converter</a>.",
-          "Try NexusDesk for free: https://ai-multimodel-erhw.vercel.app",
+          "AIWoven is a practical choice because it lets students do more than one last-minute rewrite. You can improve the source material in <a href=\"/ai-note\">AI Note</a>, understand it better in <a href=\"/ai-study\">AI Study</a>, inspect tone in <a href=\"/ai-detector\">AI Detector</a>, refine the final voice in <a href=\"/ai-humanizer\">AI Humanizer</a>, and handle document prep in <a href=\"/converter\">Converter</a>.",
+          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
         ],
       },
       {
@@ -962,7 +962,7 @@ const posts: BlogPost[] = [
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Turn stiff AI-assisted writing into something clearer, more natural, and more believable for real academic use.",
     ctaLinks: [
@@ -979,7 +979,7 @@ const posts: BlogPost[] = [
     date: "2026-04-21",
     readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
-    seoTitle: "Mistakes Students Make With AI | NexusDesk",
+    seoTitle: "Mistakes Students Make With AI | AIWoven",
     seoDescription:
       "See the most common student AI mistakes, from passive summaries to robotic drafts, and learn how to use tools more effectively.",
     intro:
@@ -989,7 +989,7 @@ const posts: BlogPost[] = [
         heading: "Mistake one: asking one tool to do everything",
         paragraphs: [
           "A common habit is pasting a huge block of text into a general tool and asking for notes, flashcards, an essay outline, and a final draft all at once. The output may look efficient, but it often becomes shallow because each task needs a different kind of processing. Students then waste more time fixing the result than they would have spent using a clearer workflow from the start.",
-          "NexusDesk avoids this by separating jobs. <a href=\"/ai-note\">AI Note</a> handles note cleanup. <a href=\"/ai-study\">AI Study</a> handles review generation. <a href=\"/ai-detector\">AI Detector</a> handles writing checks. That structure is not just cleaner. It usually produces better output because each step has a narrower goal.",
+          "AIWoven avoids this by separating jobs. <a href=\"/ai-note\">AI Note</a> handles note cleanup. <a href=\"/ai-study\">AI Study</a> handles review generation. <a href=\"/ai-detector\">AI Detector</a> handles writing checks. That structure is not just cleaner. It usually produces better output because each step has a narrower goal.",
         ],
         toolLinks: [
           { href: "/ai-note", label: "Use AI Note" },
@@ -1023,7 +1023,7 @@ const posts: BlogPost[] = [
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Use specialized tools in the right order so AI supports your study process instead of creating more cleanup work.",
     ctaLinks: [
@@ -1040,7 +1040,7 @@ const posts: BlogPost[] = [
     date: "2026-04-29",
     readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
-    seoTitle: "AI vs Traditional Studying: Best Approach for Students | NexusDesk",
+    seoTitle: "AI vs Traditional Studying: Best Approach for Students | AIWoven",
     seoDescription:
       "Compare AI vs traditional studying and learn when each method works best for notes, recall, exam prep, and writing support.",
     intro:
@@ -1083,10 +1083,10 @@ const posts: BlogPost[] = [
         ],
       },
       {
-        heading: "Best tool recommendation: NexusDesk",
+        heading: "Best tool recommendation: AIWoven",
         paragraphs: [
-          "NexusDesk is useful here because it supports the hybrid approach instead of forcing one method. You can use AI where it saves the most time and still keep traditional recall at the center of your study habits. That is more effective than relying on one generic tool for everything.",
-          "Try NexusDesk for free: https://ai-multimodel-erhw.vercel.app",
+          "AIWoven is useful here because it supports the hybrid approach instead of forcing one method. You can use AI where it saves the most time and still keep traditional recall at the center of your study habits. That is more effective than relying on one generic tool for everything.",
+          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
         ],
       },
       {
@@ -1097,7 +1097,7 @@ const posts: BlogPost[] = [
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Combine faster AI-powered setup with traditional recall habits that actually improve test performance.",
     ctaLinks: [
@@ -1114,7 +1114,7 @@ const posts: BlogPost[] = [
     date: "2026-04-20",
     readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
-    seoTitle: "How AI Helps College Students | NexusDesk",
+    seoTitle: "How AI Helps College Students | AIWoven",
     seoDescription:
       "Learn how AI helps college students with notes, study prep, writing review, and course file management in practical workflows.",
     intro:
@@ -1124,7 +1124,7 @@ const posts: BlogPost[] = [
         heading: "AI helps most with organization",
         paragraphs: [
           "College work often breaks down because information is scattered. One class has slides, another has textbook notes, another has recorded lectures, and none of it is in the same format. AI can reduce that chaos by turning rough material into a cleaner base document. This is one of the clearest time-saving use cases because it cuts low-value labor without pretending to understand the course for you.",
-          "In NexusDesk, that starts with <a href=\"/ai-note\">AI Note</a>. You can bring transcripts, pasted readings, or rough notes into one place and convert them into a more structured outline. That gives you a better foundation for both revision and writing because the material is finally organized around actual concepts.",
+          "In AIWoven, that starts with <a href=\"/ai-note\">AI Note</a>. You can bring transcripts, pasted readings, or rough notes into one place and convert them into a more structured outline. That gives you a better foundation for both revision and writing because the material is finally organized around actual concepts.",
         ],
         toolLinks: [{ href: "/ai-note", label: "Open AI Note" }],
       },
@@ -1151,11 +1151,11 @@ const posts: BlogPost[] = [
         heading: "Even utility tasks matter",
         paragraphs: [
           "Students also benefit from AI-adjacent tools that keep assignments moving. File conversion is a simple example. If a portal needs a different format or a professor asks for images from a PDF packet, a fast <a href=\"/converter\">Converter</a> prevents a small technical issue from blocking the entire assignment. These moments are common enough that they deserve a place in the workflow.",
-          "The larger point is that AI helps college students most when it is integrated into real academic systems. NexusDesk provides that kind of stack: notes, study prep, writing review, and file conversion in one place. That makes the tools easier to adopt and much easier to revisit during the busiest parts of the term.",
+          "The larger point is that AI helps college students most when it is integrated into real academic systems. AIWoven provides that kind of stack: notes, study prep, writing review, and file conversion in one place. That makes the tools easier to adopt and much easier to revisit during the busiest parts of the term.",
         ],
       },
     ],
-    ctaTitle: "Try NexusDesk for free",
+    ctaTitle: "Try AIWoven for free",
     ctaDescription:
       "Build a practical college workflow for notes, review, writing checks, and file tasks without bouncing across unrelated tools.",
     ctaLinks: [

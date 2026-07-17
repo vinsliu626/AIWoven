@@ -2,9 +2,9 @@ import { SeoLandingPage } from "@/components/marketing/SeoLandingPage";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Convert PDF to JPG | NexusDesk",
+  title: "Convert PDF to JPG | AIWoven",
   description:
-    "Use NexusDesk to convert PDF to JPG with a clean file conversion workflow. Open the converter and move from PDF pages to JPG output.",
+    "Use AIWoven to convert PDF to JPG with a clean file conversion workflow. Open the converter and move from PDF pages to JPG output.",
   path: "/convert-pdf-to-jpg",
   keywords: ["convert pdf to jpg", "pdf to jpg converter", "pdf page to jpg"],
   robots: {
@@ -17,12 +17,12 @@ export default function ConvertPdfToJpgPage() {
   return (
     <SeoLandingPage
       eyebrow="PDF to JPG"
-      title="Convert PDF to JPG with the NexusDesk converter"
-      intro="Need to convert PDF to JPG for sharing, previews, or image-based workflows? This page explains the NexusDesk PDF to JPG path and links directly to the converter workspace."
+      title="Convert PDF to JPG with the AIWoven converter"
+      intro="Need to convert PDF to JPG for sharing, previews, or image-based workflows? This page explains the AIWoven PDF to JPG path and links directly to the converter workspace."
       paragraphs={[
-        "A PDF to JPG converter is useful when you need individual pages as images for slides, websites, design reviews, or quick visual sharing. NexusDesk gives you a dedicated converter workspace with a clear FROM-to-TO flow.",
-        "This landing page exists for high-intent search traffic around PDF to JPG conversion. It gives search engines plain-language HTML about the use case while pointing users into the same NexusDesk converter used for the rest of the product.",
-        "If your goal is to turn a PDF into JPG output quickly and keep the workflow inside the NexusDesk environment, the converter page below is the next step.",
+        "A PDF to JPG converter is useful when you need individual pages as images for slides, websites, design reviews, or quick visual sharing. AIWoven gives you a dedicated converter workspace with a clear FROM-to-TO flow.",
+        "This landing page exists for high-intent search traffic around PDF to JPG conversion. It gives search engines plain-language HTML about the use case while pointing users into the same AIWoven converter used for the rest of the product.",
+        "If your goal is to turn a PDF into JPG output quickly and keep the workflow inside the AIWoven environment, the converter page below is the next step.",
       ]}
       ctaHref="/converter"
       ctaLabel="Open Converter"
@@ -46,7 +46,7 @@ export default function ConvertPdfToJpgPage() {
         },
         {
           question: "Where do I do the actual conversion?",
-          answer: "Use the converter CTA on this page to open the NexusDesk converter workspace and choose the appropriate source and target formats.",
+          answer: "Use the converter CTA on this page to open the AIWoven converter workspace and choose the appropriate source and target formats.",
         },
       ]}
     />

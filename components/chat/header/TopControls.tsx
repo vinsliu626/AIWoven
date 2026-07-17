@@ -5,7 +5,7 @@ import { PillSelect, PillOption } from "@/components/chat/ui/PillSelect";
 
 type Mode = "single" | "team" | "detector" | "note";
 type ModelKind = "fast" | "quality";
-type SingleModelKey = "groq_fast" | "groq_quality" | "hf_deepseek" | "hf_kimi";
+type SingleModelKey = "aiwoven";
 
 export function TopControls({
   isZh,
@@ -58,10 +58,7 @@ export function TopControls({
   ];
 
   const singleModelOptions: PillOption[] = [
-    { value: "groq_fast", label: `Groq · ${isZh ? "快速" : "Fast"}` },
-    { value: "groq_quality", label: `Groq · ${isZh ? "高质量" : "Pro"}` },
-    { value: "hf_deepseek", label: "DeepSeek" },
-    { value: "hf_kimi", label: "Kimi" },
+    { value: "aiwoven", label: "AIWoven Assistant" },
   ];
 
   const teamQualityOptions: PillOption[] = [

@@ -26,7 +26,7 @@ const studyRequestSchema = z.object({
   noteCount: z.number().int().min(1).max(30).optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
   fileName: z.string().trim().max(260).optional(),
-  fileSizeBytes: z.number().int().min(0).max(8 * 1024 * 1024).optional(),
+  fileSizeBytes: z.number().int().min(0).max(200 * 1024 * 1024).optional(),
   mimeType: z.string().trim().max(200).optional(),
 });
 
@@ -348,7 +348,13 @@ function cleanFlashcard(item: unknown): StudyFlashcard | null {
 
 function normalizeOptions(options: unknown) {
   if (!Array.isArray(options)) return [];
-  return options.map((option) => (typeof option === "string" ? option.trim() : "")).filter(Boolean).slice(0, 6);
+  const seen = new Set<string>();
+  return options.map((option) => (typeof option === "string" ? option.trim() : "")).filter((option) => {
+    const key = option.toLowerCase();
+    if (!option || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 6);
 }
 
 function uniqueQuizTypes(types: StudyQuizType[] | undefined) {
@@ -369,18 +375,18 @@ function cleanQuizItem(item: unknown): StudyQuizItem | null {
 
   const type = typeof value.type === "string" ? value.type.trim() : "";
   const answer = typeof value.answer === "string" ? value.answer.trim() : "";
-  const explanation = typeof value.explanation === "string" ? value.explanation.trim() : undefined;
+  const explanation = typeof value.explanation === "string" ? value.explanation.trim() : "";
 
   if (type === "multiple_choice") {
     const question = typeof value.question === "string" ? value.question.trim() : "";
     const options = normalizeOptions(value.options);
-    if (!question || !answer || options.length < 2) return null;
+    if (!question || !answer || !explanation || options.length < 2 || !options.some((option) => option.toLowerCase() === answer.toLowerCase())) return null;
     return { type, question, options, answer, explanation };
   }
 
   if (type === "fill_blank") {
     const question = typeof value.question === "string" ? value.question.trim() : "";
-    if (!question || !answer) return null;
+    if (!question || !answer || !explanation) return null;
     return { type, question, answer, explanation };
   }
 
@@ -399,11 +405,15 @@ function cleanQuizItem(item: unknown): StudyQuizItem | null {
       .filter((pair): pair is { left: string; right: string } => Boolean(pair))
       .slice(0, 6);
 
-    if (!prompt || pairs.length < 2) return null;
+    if (!prompt || !explanation || pairs.length < 2 || new Set(pairs.map((pair) => pair.left.toLowerCase())).size !== pairs.length || new Set(pairs.map((pair) => pair.right.toLowerCase())).size !== pairs.length) return null;
     return { type, prompt, pairs, explanation };
   }
 
   return null;
+}
+
+export function validateGeneratedQuizItem(item: unknown) {
+  return cleanQuizItem(item);
 }
 
 async function callStudyModelRaw(
@@ -566,6 +576,7 @@ function buildRepairPrompt(input: {
     "Allowed keys: notes, flashcards, quiz.",
     sectionRules,
     "Quiz quality: standard study/exam review. No trivial filler.",
+    "Every quiz item must include a non-empty explanation. Multiple-choice answers must exactly match one unique option.",
     "Malformed output:",
     input.malformedOutput,
   ].join("\n");
@@ -588,7 +599,7 @@ function buildStudyPrompt(input: {
       ? `flashcards: produce up to ${input.targets.flashcards} items with {front, back}.`
       : "Do not return flashcards.",
     input.selectedModes.includes("quiz")
-      ? `quiz: produce up to ${input.targets.quiz} items using ONLY these types: ${input.selectedQuizTypes.join(", ")}. Keep answers short and document-specific.`
+      ? `quiz: produce up to ${input.targets.quiz} items using ONLY these types: ${input.selectedQuizTypes.join(", ")}. Every item MUST include a clear non-empty explanation. Keep answers short and document-specific.`
       : "Do not return quiz.",
   ].join("\n");
 
@@ -603,9 +614,9 @@ function buildStudyPrompt(input: {
     "Favor concept checks, applied understanding, definitions, relationships, comparisons, cause/effect, and likely test-style prompts.",
     "Do not turn headings into shallow questions. Do not invent filler just to reach the target count.",
     "Quiz schema:",
-    '{"type":"multiple_choice","question":string,"options":string[],"answer":string,"explanation"?:string}',
-    '{"type":"fill_blank","question":string,"answer":string,"explanation"?:string}',
-    '{"type":"matching","prompt":string,"pairs":[{"left":string,"right":string}],"explanation"?:string}',
+    '{"type":"multiple_choice","question":string,"options":unique string[],"answer":one exact option,"explanation":non-empty string}',
+    '{"type":"fill_blank","question":string,"answer":string,"explanation":non-empty string}',
+    '{"type":"matching","prompt":string,"pairs":[{"left":string,"right":string}],"explanation":non-empty string}',
     modeInstructions,
     "Avoid duplicate or repetitive items across sections.",
     "",
@@ -720,6 +731,7 @@ export async function generateStudyContent(params: {
         notes = normalized.notes;
         flashcards = normalized.flashcards;
         quiz = normalized.quiz;
+        if (selectedModes.includes("quiz") && (!quiz || quiz.length === 0)) throw new Error("Quiz validation failed");
       } catch {
         parseStage = "repair_try";
         const repairMessages = [
@@ -743,6 +755,7 @@ export async function generateStudyContent(params: {
         notes = normalized.notes;
         flashcards = normalized.flashcards;
         quiz = normalized.quiz;
+        if (selectedModes.includes("quiz") && (!quiz || quiz.length === 0)) throw new Error("Quiz repair validation failed");
       }
 
       if (process.env.NODE_ENV !== "production") {

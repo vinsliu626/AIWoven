@@ -9,6 +9,7 @@ import { generateStudyContent, sanitizeStudyText } from "@/lib/study/service";
 import { SUPPORTED_STUDY_EXTENSIONS, SUPPORTED_STUDY_MIME_TYPES } from "@/lib/study/limits";
 import { createStudySession } from "@/lib/study/history";
 import type { StudyMode, StudyQuizType } from "@/lib/study/types";
+import { trackFeatureUsage } from "@/lib/analytics/track";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ const requestSchema = z.object({
   quizCount: z.number().int().min(1).max(30).optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
   fileName: z.string().trim().max(260).optional(),
-  fileSizeBytes: z.number().int().min(0).max(8 * 1024 * 1024).optional(),
+  fileSizeBytes: z.number().int().min(0).max(200 * 1024 * 1024).optional(),
   mimeType: z.string().trim().max(200).optional(),
 });
 
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     const status = await withPrismaConnectionRetry(
       async () => {
         const quotaStatus = await assertStudyQuotaOrThrow(userId);
-        assertStudyCooldownOrThrow(userId, quotaStatus.limits.cooldownMs);
+        assertStudyCooldownOrThrow(userId, quotaStatus.limits.cooldownMs, quotaStatus.unlimited);
         return quotaStatus;
       },
       { maxRetries: 1, retryDelayMs: 120, operationName: "study-quota-check" }
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if ((body.fileSizeBytes ?? 0) > status.limits.maxFileSizeBytes) {
+    if (!status.unlimited && (body.fileSizeBytes ?? 0) > status.limits.maxFileSizeBytes) {
       return NextResponse.json(
         {
           ok: false,
@@ -125,7 +126,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (body.quizCount && body.quizCount > status.limits.maxQuizQuestions) {
+    if (!status.unlimited && body.quizCount && body.quizCount > status.limits.maxQuizQuestions) {
       return NextResponse.json(
         {
           ok: false,
@@ -161,6 +162,7 @@ export async function POST(req: NextRequest) {
     });
 
     const freshStatus = await getStudyUsageStatus(userId);
+    void trackFeatureUsage({ userId, featureKey: "study", featureName: "AI Study", actionType: "STUDY_USED", pagePath: "/ai-study", metadata: { selected_modes: selectedModes, quiz_count: generated.result.quiz?.length ?? 0 }, request: req });
 
     return NextResponse.json({
       ok: true,
