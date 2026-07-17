@@ -19,3 +19,10 @@ __pycache__/
 *.wav
 *.webm
 .vercel
+
+# --- local verification artifacts ---
+/output/
+/playwright-report/
+/test-results/
+/tmp/
+/tatus
