@@ -13,7 +13,7 @@ export async function callOpenRouterChat(opts: {
   temperature?: number;
 }) {
   const siteUrl = process.env.OPENROUTER_SITE_URL || "http://localhost:3000";
-  const appName = process.env.OPENROUTER_APP_NAME || "ai-multimodel";
+  const appName = process.env.OPENROUTER_APP_NAME || "AIWoven";
   const timeoutMs = opts.timeoutMs ?? parseEnvInt("AI_NOTE_LLM_TIMEOUT_MS", 60_000);
 
   const { controller, cancel } = withTimeout(timeoutMs);

@@ -1,4 +1,4 @@
-const PRODUCTION_SITE_URL = "https://ai-multimodel-erhw.vercel.app";
+const PRODUCTION_SITE_URL = "https://aiwoven.app";
 const DEVELOPMENT_SITE_URL = "http://localhost:3000";
 
 const SITE_URL_ENV_KEYS = [

@@ -18,3 +18,4 @@ __pycache__/
 # --- media / temp ---
 *.wav
 *.webm
+.vercel

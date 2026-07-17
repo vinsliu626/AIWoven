@@ -59,7 +59,7 @@ function detectorRequestHeaders() {
   return {
     "Content-Type": "application/json",
     Accept: "application/json",
-    "User-Agent": "ai-multimodel-detector/1.0",
+    "User-Agent": "aiwoven-detector/1.0",
   };
 }
 

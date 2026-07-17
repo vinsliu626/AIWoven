@@ -14,7 +14,7 @@ async function probe(method, path, body) {
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        "User-Agent": "ai-multimodel-detector/1.0",
+        "User-Agent": "aiwoven-detector/1.0",
       },
       body: body ? JSON.stringify(body) : undefined,
       cache: "no-store",

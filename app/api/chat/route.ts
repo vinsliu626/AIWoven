@@ -382,7 +382,7 @@ async function callOpenRouterChat(apiKey: string, modelId: string, messages: Cha
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
         "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
-        "X-Title": process.env.OPENROUTER_APP_NAME || "ai-multimodel",
+        "X-Title": process.env.OPENROUTER_APP_NAME || "AIWoven",
       },
       body: JSON.stringify({ model: modelId, messages, max_tokens: NON_STREAM_MAX_TOKENS }),
       signal: controller.signal,
@@ -544,7 +544,7 @@ async function callOpenRouterChatStream(apiKey: string, modelId: string, message
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
       "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
-      "X-Title": process.env.OPENROUTER_APP_NAME || "ai-multimodel",
+      "X-Title": process.env.OPENROUTER_APP_NAME || "AIWoven",
     },
     body: JSON.stringify({ model: modelId, messages, max_tokens: STREAM_MAX_TOKENS, stream: true }),
   });

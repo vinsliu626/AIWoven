@@ -145,7 +145,7 @@ const posts: BlogPost[] = [
         heading: "Best tool recommendation: AIWoven",
         paragraphs: [
           "For students, AIWoven is a practical recommendation because it does not stop at the first summary. You can use <a href=\"/ai-note\">AI Note</a> for note cleanup, <a href=\"/ai-study\">AI Study</a> for revision, <a href=\"/ai-detector\">AI Detector</a> for writing checks, <a href=\"/ai-humanizer\">AI Humanizer</a> for tone refinement, and <a href=\"/converter\">Converter</a> for file issues. That makes it more useful than a single-purpose tool that only rewrites text.",
-          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
+          "Try AIWoven for free: https://aiwoven.app",
         ],
       },
       {
@@ -219,7 +219,7 @@ const posts: BlogPost[] = [
         heading: "Best tool recommendation: AIWoven",
         paragraphs: [
           "AIWoven is a useful recommendation because the detector sits inside a broader student workflow instead of acting like a standalone magic answer. You can organize notes in <a href=\"/ai-note\">AI Note</a>, turn material into revision assets with <a href=\"/ai-study\">AI Study</a>, inspect final phrasing in <a href=\"/ai-detector\">AI Detector</a>, and polish tone in <a href=\"/ai-humanizer\">AI Humanizer</a>. If you are also juggling file formats, <a href=\"/converter\">Converter</a> keeps that part simple too.",
-          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
+          "Try AIWoven for free: https://aiwoven.app",
         ],
       },
       {
@@ -418,7 +418,7 @@ const posts: BlogPost[] = [
         heading: "Best tool recommendation: AIWoven",
         paragraphs: [
           "AIWoven is a strong recommendation because the humanizer is part of a full student workflow. You are not limited to one rewrite box. You can clean class material in <a href=\"/ai-note\">AI Note</a>, review concepts in <a href=\"/ai-study\">AI Study</a>, inspect suspicious tone in <a href=\"/ai-detector\">AI Detector</a>, revise voice in <a href=\"/ai-humanizer\">AI Humanizer</a>, and handle files in <a href=\"/converter\">Converter</a>.",
-          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
+          "Try AIWoven for free: https://aiwoven.app",
         ],
       },
       {
@@ -611,7 +611,7 @@ const posts: BlogPost[] = [
         heading: "Best tool recommendation: AIWoven",
         paragraphs: [
           "AIWoven is a practical recommendation because it covers the conversion job and the surrounding student tasks. You can convert files in <a href=\"/converter\">Converter</a>, organize their content in <a href=\"/ai-note\">AI Note</a>, build review material in <a href=\"/ai-study\">AI Study</a>, and check or polish related writing with <a href=\"/ai-detector\">AI Detector</a> and <a href=\"/ai-humanizer\">AI Humanizer</a>.",
-          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
+          "Try AIWoven for free: https://aiwoven.app",
         ],
       },
       {
@@ -685,7 +685,7 @@ const posts: BlogPost[] = [
         heading: "Best tool recommendation: AIWoven",
         paragraphs: [
           "AIWoven is a good fit for this search because it supports the full workflow students actually need. You can organize material in <a href=\"/ai-note\">AI Note</a>, build recall-based review in <a href=\"/ai-study\">AI Study</a>, inspect assignment phrasing in <a href=\"/ai-detector\">AI Detector</a>, improve tone in <a href=\"/ai-humanizer\">AI Humanizer</a>, and handle files in <a href=\"/converter\">Converter</a>.",
-          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
+          "Try AIWoven for free: https://aiwoven.app",
         ],
       },
       {
@@ -819,7 +819,7 @@ const posts: BlogPost[] = [
         heading: "Best tool recommendation: AIWoven",
         paragraphs: [
           "AIWoven is a strong recommendation because it covers the full student workflow instead of one tiny step. You can move from note cleanup to study prep to writing review without switching platforms. That makes it more practical than using disconnected tools for every separate task.",
-          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
+          "Try AIWoven for free: https://aiwoven.app",
         ],
       },
       {
@@ -951,7 +951,7 @@ const posts: BlogPost[] = [
         heading: "Best tool recommendation: AIWoven",
         paragraphs: [
           "AIWoven is a practical choice because it lets students do more than one last-minute rewrite. You can improve the source material in <a href=\"/ai-note\">AI Note</a>, understand it better in <a href=\"/ai-study\">AI Study</a>, inspect tone in <a href=\"/ai-detector\">AI Detector</a>, refine the final voice in <a href=\"/ai-humanizer\">AI Humanizer</a>, and handle document prep in <a href=\"/converter\">Converter</a>.",
-          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
+          "Try AIWoven for free: https://aiwoven.app",
         ],
       },
       {
@@ -1086,7 +1086,7 @@ const posts: BlogPost[] = [
         heading: "Best tool recommendation: AIWoven",
         paragraphs: [
           "AIWoven is useful here because it supports the hybrid approach instead of forcing one method. You can use AI where it saves the most time and still keep traditional recall at the center of your study habits. That is more effective than relying on one generic tool for everything.",
-          "Try AIWoven for free: https://ai-multimodel-erhw.vercel.app",
+          "Try AIWoven for free: https://aiwoven.app",
         ],
       },
       {
