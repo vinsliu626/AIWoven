@@ -92,7 +92,7 @@ export const PRODUCT_PLAN_LIMITS: Record<PlanId, ProductPlanLimits> = {
       maxSelectableModes: 2,
       allowedDifficulties: ["easy", "medium"],
       maxNotes: 6,
-      maxFlashcards: 6,
+      maxFlashcards: 12,
       cooldownMs: 90_000,
     },
     converter: {
@@ -136,7 +136,7 @@ export const PRODUCT_PLAN_LIMITS: Record<PlanId, ProductPlanLimits> = {
       maxSelectableModes: 3,
       allowedDifficulties: ["easy", "medium", "hard"],
       maxNotes: 8,
-      maxFlashcards: 10,
+      maxFlashcards: 20,
       cooldownMs: 60_000,
     },
     converter: {
@@ -180,7 +180,7 @@ export const PRODUCT_PLAN_LIMITS: Record<PlanId, ProductPlanLimits> = {
       maxSelectableModes: 3,
       allowedDifficulties: ["easy", "medium", "hard"],
       maxNotes: 10,
-      maxFlashcards: 14,
+      maxFlashcards: 30,
       cooldownMs: 45_000,
     },
     converter: {

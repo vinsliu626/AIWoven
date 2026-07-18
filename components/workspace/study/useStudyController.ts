@@ -42,6 +42,8 @@ export function useStudyController({
   const [localExtractionWarning, setLocalExtractionWarning] = useState<string | null>(null);
   const [history, setHistory] = useState<StudySessionListItem[]>([]);
   const [newHistoryId, setNewHistoryId] = useState<string | null>(null);
+  const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
+  const [historyActionMessage, setHistoryActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const limits = entitlement ? {
     maxFileSizeBytes: entitlement.studyMaxFileSizeBytes,
@@ -150,6 +152,25 @@ export function useStudyController({
     return item.status === "FAILED" && Boolean(file && extractedText && outputType === item.selectedModes[0] && file.name === item.fileName);
   }
 
+  async function deleteHistoryItem(item: StudySessionListItem) {
+    const relationshipNote = item.flashcardSetId ? "Reusable Flashcard and Quiz material will remain available." : "This removes the saved history result.";
+    if (deletingHistoryId || !window.confirm(`Delete “${item.title}” from Study History? ${relationshipNote}`)) return;
+    setDeletingHistoryId(item.id);
+    setHistoryActionMessage(null);
+    try {
+      const response = await fetch(`/api/study/session/${encodeURIComponent(item.id)}`, { method: "DELETE", credentials: "include" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) throw new Error("DELETE_FAILED");
+      setHistory((current) => current.filter((entry) => entry.id !== item.id));
+      setNewHistoryId((current) => current === item.id ? null : current);
+      setHistoryActionMessage({ type: "success", text: `Removed “${item.title}” from Study History. Any reusable study material was kept.` });
+    } catch {
+      setHistoryActionMessage({ type: "error", text: "Study History could not be deleted. Please try again." });
+    } finally {
+      setDeletingHistoryId(null);
+    }
+  }
+
   return {
     file,
     dragActive,
@@ -164,6 +185,8 @@ export function useStudyController({
     localExtractionWarning,
     history,
     newHistoryId,
+    deletingHistoryId,
+    historyActionMessage,
     canGenerate,
     canRetry,
     modeLabel,
@@ -172,5 +195,6 @@ export function useStudyController({
     setOutputType,
     handleFileSelection,
     generate,
+    deleteHistoryItem,
   };
 }

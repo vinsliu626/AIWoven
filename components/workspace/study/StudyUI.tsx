@@ -14,7 +14,7 @@ function formatCreatedAt(value: string) {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }
 
-function HistoryItem({ item, highlighted, canRetry, onRetry }: { item: StudySessionListItem; highlighted: boolean; canRetry: boolean; onRetry: () => void }) {
+function HistoryItem({ item, highlighted, canRetry, deleting, onRetry, onDelete }: { item: StudySessionListItem; highlighted: boolean; canRetry: boolean; deleting: boolean; onRetry: () => void; onDelete: () => void }) {
   const output = item.selectedModes[0] ?? "notes";
   const completed = item.status === "COMPLETED";
   const processing = item.status === "PROCESSING";
@@ -40,8 +40,13 @@ function HistoryItem({ item, highlighted, canRetry, onRetry }: { item: StudySess
         {processing ? <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/[0.06]"><span className="study-processing-bar block h-full w-1/3 rounded-full bg-cyan-300/70"/></div> : null}
         {item.status === "FAILED" ? <p role="status" className="mt-2 text-xs text-red-200">{item.errorSummary || "Generation could not be completed."}</p> : null}
       </div>
-      {completed ? <Link href={`/study/session/${item.id}`} className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-slate-100 hover:bg-white/[0.08]">Open</Link> : null}
-      {item.status === "FAILED" && canRetry ? <button type="button" onClick={onRetry} className="shrink-0 rounded-lg border border-red-300/20 px-3 py-2 text-xs text-red-100 hover:bg-red-300/[0.06]">Retry</button> : null}
+      <div className="flex shrink-0 items-center gap-2">
+        {completed ? <Link href={`/study/session/${item.id}`} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-slate-100 hover:bg-white/[0.08]">Open</Link> : null}
+        {item.status === "FAILED" && canRetry ? <button type="button" onClick={onRetry} className="rounded-lg border border-red-300/20 px-3 py-2 text-xs text-red-100 hover:bg-red-300/[0.06]">Retry</button> : null}
+        <button data-testid="study-history-delete" type="button" onClick={onDelete} disabled={deleting} aria-label={`Delete ${item.title} from Study History`} title="Delete from Study History" className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-white/[0.08] px-2.5 py-2 text-xs text-slate-500 hover:border-red-300/20 hover:text-red-200 disabled:cursor-wait disabled:opacity-50">
+          {deleting ? <span>Deleting…</span> : <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        </button>
+      </div>
     </div>
   </article>;
 }
@@ -106,8 +111,9 @@ export function StudyUI({
 
         <aside data-testid="study-history" aria-labelledby="study-history-heading" className="min-w-0">
           <div className="flex items-end justify-between gap-4 border-b border-white/[0.08] pb-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.22em] text-slate-600">Saved results</p><h2 id="study-history-heading" className="mt-1 text-lg font-semibold text-slate-100">Study History</h2></div><span className="text-xs text-slate-600">{ctl.history.length}</span></div>
+          {ctl.historyActionMessage ? <p role={ctl.historyActionMessage.type === "error" ? "alert" : "status"} className={`mt-4 border-l-2 pl-3 text-xs ${ctl.historyActionMessage.type === "error" ? "border-red-300/50 text-red-200" : "border-emerald-300/40 text-emerald-200"}`}>{ctl.historyActionMessage.text}</p> : null}
           <div className="mt-1">
-            {ctl.historyLoading && ctl.history.length === 0 ? <p className="py-8 text-sm text-slate-500">Loading Study History…</p> : ctl.history.length === 0 ? <div className="py-10"><p className="text-sm font-medium text-slate-300">No study material yet</p><p className="mt-2 max-w-sm text-xs leading-relaxed text-slate-500">Generated Flashcards, Quiz material, and Notes will appear here.</p></div> : ctl.history.map((item) => <HistoryItem key={item.id} item={item} highlighted={ctl.newHistoryId === item.id} canRetry={ctl.canRetry(item)} onRetry={() => void ctl.generate()}/>) }
+            {ctl.historyLoading && ctl.history.length === 0 ? <p className="py-8 text-sm text-slate-500">Loading Study History…</p> : ctl.history.length === 0 ? <div className="py-10"><p className="text-sm font-medium text-slate-300">No study material yet</p><p className="mt-2 max-w-sm text-xs leading-relaxed text-slate-500">Generated Flashcards, Quiz material, and Notes will appear here.</p></div> : ctl.history.map((item) => <HistoryItem key={item.id} item={item} highlighted={ctl.newHistoryId === item.id} canRetry={ctl.canRetry(item)} deleting={ctl.deletingHistoryId === item.id} onRetry={() => void ctl.generate()} onDelete={() => void ctl.deleteHistoryItem(item)}/>) }
           </div>
         </aside>
       </div>

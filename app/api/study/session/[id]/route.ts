@@ -72,7 +72,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     const deleted = await deleteStudySession(userId, id);
     if (deleted.count === 0) return jsonErr(404, "NOT_FOUND");
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    return NextResponse.json({ ok: true, deletedId: id, reusableMaterialPreserved: true }, { status: 200 });
   } catch (error) {
     console.error("[study/session/:id][DELETE] failed", error);
     return jsonErr(500, "DELETE_FAILED", "Failed to delete study session.");

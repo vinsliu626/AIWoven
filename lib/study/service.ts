@@ -46,7 +46,7 @@ const studyResultCache = new Map<string, CachedStudyResult>();
 const STUDY_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const MODEL_TIMEOUT_MS = 22_000;
 const REPAIR_MAX_TOKENS = 1_100;
-const STUDY_PROMPT_VERSION = "2026-03-13-quiz-quality-v2";
+const STUDY_PROMPT_VERSION = "2026-07-18-flashcard-depth-v3";
 
 type RawModelPayload = {
   notes?: unknown;
@@ -186,21 +186,21 @@ function computeTargets(input: {
 
   let baseNotesMin = 4;
   let baseNotesMax = 6;
-  let baseFlashMin = 4;
-  let baseFlashMax = 6;
+  let baseFlashMin = 10;
+  let baseFlashMax = 12;
   let baseQuizMin = input.plan === "basic" ? 10 : input.plan === "pro" ? 16 : 22;
   let baseQuizMax = input.plan === "basic" ? 10 : input.plan === "pro" ? 20 : 30;
 
   if (charCount >= 4_000 && charCount <= 12_000) {
     baseNotesMin = 6;
     baseNotesMax = 8;
-    baseFlashMin = 6;
-    baseFlashMax = 10;
+    baseFlashMin = 12;
+    baseFlashMax = 16;
   } else if (charCount > 12_000) {
     baseNotesMin = 6;
     baseNotesMax = Math.min(10, input.limits.maxNotes);
-    baseFlashMin = 6;
-    baseFlashMax = Math.min(12, input.limits.maxFlashcards);
+    baseFlashMin = 16;
+    baseFlashMax = Math.min(24, input.limits.maxFlashcards);
 
     if (input.plan === "pro") {
       baseQuizMin = questionAnchors >= 8 ? 20 : 18;
@@ -344,6 +344,27 @@ function cleanFlashcard(item: unknown): StudyFlashcard | null {
   const back = typeof value.back === "string" ? value.back.trim() : "";
   if (!front || !back) return null;
   return { front, back };
+}
+
+export function dedupeStudyFlashcards(cards: StudyFlashcard[]) {
+  const seenFronts = new Set<string>();
+  const seenPairs = new Set<string>();
+  return cards.filter((card) => {
+    const front = card.front.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+    const back = card.back.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+    const pair = `${front}\u0000${back}`;
+    if (!front || !back || seenFronts.has(front) || seenPairs.has(pair)) return false;
+    seenFronts.add(front);
+    seenPairs.add(pair);
+    return true;
+  });
+}
+
+export function minimumFlashcardsForText(text: string, target: number) {
+  const wordCount = text.match(/\b[\p{L}\p{N}][\p{L}\p{N}'-]*\b/gu)?.length ?? 0;
+  const sentenceCount = text.match(/[.!?](?:\s|$)/g)?.length ?? 0;
+  const supportsTen = wordCount >= 180 && sentenceCount >= 8;
+  return supportsTen ? Math.min(10, target) : 1;
 }
 
 function normalizeOptions(options: unknown) {
@@ -537,7 +558,7 @@ function normalizeStudyPayload(
 
   const flashcards = selectedModes.includes("flashcards")
     ? Array.isArray(payload.flashcards)
-      ? payload.flashcards.map(cleanFlashcard).filter((item): item is StudyFlashcard => Boolean(item)).slice(0, targets.flashcards)
+      ? dedupeStudyFlashcards(payload.flashcards.map(cleanFlashcard).filter((item): item is StudyFlashcard => Boolean(item))).slice(0, targets.flashcards)
       : []
     : undefined;
 
@@ -563,7 +584,7 @@ function buildRepairPrompt(input: {
   const sectionRules = [
     input.selectedModes.includes("notes") ? `- notes: string[] (up to ${input.targets.notes})` : "- notes: omit",
     input.selectedModes.includes("flashcards")
-      ? `- flashcards: [{front: string, back: string}] (up to ${input.targets.flashcards})`
+      ? `- flashcards: [{front: string, back: string}] (target ${input.targets.flashcards} distinct items; return fewer only when the document cannot support more without invention)`
       : "- flashcards: omit",
     input.selectedModes.includes("quiz")
       ? `- quiz: [{type: ${input.allowedQuizTypes.map((t) => `\"${t}\"`).join("|")}, ...}] (up to ${input.targets.quiz})`
@@ -596,7 +617,7 @@ function buildStudyPrompt(input: {
       ? `notes: produce up to ${input.targets.notes} concise, high-signal bullets (no filler).`
       : "Do not return notes.",
     input.selectedModes.includes("flashcards")
-      ? `flashcards: produce up to ${input.targets.flashcards} items with {front, back}.`
+      ? `flashcards: target ${input.targets.flashcards} distinct {front, back} items. Produce at least 10 when the document supports 10 meaningful concepts; return fewer only when additional cards would require repetition, trivia, or unsupported facts. Cover the document's major definitions, key concepts, terminology, important facts, relationships, cause and effect, formulas, and dates when those categories are present. Keep fronts specific and study-worthy, backs concise, and never repeat or lightly reword a question.`
       : "Do not return flashcards.",
     input.selectedModes.includes("quiz")
       ? `quiz: produce up to ${input.targets.quiz} items using ONLY these types: ${input.selectedQuizTypes.join(", ")}. Every item MUST include a clear non-empty explanation. Keep answers short and document-specific.`
@@ -623,6 +644,19 @@ function buildStudyPrompt(input: {
     `${header}Document text:`,
     input.text,
   ].join("\n");
+}
+
+function buildFlashcardExpansionPrompt(input: { text: string; title?: string; target: number; existing: StudyFlashcard[] }) {
+  return [
+    "Use only the supplied document text. Return one raw JSON object with only a flashcards array.",
+    `Produce ${input.target} distinct high-quality flashcards when the document supports them. Return fewer only if reaching the target would require invention or repetition.`,
+    "Cover major definitions, concepts, terminology, facts, relationships, cause/effect, formulas, and dates when present.",
+    "Do not duplicate or lightly reword an existing front. Avoid trivia and heading-only questions. Keep answers concise and source-grounded.",
+    `Existing cards to preserve and improve upon: ${JSON.stringify(input.existing)}`,
+    input.title ? `Document title: ${input.title}` : "",
+    "Document text:",
+    input.text,
+  ].filter(Boolean).join("\n");
 }
 
 function computeModelMaxTokens(targets: TargetCounts) {
@@ -756,6 +790,22 @@ export async function generateStudyContent(params: {
         flashcards = normalized.flashcards;
         quiz = normalized.quiz;
         if (selectedModes.includes("quiz") && (!quiz || quiz.length === 0)) throw new Error("Quiz repair validation failed");
+      }
+
+      if (selectedModes.includes("flashcards")) {
+        const minimum = minimumFlashcardsForText(boundedText, targets.flashcards);
+        if ((flashcards?.length ?? 0) < minimum) {
+          const expanded = await callStudyModelRaw(provider, [
+            { role: "system", content: "Generate source-grounded study flashcards. Return one valid JSON object only." },
+            { role: "user", content: buildFlashcardExpansionPrompt({ text: boundedText, title: parsed.title, target: targets.flashcards, existing: flashcards ?? [] }) },
+          ], computeModelMaxTokens({ notes: 0, flashcards: targets.flashcards, quiz: 0 }));
+          const expandedPayload = parseRawPayload(expanded.content);
+          const expandedCards = Array.isArray(expandedPayload.flashcards)
+            ? expandedPayload.flashcards.map(cleanFlashcard).filter((item): item is StudyFlashcard => Boolean(item))
+            : [];
+          flashcards = dedupeStudyFlashcards([...(flashcards ?? []), ...expandedCards]).slice(0, targets.flashcards);
+          if (flashcards.length < minimum) throw new Error(`${provider.provider} returned too few distinct flashcards for the supplied document`);
+        }
       }
 
       if (process.env.NODE_ENV !== "production") {

@@ -26,7 +26,7 @@ async function makeDocx() {
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
-async function installStudyApi(page: Page, options: { failGeneration?: boolean } = {}) {
+async function installStudyApi(page: Page, options: { failGeneration?: boolean; failDeletion?: boolean } = {}) {
   const history: HistoryItem[] = [];
   await page.route("**/api/auth/session", (route) => fulfillJson(route, { user: { id: "study-user", name: "Study User", email: "study@example.test", role: "USER" }, expires: "2099-01-01T00:00:00.000Z" }));
   await page.route("**/api/auth/providers", (route) => fulfillJson(route, {}));
@@ -36,6 +36,16 @@ async function installStudyApi(page: Page, options: { failGeneration?: boolean }
   await page.route("**/api/billing/status", (route) => fulfillJson(route, { ok: true, plan: "basic", unlimited: false, studyGenerationsPerDay: 1, studyMaxFileSizeBytes: 2_097_152, studyMaxExtractedChars: 8_000, studyMaxQuizQuestions: 10, studyMaxSelectableModes: 2, studyAllowedDifficulties: ["easy", "medium"], usedStudyCountToday: 0 }));
   await page.route("**/api/study/usage", (route) => fulfillJson(route, { ok: true, remainingToday: 1 }));
   await page.route("**/api/study/sessions", (route) => fulfillJson(route, { ok: true, sessions: history }));
+  await page.route("**/api/study/session/*", async (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    if (options.failDeletion) return fulfillJson(route, { ok: false, error: "DELETE_FAILED", message: "Study History could not be deleted." }, 500);
+    const id = route.request().url().split("/").pop();
+    const index = history.findIndex((item) => item.id === id);
+    if (index < 0) return fulfillJson(route, { ok: false, error: "NOT_FOUND" }, 404);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    history.splice(index, 1);
+    return fulfillJson(route, { ok: true, deletedId: id });
+  });
   await page.route("**/api/study/generate", async (route) => {
     const payload = route.request().postDataJSON() as { title: string; fileName: string; selectedModes: string[]; quizTypes?: string[] };
     if (options.failGeneration) {
@@ -84,6 +94,16 @@ test("AI Study uses the simplified single-output workflow and highlights a compl
   expect(await item.evaluate((element) => getComputedStyle(element).animationIterationCount)).toBe("3");
   await expect(item.getByRole("link", { name: "Open" })).toHaveAttribute("href", "/study/session/new-study-result");
   await page.screenshot({ path: "output/ai-study-history-completed.png", fullPage: true });
+
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await item.getByTestId("study-history-delete").click();
+  await expect(item).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await item.getByTestId("study-history-delete").click();
+  await expect(item.getByText("Deleting…")).toBeVisible();
+  await expect(item).toHaveCount(0);
+  await expect(page.getByText(/Any reusable study material was kept\./, { exact: false })).toBeVisible();
+  await expect(page.getByTestId("study-history")).toContainText("No study material yet");
 });
 
 test("AI Study keeps the selected document after a controlled generation failure", async ({ page }) => {
@@ -109,4 +129,16 @@ test("completion highlighting respects reduced motion", async ({ page }) => {
   const item = visibleTestId(page, "study-history-item").filter({ hasText: "biology" });
   await expect(item).toHaveAttribute("data-status", "completed");
   expect(await item.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+});
+
+test("Study History deletion failures are controlled and preserve the item", async ({ page }) => {
+  const history = await installStudyApi(page, { failDeletion: true });
+  history.push({ id: "delete-failure", title: "Protected biology", fileName: "biology.docx", selectedModes: ["flashcards"], selectedQuizTypes: [], status: "COMPLETED", errorSummary: null, itemCount: 12, flashcardSetId: "preserved-set", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  await page.goto("/ai-study");
+  const item = visibleTestId(page, "study-history-item").filter({ hasText: "Protected biology" });
+  page.once("dialog", (dialog) => dialog.accept());
+  await item.getByTestId("study-history-delete").click();
+  await expect(item).toBeVisible();
+  await expect(page.getByText("Study History could not be deleted. Please try again.", { exact: true })).toBeVisible();
+  await expect(page.getByText(/stack|exception|raw server/i)).toHaveCount(0);
 });

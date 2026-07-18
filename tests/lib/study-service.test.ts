@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getStudyPlanLimits } from "@/lib/study/limits";
 import { studyCardsFromResult } from "@/lib/study/material";
-import { sanitizeStudyText, truncateStudyText, validateGeneratedQuizItem } from "@/lib/study/service";
+import { dedupeStudyFlashcards, minimumFlashcardsForText, sanitizeStudyText, truncateStudyText, validateGeneratedQuizItem } from "@/lib/study/service";
 import type { StudyGenerationResult } from "@/lib/study/types";
 
 describe("study limits", () => {
@@ -11,6 +11,7 @@ describe("study limits", () => {
     expect(limits.maxFileSizeBytes).toBe(2 * 1024 * 1024);
     expect(limits.maxExtractedChars).toBe(8_000);
     expect(limits.maxQuizQuestions).toBe(10);
+    expect(limits.maxFlashcards).toBeGreaterThanOrEqual(10);
     expect(limits.allowedDifficulties).toEqual(["easy", "medium"]);
   });
 
@@ -82,5 +83,24 @@ describe("reusable study material", () => {
       { frontText: "Organelle that makes ATP", backText: "Mitochondrion" },
       { frontText: "Chloroplast", backText: "Photosynthesis" },
     ]);
+  });
+});
+
+describe("flashcard generation quality", () => {
+  it("requires ten cards for a substantial educational document", () => {
+    const sentences = Array.from({ length: 12 }, (_, index) => `Concept ${index + 1} explains a distinct biological process with terminology, relationships, evidence, and practical consequences for students to review carefully.`);
+    expect(minimumFlashcardsForText(sentences.join(" "), 12)).toBe(10);
+  });
+
+  it("does not force ten cards from a genuinely short source", () => {
+    expect(minimumFlashcardsForText("ATP stores cellular energy.", 12)).toBe(1);
+  });
+
+  it("removes duplicate and lightly reformatted flashcard fronts", () => {
+    expect(dedupeStudyFlashcards([
+      { front: "What is ATP?", back: "Cellular energy currency" },
+      { front: " what   is atp? ", back: "A nucleotide" },
+      { front: "Where is ATP produced?", back: "Primarily in mitochondria" },
+    ])).toHaveLength(2);
   });
 });

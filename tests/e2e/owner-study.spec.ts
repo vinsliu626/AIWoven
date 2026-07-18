@@ -46,6 +46,9 @@ test.describe("Owner authorization and AI Study", () => {
     expect(api.status).toBe(403);
     const privateStudy = await jsonFetch<{ ok: boolean }>(page, "/api/study/session/e2e-owner-study-session");
     expect(privateStudy.status).toBe(404);
+    const privateDelete = await jsonFetch<{ ok: boolean; error: string }>(page, "/api/study/session/e2e-owner-study-session", { method: "DELETE" });
+    expect(privateDelete.status).toBe(404);
+    expect(privateDelete.body).toMatchObject({ ok: false, error: "NOT_FOUND" });
     await page.goto("/owner/analytics");
     await expect(page.getByRole("heading", { name: "404", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "AIWoven Analytics", exact: true })).toHaveCount(0);
@@ -219,22 +222,59 @@ test.describe("Owner authorization and AI Study", () => {
       await expect(page.locator('[data-testid="study-selected-file"]:visible')).toContainText("Ready", { timeout: 20_000 });
     };
 
-    await upload("cell-biology-real.docx", "Cellular respiration converts glucose into usable ATP. Glycolysis occurs in the cytoplasm. The citric acid cycle and oxidative phosphorylation occur in mitochondria. The electron transport chain creates a proton gradient that powers ATP synthase. Oxygen is the final electron acceptor and water is produced.");
+    const biologyText = [
+      "Cellular respiration converts the chemical energy in glucose into ATP that cells can use for transport, synthesis, movement, and signaling.",
+      "Glycolysis occurs in the cytoplasm, splits one glucose molecule into two pyruvate molecules, and produces a small amount of ATP and NADH.",
+      "When oxygen is available, pyruvate enters the mitochondrial matrix and is converted into acetyl coenzyme A before the citric acid cycle.",
+      "The citric acid cycle releases carbon dioxide while transferring high-energy electrons to NADH and FADH2.",
+      "NADH and FADH2 deliver electrons to the electron transport chain in the inner mitochondrial membrane.",
+      "Energy released by electron transfers pumps protons from the matrix into the intermembrane space and creates an electrochemical gradient.",
+      "ATP synthase allows protons to flow back into the matrix and uses that energy to phosphorylate ADP into ATP through chemiosmosis.",
+      "Oxygen acts as the final electron acceptor, combines with electrons and protons, and forms water at the end of the transport chain.",
+      "Without oxygen, the electron transport chain stops because electrons cannot leave its final carrier.",
+      "Fermentation regenerates NAD plus so glycolysis can continue, but it does not produce the large ATP yield associated with oxidative phosphorylation.",
+      "Lactic acid fermentation occurs in some animal cells, while alcoholic fermentation in yeast produces ethanol and carbon dioxide.",
+      "The folded inner mitochondrial membrane forms cristae that increase surface area for electron transport proteins and ATP synthase.",
+      "Substrate-level phosphorylation makes ATP by directly transferring a phosphate group, whereas oxidative phosphorylation depends on the proton gradient.",
+      "Cells regulate respiration by adjusting enzyme activity according to ATP demand, substrate availability, and feedback from products.",
+      "The overall relationship among glycolysis, the citric acid cycle, and oxidative phosphorylation links carbon breakdown to electron transfer and ATP production.",
+    ].join(" ");
+    await upload("cell-biology-real.docx", biologyText);
     await page.locator('[data-testid="study-output-type"]:visible').selectOption("flashcards");
     await page.getByLabel("Title (optional)").fill(flashcardsTitle);
     await page.locator('[data-testid="study-generate"]:visible').click();
     const flashcardsItem = page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: flashcardsTitle });
     await expect(flashcardsItem).toHaveAttribute("data-status", "completed", { timeout: 60_000 });
     await expect(flashcardsItem).toHaveAttribute("data-new", "true");
+    const historyCount = Number((await flashcardsItem.textContent())?.match(/·\s+(\d+)\s+items?/)?.[1] ?? 0);
+    expect(historyCount).toBeGreaterThanOrEqual(10);
+    const sessionHref = await flashcardsItem.getByRole("link", { name: "Open" }).getAttribute("href");
+    const generatedSessionId = sessionHref?.split("/").pop();
     await flashcardsItem.getByRole("link", { name: "Open" }).click();
     await expect(page.getByTestId("focused-study-card")).toBeVisible();
 
+    const generatedSets = await jsonFetch<{ sets: Array<{ id: string; title: string; cards: Array<{ frontText: string; backText: string }> }> }>(page, "/api/flashcards/sets");
+    const generatedSet = generatedSets.body.sets.find((set) => set.title === flashcardsTitle);
+    expect(generatedSet?.cards.length).toBeGreaterThanOrEqual(10);
+    expect(new Set(generatedSet?.cards.map((card) => card.frontText.trim().replace(/\s+/g, " ").toLocaleLowerCase())).size).toBe(generatedSet?.cards.length);
     await page.goto("/flashcards");
-    await expect(page.locator("article").filter({ hasText: flashcardsTitle })).toBeVisible();
+    await expect(page.locator("article").filter({ hasText: flashcardsTitle })).toContainText(`${generatedSet?.cards.length} cards`);
     await page.goto("/quiz-me");
     await expect(page.getByLabel("Study material")).toContainText(flashcardsTitle);
 
     await page.goto("/ai-study");
+    const deletableItem = page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: flashcardsTitle });
+    page.once("dialog", (dialog) => dialog.accept());
+    await deletableItem.getByTestId("study-history-delete").click();
+    await expect(deletableItem).toHaveCount(0);
+    await expect(page.getByText(/Any reusable study material was kept\./, { exact: false })).toBeVisible();
+    await page.reload();
+    await expect(page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: flashcardsTitle })).toHaveCount(0);
+    if (!generatedSessionId) throw new Error("Generated Study Session id was unavailable.");
+    expect((await jsonFetch<{ ok: boolean }>(page, `/api/study/session/${generatedSessionId}`)).status).toBe(404);
+    const setsAfterHistoryDelete = await jsonFetch<{ sets: Array<{ id: string; title: string; cards: unknown[] }> }>(page, "/api/flashcards/sets");
+    expect(setsAfterHistoryDelete.body.sets.find((set) => set.id === generatedSet?.id)?.cards.length).toBeGreaterThanOrEqual(10);
+
     await upload("industrial-revolution-real.docx", "The Industrial Revolution accelerated mechanized manufacturing during the eighteenth and nineteenth centuries. Steam power expanded factory production and transportation. Urbanization increased as workers moved toward industrial centers. Railways connected markets, while labor reforms gradually addressed dangerous working conditions and long hours.");
     await page.locator('[data-testid="study-output-type"]:visible').selectOption("notes");
     await page.getByLabel("Title (optional)").fill(notesTitle);
@@ -242,7 +282,7 @@ test.describe("Owner authorization and AI Study", () => {
     const notesItem = page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: notesTitle });
     await expect(notesItem).toHaveAttribute("data-status", "completed", { timeout: 60_000 });
     await page.reload();
-    await expect(page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: flashcardsTitle })).toHaveAttribute("data-status", "completed");
+    await expect(page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: flashcardsTitle })).toHaveCount(0);
     await expect(page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: notesTitle })).toHaveAttribute("data-status", "completed");
     await notesItem.getByRole("link", { name: "Open" }).click();
     await expect(page.getByTestId("study-mode-selector")).toHaveText(/Learn/);
