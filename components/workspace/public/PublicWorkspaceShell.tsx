@@ -25,6 +25,7 @@ type RenderContext = {
   locked: boolean;
   isZh: boolean;
   authLoading: boolean;
+  authProviders: ClientSafeProvider[];
   refreshEntitlement: () => Promise<void>;
 };
 
@@ -475,7 +476,7 @@ export function PublicWorkspaceShell({
         ) : null}
 
         <div className="app-workspace-content relative z-10 flex-1 overflow-hidden pb-4">
-          {children({ entitlement, locked: !sessionExists, isZh, authLoading, refreshEntitlement })}
+          {children({ entitlement, locked: !sessionExists, isZh, authLoading, authProviders: visibleAuthProviders, refreshEntitlement })}
         </div>
         </div>
       </div>

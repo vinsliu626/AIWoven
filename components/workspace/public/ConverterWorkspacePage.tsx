@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { ConverterUI, type ConverterEntitlement } from "@/components/workspace/converter/ConverterUI";
+import { WorkspaceSignInPrompt } from "@/components/auth/WorkspaceSignInPrompt";
 import { ToolLandingPageSection } from "@/components/seo/ToolLandingPageSection";
 import { getConverterPlanLimits } from "@/lib/plans/productLimits";
 import { toolPageContent } from "@/lib/seo/toolPageContent";
@@ -70,14 +71,14 @@ export function ConverterWorkspacePage() {
 
   return (
     <PublicWorkspaceShell mode="converter">
-      {({ entitlement, locked, isZh, authLoading }) => (
+      {({ entitlement, locked, isZh, authLoading, authProviders }) => (
         <ToolLandingPageSection hero={toolPageContent.converter}>
-          <ConverterUI
+          {locked && !authLoading && !e2eEnabled ? <WorkspaceSignInPrompt isZh={isZh} toolName="Converter" callbackUrl="/converter" providers={authProviders} /> : <ConverterUI
             isZh={isZh}
             locked={e2eEnabled ? false : locked || authLoading}
             entitlement={e2eEnabled ? testEntitlement : entitlement}
             testMode={testMode}
-          />
+          />}
         </ToolLandingPageSection>
       )}
     </PublicWorkspaceShell>

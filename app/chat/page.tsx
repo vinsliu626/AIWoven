@@ -22,6 +22,7 @@ import { NexusOrb } from "@/components/shared/NexusOrb";
 import { AIWovenAppNav } from "@/components/app/AIWovenAppNav";
 import { CopyButton } from "@/components/ui/copy-button";
 import { LocalCredentialsForm } from "@/components/auth/LocalCredentialsForm";
+import { WorkspaceSignInPrompt } from "@/components/auth/WorkspaceSignInPrompt";
 import { useAppLanguage } from "@/components/app/AppLanguageProvider";
 import { useProTrialWheel } from "@/lib/hooks/useProTrialWheel";
 
@@ -493,6 +494,7 @@ function ChatPageInner() {
 
   // billing modal
   const [planOpen, setPlanOpen] = useState(false);
+  const [signInPromptMode, setSignInPromptMode] = useState<ChatMode | null>(null);
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [redeemCodeValue, setRedeemCodeValue] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
@@ -1080,7 +1082,7 @@ function ChatPageInner() {
 
   function setModeSafely(next: ChatMode) {
     if (!sessionExists && (next === "detector" || next === "note" || next === "study" || next === "humanizer" || next === "converter")) {
-      setPlanOpen(true);
+      setSignInPromptMode(next);
       return;
     }
     if (next !== "normal" && next !== "workflow") {
@@ -1524,6 +1526,16 @@ function ChatPageInner() {
       {workspaceNavOpen ? <div className="fixed inset-0 z-[80] lg:hidden"><button type="button" className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setWorkspaceNavOpen(false)} aria-label="Close workspace navigation"/><div className="absolute inset-y-0 left-0"><AIWovenAppNav mobile isOwner={effectiveSession?.user?.role === "OWNER"} onClose={() => setWorkspaceNavOpen(false)} onBilling={() => { void refreshEnt(); setPlanOpen(true); }} onSettings={() => setSettingsOpen(true)} /></div></div> : null}
 
       {/* Modals */}
+      {signInPromptMode ? (
+        <WorkspaceSignInPrompt
+          modal
+          isZh={isZh}
+          toolName={modeTitle(signInPromptMode, isZh).replace(/^\S+\s*/, "")}
+          callbackUrl={routeForMode(signInPromptMode)}
+          providers={visibleAuthProviders}
+          onClose={() => setSignInPromptMode(null)}
+        />
+      ) : null}
       <PlanModal
         open={planOpen}
         onClose={() => setPlanOpen(false)}

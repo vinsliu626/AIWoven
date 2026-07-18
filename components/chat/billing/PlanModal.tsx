@@ -123,60 +123,6 @@ function buildUsageRows(ent: EntitlementLike, isZh: boolean): UsageRow[] {
   ];
 }
 
-function DiscountRibbon({ accentClass, sublabel }: { accentClass: string; sublabel: string }) {
-  return (
-    <div className="pointer-events-none absolute right-[-38px] top-[18px] z-20 w-[150px] rotate-45">
-      <div
-        className={[
-          "border border-white/20 px-3 py-1.5 text-center shadow-[0_14px_34px_rgba(15,23,42,0.45)]",
-          accentClass,
-        ].join(" ")}
-      >
-        <div className="text-[11px] font-black uppercase tracking-[0.24em] text-white">DISCOUNT</div>
-        <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-white/85">{sublabel}</div>
-      </div>
-    </div>
-  );
-}
-
-function CardEffectsStyle() {
-  return (
-    <style jsx>{`
-      @keyframes planAuraPulse {
-        0%,
-        100% {
-          opacity: 0.5;
-        }
-        50% {
-          opacity: 0.9;
-        }
-      }
-
-      @keyframes planAuraTwinkle {
-        0%,
-        100% {
-          opacity: 0.22;
-        }
-        50% {
-          opacity: 0.4;
-        }
-      }
-
-      .plan-aura-soft {
-        animation: planAuraPulse 3.8s ease-in-out infinite;
-      }
-
-      .plan-aura-slow {
-        animation: planAuraPulse 5.4s ease-in-out infinite;
-      }
-
-      .plan-aura-twinkle {
-        animation: planAuraTwinkle 4.6s ease-in-out infinite;
-      }
-    `}</style>
-  );
-}
-
 function UsageStat({ row }: { row: UsageRow }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
@@ -210,114 +156,44 @@ function Card({
   price: string;
   priceSuffix: string;
 }) {
-  const isBasic = plan === "basic";
   const isPro = plan === "pro";
-  const isUltra = plan === "ultra";
-  const staticBorderClass = isBasic
-    ? "mm-basic-border"
-    : isUltra
-      ? "bg-[linear-gradient(90deg,#ff3b3b,#ffcc00,#2dff7a,#00d9ff,#7a5cff,#ff3b3b)]"
-      : "bg-[linear-gradient(90deg,#3b82f6,#a855f7,#22c55e,#3b82f6)]";
-  const cardRootClass = ["relative overflow-hidden rounded-3xl p-[1px]", staticBorderClass].join(" ");
-
-  const premiumSurfaceClass = isUltra
-    ? "bg-[radial-gradient(circle_at_20%_18%,rgba(255,255,255,0.11),transparent_18%),radial-gradient(circle_at_78%_20%,rgba(96,165,250,0.22),transparent_20%),radial-gradient(circle_at_50%_120%,rgba(168,85,247,0.18),transparent_38%),linear-gradient(180deg,rgba(2,6,23,0.92),rgba(3,7,18,0.98))]"
-    : isPro
-      ? "bg-[radial-gradient(circle_at_18%_78%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(168,85,247,0.14),transparent_26%),radial-gradient(circle_at_84%_76%,rgba(34,197,94,0.10),transparent_24%),linear-gradient(90deg,rgba(59,130,246,.16),rgba(168,85,247,.14),rgba(34,197,94,.12))]"
-      : "";
-
-  const cardShell = [
-    "relative overflow-hidden rounded-[23px] border p-4 md:p-5",
-    active
-      ? "border-blue-400/60 bg-slate-950/80 shadow-[0_0_0_1px_rgba(59,130,246,0.3),0_26px_70px_rgba(2,6,23,0.45)]"
-      : "border-white/10 bg-slate-950/72 shadow-[0_20px_60px_rgba(2,6,23,0.35)]",
-    premiumSurfaceClass,
-  ].join(" ");
-
   const ctaClass = active
-    ? "bg-white/10 text-slate-200 border border-white/10 hover:bg-white/15"
-    : isBasic
-      ? "bg-white/5 text-slate-100 border border-white/12 hover:bg-white/10 hover:border-white/20"
-      : isUltra
-        ? "bg-gradient-to-r from-slate-100 via-blue-100 to-cyan-200 text-slate-950 shadow-md shadow-cyan-500/20 hover:brightness-105"
-        : "bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-400 text-white shadow-md shadow-blue-500/30 hover:brightness-110";
+    ? "cursor-default border border-white/10 bg-white/[0.06] text-slate-400"
+    : isPro
+      ? "bg-cyan-300 text-slate-950 hover:bg-cyan-200"
+      : "border border-white/12 bg-white/[0.045] text-slate-100 hover:border-white/20 hover:bg-white/[0.075]";
 
   return (
-    <div className={cardRootClass}>
-      <CardEffectsStyle />
-      <div className={cardShell}>
-        {isPro ? (
-          <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
-            <div className="plan-aura-slow absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.08),transparent_58%)]" />
-            <div className="plan-aura-twinkle absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.05)_38%,transparent_62%)]" />
-            <DiscountRibbon accentClass="bg-gradient-to-r from-fuchsia-500 via-violet-500 to-amber-400" sublabel="SAVE NOW" />
-          </div>
-        ) : null}
-
-        {isUltra ? (
-          <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255,255,255,0.15)_0_1px,transparent_1.4px),radial-gradient(circle_at_70%_22%,rgba(255,255,255,0.22)_0_1px,transparent_1.6px),radial-gradient(circle_at_82%_58%,rgba(255,255,255,0.18)_0_1px,transparent_1.4px),radial-gradient(circle_at_36%_62%,rgba(255,255,255,0.16)_0_1px,transparent_1.5px),radial-gradient(circle_at_58%_38%,rgba(255,255,255,0.12)_0_1px,transparent_1.4px)] opacity-80" />
-            <div className="plan-aura-soft absolute inset-0 bg-[radial-gradient(circle_at_78%_20%,rgba(34,211,238,0.12),transparent_26%),radial-gradient(circle_at_18%_72%,rgba(168,85,247,0.14),transparent_28%),radial-gradient(circle_at_52%_52%,rgba(59,130,246,0.08),transparent_24%)]" />
-            <div className="plan-aura-slow absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-cyan-400/10 via-violet-500/6 to-transparent" />
-            <div className="plan-aura-twinkle absolute inset-0 bg-[linear-gradient(155deg,transparent_0%,rgba(255,255,255,0.04)_46%,transparent_66%)]" />
-            <DiscountRibbon accentClass="bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500" sublabel="LIMITED OFFER" />
-          </div>
-        ) : null}
-
-        <div className="relative z-10">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-slate-50">{title}</p>
-                {badge ? (
-                  <span className="rounded-full border border-white/10 bg-white/8 px-2 py-0.5 text-[10px] text-slate-200">
-                    {badge}
-                  </span>
-                ) : null}
-                {active ? (
-                  <span className="rounded-full border border-blue-400/20 bg-blue-400/15 px-2 py-0.5 text-[10px] text-blue-100">
-                    Current
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="mt-3">
-                {oldPrice ? <p className="text-xs text-slate-500 line-through">{oldPrice}</p> : <div className="h-[18px]" />}
-                <div className="flex items-end gap-2">
-                  <span
-                    className={[
-                      "text-3xl font-semibold tracking-tight",
-                      isUltra ? "bg-gradient-to-r from-white via-cyan-100 to-violet-200 bg-clip-text text-transparent" : "text-slate-50",
-                    ].join(" ")}
-                  >
-                    {price}
-                  </span>
-                  <span className="pb-1 text-xs text-slate-400">{priceSuffix}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
-
-          <div className="mt-4 space-y-2.5">
-            {features.map((feature) => (
-              <div
-                key={feature.label}
-                className="flex items-start justify-between gap-3 rounded-2xl border border-white/7 bg-black/20 px-3 py-2.5"
-              >
-                <span className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{feature.label}</span>
-                <span className="max-w-[58%] text-right text-[12px] font-medium leading-5 text-slate-100">{feature.value}</span>
-              </div>
-            ))}
-          </div>
-
-          <button onClick={onClick} className={["mt-4 h-10 w-full rounded-2xl text-sm font-semibold transition", ctaClass].join(" ")}>
-            {cta}
-          </button>
-        </div>
+    <article className={["relative flex h-full flex-col rounded-[24px] border p-5 transition-colors md:p-6", isPro ? "border-cyan-300/55 bg-cyan-300/[0.055]" : active ? "border-white/20 bg-white/[0.045]" : "border-white/10 bg-white/[0.018] hover:border-white/16"].join(" ")}>
+      {isPro ? <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200 to-transparent" /> : null}
+      <div className="flex min-h-7 flex-wrap items-center gap-2">
+        <h3 className="text-base font-semibold text-white">{title}</h3>
+        {badge ? <span className={["rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[.14em]", isPro ? "bg-cyan-300 text-slate-950" : "border border-white/10 bg-white/[0.05] text-slate-400"].join(" ")}>{badge}</span> : null}
+        {active ? <span className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[9px] uppercase tracking-[.14em] text-slate-300">Current</span> : null}
       </div>
-    </div>
+
+      <div className="mt-6 flex min-h-[54px] items-end gap-2 border-b border-white/10 pb-5">
+        <span className="text-3xl font-semibold tracking-tight text-white">{price}</span>
+        {priceSuffix ? <span className="pb-1 text-xs text-slate-500">{priceSuffix}</span> : null}
+        {oldPrice ? <span className="mb-1 ml-auto text-[11px] text-slate-600 line-through">{oldPrice}</span> : null}
+      </div>
+
+      <ul className="mt-5 flex-1 space-y-4">
+        {features.map((feature) => (
+          <li key={feature.label} className="grid grid-cols-[24px_1fr] gap-3">
+            <span aria-hidden className={["mt-0.5 grid h-5 w-5 place-items-center rounded-full text-[11px] font-bold", isPro ? "bg-cyan-300/18 text-cyan-200" : "bg-white/[0.07] text-slate-300"].join(" ")}>✓</span>
+            <div>
+              <p className="text-[10px] uppercase tracking-[.16em] text-slate-500">{feature.label}</p>
+              <p className="mt-1 text-[12px] leading-5 text-slate-200">{feature.value}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <button onClick={onClick} disabled={active} className={["mt-6 h-11 w-full rounded-xl text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60", ctaClass].join(" ")}>
+        {cta}
+      </button>
+    </article>
   );
 }
 
@@ -347,21 +223,22 @@ export function PlanModal({
   const proPrice = formatPrice("$6.99", "$5.99", "/ mo");
   const ultraPrice = formatPrice("$11.99", "$7.99", "/ mo");
   const copy = {
-    title: isZh ? "\u9009\u62e9\u5957\u9910" : "Choose a plan",
+    title: isZh ? "\u9009\u62e9\u9002\u5408\u4f60\u7684\u5957\u9910" : "Choose the plan that fits",
     subtitle: isZh
       ? "\u5347\u7ea7\u524d\u5148\u67e5\u770b\u804a\u5929\u3001\u68c0\u6d4b\u3001\u7b14\u8bb0\u3001Humanizer\u3001\u5b66\u4e60\u548c\u8f6c\u6362\u5668\u7684\u771f\u5b9e\u989d\u5ea6\u3002"
-      : "Review your real limits across chat, detector, notes, Humanizer, study, and Converter before upgrading.",
+      : "Compare every included AIWoven tool and its real usage limit at a glance.",
     close: isZh ? "\u5173\u95ed" : "Close",
     currentPlan: isZh ? "\u5f53\u524d\u5957\u9910" : "Current Plan",
     unlimited: isZh ? "\u4e0d\u9650\u91cf" : "Unlimited",
     refresh: isZh ? "\u5237\u65b0" : "Refresh",
     redeem: isZh ? "\u5151\u6362\u793c\u5305\u7801" : "Redeem code",
-    notSignedIn: isZh ? "\u4f60\u5c1a\u672a\u767b\u5f55\u3002\u767b\u5f55\u540e\u53ef\u67e5\u770b\u771f\u5b9e\u989d\u5ea6\u3001\u4fdd\u5b58\u7528\u91cf\u5e76\u5347\u7ea7\u5957\u9910\u3002" : "You are not signed in. Sign in to unlock pricing, saved usage, and paid quotas.",
+    notSignedIn: isZh ? "\u514d\u8d39\u5957\u9910\u65e0\u9700\u4ed8\u8d39\u3002\u767b\u5f55\u540e\u5373\u53ef\u4f7f\u7528\u5e76\u4fdd\u5b58\u8bb0\u5f55\u3002" : "The free plan requires no payment. Sign in to start using it and save your work.",
     current: isZh ? "\u5f53\u524d" : "Current",
     switchBasic: isZh ? "\u5207\u6362\u5230 Basic" : "Switch to Basic",
     manage: isZh ? "\u7ba1\u7406" : "Manage",
     upgradePro: isZh ? "\u5347\u7ea7\u5230 Pro" : "Upgrade to Pro",
     upgradeUltra: isZh ? "\u5347\u7ea7\u5230 Ultra" : "Upgrade to Ultra",
+    signInFree: isZh ? "\u767b\u5f55\u540e\u514d\u8d39\u4f7f\u7528" : "Sign in to start free",
     signInToUpgrade: isZh ? "\u767b\u5f55\u540e\u5347\u7ea7" : "Sign in to upgrade",
     starter: isZh ? "\u5165\u95e8" : "Starter",
     popular: isZh ? "\u70ed\u95e8" : "Popular",
@@ -372,8 +249,8 @@ export function PlanModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-6xl rounded-3xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/50">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/72 p-3 backdrop-blur-sm sm:p-5">
+      <div className="w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/10 bg-[#080b12] shadow-[0_32px_100px_rgba(0,0,0,.6)]">
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <div>
             <p className="text-sm font-semibold text-slate-50">{copy.title}</p>
@@ -388,7 +265,7 @@ export function PlanModal({
           </button>
         </div>
 
-        <div className="custom-scrollbar max-h-[82vh] overflow-y-auto px-5 py-4">
+        <div className="custom-scrollbar max-h-[82vh] overflow-y-auto px-4 py-5 sm:px-6">
           {sessionExists && ent ? (
             <div className="mb-5 rounded-[26px] border border-white/10 bg-gradient-to-br from-white/[0.05] via-blue-500/[0.04] to-emerald-400/[0.05] p-4 shadow-[0_18px_70px_rgba(2,6,23,0.3)]">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -441,7 +318,8 @@ export function PlanModal({
           ) : null}
 
           {!sessionExists ? (
-            <div className="mb-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-[12px] text-amber-200">
+            <div className="mb-5 flex items-center gap-3 rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.055] px-4 py-3 text-[12px] text-cyan-100">
+              <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-cyan-300/15 text-[11px]">✓</span>
               {copy.notSignedIn}
             </div>
           ) : null}
@@ -453,9 +331,9 @@ export function PlanModal({
               price="Free"
               priceSuffix=""
               badge={copy.starter}
-              active={cur === "basic"}
+              active={sessionExists && cur === "basic"}
               features={buildPlanFeatures("basic", isZh)}
-              cta={cur === "basic" ? copy.current : copy.switchBasic}
+              cta={!sessionExists ? copy.signInFree : cur === "basic" ? copy.current : copy.switchBasic}
               onClick={async () => {
                 if (!sessionExists) return signIn();
                 await refreshEnt();
@@ -470,7 +348,7 @@ export function PlanModal({
               price={proPrice.newPrice}
               priceSuffix={proPrice.priceSuffix}
               badge={copy.popular}
-              active={cur === "pro"}
+              active={sessionExists && cur === "pro"}
               features={buildPlanFeatures("pro", isZh)}
               cta={cur === "pro" ? copy.manage : sessionExists ? copy.upgradePro : copy.signInToUpgrade}
               onClick={() => {
@@ -486,7 +364,7 @@ export function PlanModal({
               price={ultraPrice.newPrice}
               priceSuffix={ultraPrice.priceSuffix}
               badge={copy.ultimate}
-              active={cur === "ultra"}
+              active={sessionExists && cur === "ultra"}
               features={buildPlanFeatures("ultra", isZh)}
               cta={cur === "ultra" ? copy.manage : sessionExists ? copy.upgradeUltra : copy.signInToUpgrade}
               onClick={() => {
@@ -496,7 +374,7 @@ export function PlanModal({
             />
           </div>
 
-          <div className="mt-4 text-[11px] text-slate-500">{copy.liveUsage}</div>
+          <div className="mt-5 border-t border-white/8 pt-4 text-center text-[11px] leading-5 text-slate-500">{copy.liveUsage}</div>
         </div>
       </div>
     </div>
