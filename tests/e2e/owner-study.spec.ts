@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import JSZip from "jszip";
 
 const userEmail = process.env.E2E_USER_EMAIL ?? "";
 const userPassword = process.env.E2E_USER_PASSWORD ?? "";
@@ -24,6 +25,14 @@ async function jsonFetch<T>(page: Page, url: string, init?: RequestInit): Promis
   }, { fetchUrl: url, fetchInit: init });
 }
 
+async function makeStudyDocx(text: string) {
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+  zip.file("_rels/.rels", `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  zip.file("word/document.xml", `<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>${text}</w:t></w:r></w:p></w:body></w:document>`);
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
 test.describe("Owner authorization and AI Study", () => {
   test.skip(!authConfigured, "Set the E2E auth variables and run npm run test:seed first.");
 
@@ -35,6 +44,8 @@ test.describe("Owner authorization and AI Study", () => {
 
     const api = await jsonFetch<{ ok: boolean }>(page, "/api/owner/analytics");
     expect(api.status).toBe(403);
+    const privateStudy = await jsonFetch<{ ok: boolean }>(page, "/api/study/session/e2e-owner-study-session");
+    expect(privateStudy.status).toBe(404);
     await page.goto("/owner/analytics");
     await expect(page.getByRole("heading", { name: "404", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "AIWoven Analytics", exact: true })).toHaveCount(0);
@@ -61,7 +72,7 @@ test.describe("Owner authorization and AI Study", () => {
     await signIn(page, ownerEmail, ownerPassword);
     await page.goto("/ai-study");
     await page.getByRole("button", { name: "Open account menu" }).click();
-    const analyticsLink = page.getByRole("link", { name: "Owner Analytics", exact: true });
+    const analyticsLink = page.getByRole("link", { name: "Owner Analytics", exact: true }).last();
     await expect(analyticsLink).toBeVisible();
     await analyticsLink.click();
     await expect(page).toHaveURL(/\/owner\/analytics$/);
@@ -86,66 +97,59 @@ test.describe("Owner authorization and AI Study", () => {
     await expect(page.getByRole("heading", { name: "AIWoven Analytics" })).toBeVisible();
   });
 
-  test("Owner completes flashcard and independent quiz flows on desktop and mobile", async ({ page }) => {
+  test("Owner opens one persisted dataset across focused Learn, Quiz, Matching, Flashcards, and Quiz Me", async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await signIn(page, ownerEmail, ownerPassword);
     await page.goto("/ai-study");
-    await page.getByRole("button", { name: /e2e photosynthesis study set/i }).click();
-    await page.getByTestId("study-tab-flashcards").click();
+    await expect(page.getByRole("button", { name: "Open account menu" })).toBeVisible();
+    await page.screenshot({ path: "output/ai-study-before-upload.png", fullPage: true });
+    const historyItem = page.getByTestId("study-history-item").filter({ hasText: "E2E Photosynthesis Study Set" });
+    await expect(historyItem).toHaveAttribute("data-status", "completed");
+    await historyItem.getByRole("link", { name: "Open" }).click();
+    await expect(page).toHaveURL(/\/study\/session\/e2e-owner-study-session$/);
+    await expect(page.getByTestId("focused-study-progress")).toHaveText("1 / 3");
+    await page.screenshot({ path: "output/ai-study-focused-learn.png", fullPage: true });
 
-    const card = page.getByTestId("flashcard");
+    const card = page.getByTestId("focused-study-card");
     await expect(card).toBeVisible();
     await card.click();
-    await expect(card).toHaveAttribute("aria-label", "Show flashcard front");
-    await page.waitForTimeout(550);
-    await page.getByTestId("flashcard-flip").click();
-    await expect(card).toHaveAttribute("aria-label", "Show flashcard answer");
-    await page.waitForTimeout(550);
-    await page.keyboard.press("Space");
-    await expect(card).toHaveAttribute("aria-label", "Show flashcard front");
-    await page.waitForTimeout(550);
+    await expect(card).toHaveAttribute("aria-label", "Show question");
+    await expect(card).toHaveAttribute("data-flip-turn", "1");
+    await expect(card).toHaveAttribute("data-side", "back");
     await page.keyboard.press("ArrowRight");
-    await expect(page.getByTestId("flashcard-progress")).toHaveText("2 / 3");
-    await expect(card).toHaveAttribute("aria-label", "Show flashcard answer");
-    await page.getByTestId("flashcard-next").click();
-    await expect(page.getByTestId("flashcard-progress")).toHaveText("3 / 3");
-    await page.getByTestId("flashcard-previous").click();
-    await page.getByTestId("flashcard-shuffle").click();
-    await expect(page.getByTestId("flashcard-progress")).toHaveText("1 / 3");
-    await page.getByTestId("flashcard-restart").click();
-    await card.click();
-    await card.click();
-    await page.waitForTimeout(600);
-    await expect(card).toHaveAttribute("aria-label", "Show flashcard front");
+    await expect(page.getByTestId("focused-study-progress")).toHaveText("2 / 3");
 
-    await page.getByTestId("study-tab-quiz").click();
-    await page.getByTestId("start-quiz").click();
-    await expect(page).toHaveURL(/\/study\/quiz\/e2e-owner-study-session$/);
-    await expect(page.getByRole("heading", { name: /which organelle performs photosynthesis/i })).toBeVisible();
-    await page.getByRole("button", { name: /mitochondrion/i }).click();
+    await page.getByTestId("study-mode-selector").click();
+    await page.screenshot({ path: "output/ai-study-mode-menu.png", fullPage: true });
+    await page.getByRole("menuitem", { name: "Quiz" }).click();
+    await page.screenshot({ path: "output/ai-study-focused-quiz.png", fullPage: true });
+    const question = page.locator("main section section").last();
+    await question.locator("button").filter({ hasNotText: /check answer/i }).first().click();
     await page.getByRole("button", { name: /check answer/i }).click();
-    await expect(page.getByRole("status")).toContainText("Incorrect");
-    await expect(page.getByRole("status")).toContainText("Your answer: Mitochondrion");
-    await expect(page.getByRole("status")).toContainText("Correct answer: Chloroplast");
-    await expect(page.getByRole("status")).toContainText(/chloroplasts contain thylakoids/i);
-    await page.getByRole("button", { name: /next question/i }).click();
-    await page.getByRole("button", { name: /nadph/i }).click();
-    await page.getByRole("button", { name: /check answer/i }).click();
-    await expect(page.getByRole("status")).toContainText("Correct");
-    await expect(page.getByRole("status")).toContainText(/high-energy electrons/i);
-    await page.getByRole("button", { name: /finish quiz/i }).click();
-    await expect(page.getByText("50%")).toBeVisible();
-    await expect(page.getByText(/1 correct · 1 incorrect · 2 total/i)).toBeVisible();
-    await expect(page.getByText(/your answer:/i).last()).toBeVisible();
-    await page.getByRole("button", { name: /retry quiz/i }).click();
-    await expect(page.getByText(/^Question 1 of \d+$/)).toBeVisible();
+    await expect(page.getByRole("status")).toBeVisible();
+
+    await page.getByTestId("study-mode-selector").click();
+    await page.getByRole("menuitem", { name: "Matching" }).click();
+    await page.screenshot({ path: "output/ai-study-focused-matching.png", fullPage: true });
+    await page.getByRole("button", { name: "What is photosynthesis?" }).click();
+    await page.getByRole("button", { name: /A process that converts light energy/i }).click();
+    await expect(page.getByRole("status")).toHaveText("Correct match");
+
+    await page.goto("/flashcards");
+    const persistedSet = page.locator("article").filter({ hasText: "E2E Photosynthesis Study Set" });
+    await expect(persistedSet).toContainText("3 cards");
+    await persistedSet.getByRole("button", { name: "Study" }).click();
+    await expect(page.getByTestId("manual-flashcard")).toBeVisible();
+
+    await page.goto("/quiz-me");
+    await expect(page.getByLabel("Study material")).toContainText("E2E Photosynthesis Study Set (3 cards)");
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-    await expect(page.getByRole("link", { name: /exit quiz/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Quiz Me" })).toBeVisible();
     expect(consoleErrors).toEqual([]);
   });
 
@@ -157,7 +161,7 @@ test.describe("Owner authorization and AI Study", () => {
       flashcards: Array<{ front: string; back: string }>;
       quiz: Array<{ type: string; question?: string; options?: string[]; answer?: string; explanation: string }>;
       meta: { provider: string; model: string };
-      session: { id: string };
+      session: { id: string; status: string; flashcardSetId: string };
     }>(page, "/api/study/generate", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -178,6 +182,8 @@ test.describe("Owner authorization and AI Study", () => {
     expect(generated.body.meta.provider).toBe("groq");
     expect(generated.body.flashcards.length).toBeGreaterThan(0);
     expect(generated.body.quiz.length).toBeGreaterThan(0);
+    expect(generated.body.session.status).toBe("COMPLETED");
+    expect(generated.body.session.flashcardSetId).toBeTruthy();
     for (const item of generated.body.quiz) {
       expect(item.explanation.trim().length).toBeGreaterThan(0);
       if (item.type === "multiple_choice") {
@@ -185,7 +191,61 @@ test.describe("Owner authorization and AI Study", () => {
         expect(new Set(item.options).size).toBe(item.options?.length);
       }
     }
-    await page.goto(`/study/quiz/${generated.body.session.id}`);
-    await expect(page.getByText(/^Question 1 of \d+$/)).toBeVisible();
+    const persisted = await jsonFetch<{ ok: boolean; session: { status: string; flashcardSetId: string } }>(page, `/api/study/session/${generated.body.session.id}`);
+    expect(persisted.status).toBe(200);
+    expect(persisted.body.session).toMatchObject({ status: "COMPLETED", flashcardSetId: generated.body.session.flashcardSetId });
+    const flashcardSets = await jsonFetch<{ sets: Array<{ id: string; title: string }> }>(page, "/api/flashcards/sets");
+    expect(flashcardSets.body.sets.filter((set) => set.id === generated.body.session.flashcardSetId)).toHaveLength(1);
+
+    await page.goto(`/study/session/${generated.body.session.id}`);
+    await expect(page.getByTestId("focused-study-card")).toBeVisible();
+    await page.reload();
+    await expect(page.getByTestId("focused-study-card")).toBeVisible();
+    await page.goto("/quiz-me");
+    await expect(page.getByLabel("Study material")).toContainText("Real Provider Photosynthesis E2E");
+  });
+
+  test("real browser extraction persists Flashcards and Notes through authenticated APIs", async ({ page }) => {
+    test.skip(process.env.E2E_REAL_AI !== "true", "Set E2E_REAL_AI=true when a configured provider key is available.");
+    test.setTimeout(120_000);
+    const suffix = Date.now().toString(36);
+    const flashcardsTitle = `Real Browser Biology ${suffix}`;
+    const notesTitle = `Real Browser History ${suffix}`;
+    await signIn(page, ownerEmail, ownerPassword);
+    await page.goto("/ai-study");
+
+    const upload = async (name: string, text: string) => {
+      await page.locator('[data-testid="study-upload-area"]:visible input[type="file"]').setInputFiles({ name, mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: await makeStudyDocx(text) });
+      await expect(page.locator('[data-testid="study-selected-file"]:visible')).toContainText("Ready", { timeout: 20_000 });
+    };
+
+    await upload("cell-biology-real.docx", "Cellular respiration converts glucose into usable ATP. Glycolysis occurs in the cytoplasm. The citric acid cycle and oxidative phosphorylation occur in mitochondria. The electron transport chain creates a proton gradient that powers ATP synthase. Oxygen is the final electron acceptor and water is produced.");
+    await page.locator('[data-testid="study-output-type"]:visible').selectOption("flashcards");
+    await page.getByLabel("Title (optional)").fill(flashcardsTitle);
+    await page.locator('[data-testid="study-generate"]:visible').click();
+    const flashcardsItem = page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: flashcardsTitle });
+    await expect(flashcardsItem).toHaveAttribute("data-status", "completed", { timeout: 60_000 });
+    await expect(flashcardsItem).toHaveAttribute("data-new", "true");
+    await flashcardsItem.getByRole("link", { name: "Open" }).click();
+    await expect(page.getByTestId("focused-study-card")).toBeVisible();
+
+    await page.goto("/flashcards");
+    await expect(page.locator("article").filter({ hasText: flashcardsTitle })).toBeVisible();
+    await page.goto("/quiz-me");
+    await expect(page.getByLabel("Study material")).toContainText(flashcardsTitle);
+
+    await page.goto("/ai-study");
+    await upload("industrial-revolution-real.docx", "The Industrial Revolution accelerated mechanized manufacturing during the eighteenth and nineteenth centuries. Steam power expanded factory production and transportation. Urbanization increased as workers moved toward industrial centers. Railways connected markets, while labor reforms gradually addressed dangerous working conditions and long hours.");
+    await page.locator('[data-testid="study-output-type"]:visible').selectOption("notes");
+    await page.getByLabel("Title (optional)").fill(notesTitle);
+    await page.locator('[data-testid="study-generate"]:visible').click();
+    const notesItem = page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: notesTitle });
+    await expect(notesItem).toHaveAttribute("data-status", "completed", { timeout: 60_000 });
+    await page.reload();
+    await expect(page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: flashcardsTitle })).toHaveAttribute("data-status", "completed");
+    await expect(page.locator('[data-testid="study-history-item"]:visible').filter({ hasText: notesTitle })).toHaveAttribute("data-status", "completed");
+    await notesItem.getByRole("link", { name: "Open" }).click();
+    await expect(page.getByTestId("study-mode-selector")).toHaveText(/Learn/);
+    await expect(page.getByTestId("focused-study-card")).toHaveCount(0);
   });
 });

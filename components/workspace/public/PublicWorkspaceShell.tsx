@@ -423,7 +423,7 @@ export function PublicWorkspaceShell({
   }
 
   return (
-    <main className="aiwoven-workspace min-h-screen w-full overflow-hidden bg-[#05070b] font-sans text-slate-200 selection:bg-cyan-400/25 selection:text-cyan-50">
+    <main className="aiwoven-workspace relative min-h-screen w-full overflow-hidden bg-[#05070b] font-sans text-slate-200 selection:bg-cyan-400/25 selection:text-cyan-50">
       <PlanPillStyles />
 
       <div className="pointer-events-none absolute inset-0 z-0 opacity-20 base-grid" />

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ManualFlashcard, ManualFlashcardSet } from "@/lib/flashcards/types";
+import { StudyFlipCard } from "@/components/workspace/study/StudyFlipCard";
 
 type DraftCard = ManualFlashcard & { frontFile?: File | null; backFile?: File | null; frontPreview?: string | null; backPreview?: string | null };
 const emptyCard = (position = 0): DraftCard => ({ id: `new-${crypto.randomUUID()}`, frontText: "", backText: "", position, images: [] });
@@ -21,77 +22,16 @@ function imageFor(card: DraftCard, side: "front" | "back") {
 
 type CardSide = "front" | "back";
 
-function StudyCardFace({ card, side, reverse = false }: { card: DraftCard; side: CardSide; reverse?: boolean }) {
+function StudyCardContent({ card, side }: { card: DraftCard; side: CardSide }) {
   const src = side === "front" ? card.frontPreview || imageFor(card, side)?.url : card.backPreview || imageFor(card, side)?.url;
-  return <div aria-hidden={reverse ? "true" : undefined} className={`manual-flashcard-face ${reverse ? "manual-flashcard-face-back" : "manual-flashcard-face-front"}`}>
-    <div className="flex h-full w-full flex-col items-center justify-center gap-5 overflow-y-auto p-6 text-center sm:p-9 custom-scrollbar">
-      {src ? <Image src={src} alt={`${side} side illustration`} width={640} height={240} unoptimized className="h-auto max-h-48 w-auto max-w-full shrink-0 rounded-xl object-contain"/> : null}
-      <p className="max-w-2xl whitespace-pre-wrap break-words text-xl leading-relaxed text-white sm:text-2xl">{side === "front" ? card.frontText : card.backText}</p>
-    </div>
-  </div>;
+  return <span className="flex h-full w-full flex-col items-center justify-center gap-5 overflow-y-auto p-6 text-center sm:p-9 custom-scrollbar">
+    {src ? <Image src={src} alt={`${side} side illustration`} width={640} height={240} unoptimized className="h-auto max-h-48 w-auto max-w-full shrink-0 rounded-xl object-contain"/> : null}
+    <span className="max-w-2xl whitespace-pre-wrap break-words text-xl leading-relaxed text-white sm:text-2xl">{side === "front" ? card.frontText : card.backText}</span>
+  </span>;
 }
 
 function ManualStudyCard({ card, onReview }: { card: DraftCard; onReview: () => void }) {
-  const [flipped, setFlipped] = useState(false);
-  const [primarySide, setPrimarySide] = useState<CardSide>("front");
-  const [reverseSide, setReverseSide] = useState<CardSide>("back");
-  const [rotationTurns, setRotationTurns] = useState(0);
-  const [animating, setAnimating] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const timers = useRef<number[]>([]);
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReducedMotion(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => () => {
-    timers.current.forEach((timer) => window.clearTimeout(timer));
-  }, []);
-
-  const flip = () => {
-    if (animating) return;
-    const nextSide: CardSide = flipped ? "front" : "back";
-    const duration = reducedMotion ? 140 : 620;
-    setReverseSide(nextSide);
-    setAnimating(true);
-    setRotationTurns((turns) => turns + 1);
-    onReview();
-    timers.current.push(window.setTimeout(() => {
-      // The primary plane is backface-hidden here, so replacing its content is invisible.
-      setPrimarySide(nextSide);
-      setFlipped(nextSide === "back");
-    }, duration / 2));
-    timers.current.push(window.setTimeout(() => {
-      setAnimating(false);
-      timers.current = [];
-    }, duration));
-  };
-
-  return <button
-    type="button"
-    data-testid="manual-flashcard"
-    data-side={flipped ? "back" : "front"}
-    data-animating={animating ? "true" : "false"}
-    data-flip-turn={rotationTurns}
-    onClick={flip}
-    aria-label={flipped ? "Show question" : "Show answer"}
-    aria-pressed={flipped}
-    aria-disabled={animating}
-    className="manual-flashcard-perspective group mt-6 block w-full cursor-pointer rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/80 focus-visible:ring-offset-4 focus-visible:ring-offset-[#080a0f]"
-  >
-    <span
-      data-testid="manual-flashcard-inner"
-      className={`manual-flashcard-inner block ${animating ? "is-animating" : ""}`}
-      style={{ transform: `rotateX(${rotationTurns * 360}deg)` }}
-    >
-      <StudyCardFace card={card} side={primarySide}/>
-      <StudyCardFace card={card} side={reverseSide} reverse/>
-    </span>
-  </button>;
+  return <div className="mt-6"><StudyFlipCard front={<StudyCardContent card={card} side="front"/>} back={<StudyCardContent card={card} side="back"/>} onReveal={onReview}/></div>;
 }
 
 export function FlashcardsWorkspace({ locked }: { locked: boolean }) {

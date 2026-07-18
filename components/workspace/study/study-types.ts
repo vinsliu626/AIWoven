@@ -20,6 +20,10 @@ export type StudySessionListItem = {
   fileName: string | null;
   selectedModes: StudyMode[];
   selectedQuizTypes?: StudyQuizType[];
+  status: "PROCESSING" | "COMPLETED" | "FAILED";
+  errorSummary: string | null;
+  itemCount: number;
+  flashcardSetId: string | null;
   createdAt: string;
   updatedAt: string;
 };

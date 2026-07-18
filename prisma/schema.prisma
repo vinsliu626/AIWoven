@@ -242,9 +242,12 @@ model StudySession {
   mimeType          String?
   selectedModes     String[]
   selectedQuizTypes String[]
-  resultJson        Json
+  resultJson        Json?
+  status            String   @default("COMPLETED")
+  errorSummary      String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  flashcardSet      FlashcardSet?
 
   @@index([userId, updatedAt])
   @@index([userId, createdAt])
@@ -253,12 +256,14 @@ model StudySession {
 /// Manually authored study material. Kept separate from AI-generated StudySession
 /// records so existing generated results remain backward compatible.
 model FlashcardSet {
-  id        String      @id @default(cuid())
-  userId    String
-  title     String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  cards     Flashcard[]
+  id             String        @id @default(cuid())
+  userId         String
+  title          String
+  studySessionId String?       @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  cards          Flashcard[]
+  studySession   StudySession? @relation(fields: [studySessionId], references: [id], onDelete: SetNull)
 
   @@index([userId, updatedAt])
   @@index([userId, createdAt])

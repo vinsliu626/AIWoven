@@ -50,7 +50,29 @@ async function main() {
     await tx.studySession.upsert({
       where: { id: "e2e-owner-study-session" },
       create: { id: "e2e-owner-study-session", userId: ownerEmail, title: "E2E Photosynthesis Study Set", fileName: "photosynthesis-e2e.pdf", fileSizeBytes: 2048, mimeType: "application/pdf", selectedModes: ["notes", "flashcards", "quiz"], selectedQuizTypes: ["multiple_choice"], resultJson: studyResult },
-      update: { userId: ownerEmail, title: "E2E Photosynthesis Study Set", selectedModes: ["notes", "flashcards", "quiz"], selectedQuizTypes: ["multiple_choice"], resultJson: studyResult },
+      update: { userId: ownerEmail, title: "E2E Photosynthesis Study Set", selectedModes: ["notes", "flashcards", "quiz"], selectedQuizTypes: ["multiple_choice"], resultJson: studyResult, status: "COMPLETED", errorSummary: null },
+    });
+    await tx.flashcardSet.upsert({
+      where: { studySessionId: "e2e-owner-study-session" },
+      create: {
+        userId: ownerEmail,
+        title: "E2E Photosynthesis Study Set",
+        studySessionId: "e2e-owner-study-session",
+        cards: { create: [
+          { frontText: "What is photosynthesis?", backText: "A process that converts light energy into chemical energy in plants, algae, and some bacteria.", position: 0 },
+          { frontText: "Where do light-dependent reactions occur?", backText: "They occur in the thylakoid membranes of chloroplasts, where pigments capture light and produce ATP and NADPH.", position: 1 },
+          { frontText: "What supports the Calvin cycle?", backText: "ATP supplies energy and NADPH supplies reducing power.", position: 2 },
+        ] },
+      },
+      update: {
+        userId: ownerEmail,
+        title: "E2E Photosynthesis Study Set",
+        cards: { deleteMany: {}, create: [
+          { frontText: "What is photosynthesis?", backText: "A process that converts light energy into chemical energy in plants, algae, and some bacteria.", position: 0 },
+          { frontText: "Where do light-dependent reactions occur?", backText: "They occur in the thylakoid membranes of chloroplasts, where pigments capture light and produce ATP and NADPH.", position: 1 },
+          { frontText: "What supports the Calvin cycle?", backText: "ATP supplies energy and NADPH supplies reducing power.", position: 2 },
+        ] },
+      },
     });
     await tx.featureUsageEvent.deleteMany({ where: { id: { in: ["e2e-owner-feature", "e2e-user-feature"] } } });
     await tx.featureUsageEvent.createMany({ data: [

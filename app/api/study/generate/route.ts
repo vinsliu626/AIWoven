@@ -7,7 +7,7 @@ import { isTransientPrismaConnectionError, withPrismaConnectionRetry } from "@/l
 import { getStudyUsageStatus, assertStudyCooldownOrThrow, assertStudyQuotaOrThrow, markStudyAttempt } from "@/lib/study/quota";
 import { generateStudyContent, sanitizeStudyText } from "@/lib/study/service";
 import { SUPPORTED_STUDY_EXTENSIONS, SUPPORTED_STUDY_MIME_TYPES } from "@/lib/study/limits";
-import { createStudySession } from "@/lib/study/history";
+import { completeStudySession, createStudySession, failStudySession } from "@/lib/study/history";
 import type { StudyMode, StudyQuizType } from "@/lib/study/types";
 import { trackFeatureUsage } from "@/lib/analytics/track";
 
@@ -60,6 +60,7 @@ function userMessageForQuotaError(err: QuotaError) {
 }
 
 export async function POST(req: NextRequest) {
+  let pendingStudySession: { id: string; userId: string } | null = null;
   try {
     const sessionUser = await getRouteSessionUser(req);
     const userId = sessionUser?.id;
@@ -85,7 +86,11 @@ export async function POST(req: NextRequest) {
     );
 
     const selectedModes = uniqueModes(body.selectedModes);
-    const selectedQuizTypes = uniqueQuizTypes(body.quizTypes);
+    const selectedQuizTypes = selectedModes.includes("quiz")
+      ? uniqueQuizTypes(body.quizTypes).length > 0
+        ? uniqueQuizTypes(body.quizTypes)
+        : [...quizTypes]
+      : [];
     if (selectedModes.length > status.limits.maxSelectableModes) {
       return NextResponse.json(
         {
@@ -96,17 +101,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    if (selectedModes.includes("quiz") && selectedQuizTypes.length === 0) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "QUIZ_TYPES_REQUIRED",
-          message: "Choose at least one quiz type to generate quiz questions.",
-        },
-        { status: 400 }
-      );
-    }
-
     if (!status.unlimited && (body.fileSizeBytes ?? 0) > status.limits.maxFileSizeBytes) {
       return NextResponse.json(
         {
@@ -139,6 +133,19 @@ export async function POST(req: NextRequest) {
 
     markStudyAttempt(userId);
 
+    const title = (body.title?.trim() || body.fileName?.replace(/\.[^.]+$/, "") || "AI Study").slice(0, 160);
+    const processingSession = await createStudySession({
+      userId,
+      title,
+      fileName: body.fileName,
+      fileSizeBytes: body.fileSizeBytes,
+      mimeType: body.mimeType,
+      selectedModes,
+      selectedQuizTypes,
+      status: "PROCESSING",
+    });
+    if (processingSession) pendingStudySession = { id: processingSession.id, userId };
+
     const generated = await generateStudyContent({
       userId,
       plan: status.plan,
@@ -149,17 +156,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const title = (body.title?.trim() || body.fileName?.replace(/\.[^.]+$/, "") || "AI Study").slice(0, 160);
-    const studySession = await createStudySession({
-      userId,
+    const studySession = pendingStudySession ? await completeStudySession({
+      userId: pendingStudySession.userId,
+      id: pendingStudySession.id,
       title,
-      fileName: body.fileName,
-      fileSizeBytes: body.fileSizeBytes,
-      mimeType: body.mimeType,
-      selectedModes,
-      selectedQuizTypes: selectedModes.includes("quiz") ? selectedQuizTypes : [],
       result: generated.result,
-    });
+    }) : null;
+    pendingStudySession = null;
 
     const freshStatus = await getStudyUsageStatus(userId);
     void trackFeatureUsage({ userId, featureKey: "study", featureName: "AI Study", actionType: "STUDY_USED", pagePath: "/ai-study", metadata: { selected_modes: selectedModes, quiz_count: generated.result.quiz?.length ?? 0 }, request: req });
@@ -176,6 +179,17 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (pendingStudySession) {
+      try {
+        await failStudySession(
+          pendingStudySession.userId,
+          pendingStudySession.id,
+          "Generation could not be completed. Try again with the same document."
+        );
+      } catch (historyError) {
+        console.warn("[study.generate] could not persist failed state", historyError);
+      }
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { ok: false, error: "INVALID_REQUEST", message: error.issues[0]?.message || "Invalid request." },

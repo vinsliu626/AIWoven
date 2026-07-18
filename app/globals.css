@@ -219,6 +219,31 @@ a {
   50% { opacity: .35; transform: scale(.995); }
 }
 
+.study-history-complete-pulse {
+  animation: study-history-complete-pulse 600ms ease-in-out 3;
+}
+
+.study-processing-bar {
+  animation: study-processing-slide 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes study-history-complete-pulse {
+  0%, 100% { border-color: rgba(255, 255, 255, .08); box-shadow: 0 0 0 rgba(52, 211, 153, 0); }
+  50% { border-color: rgba(52, 211, 153, .72); box-shadow: 0 0 0 2px rgba(52, 211, 153, .08); }
+}
+
+@keyframes study-processing-slide {
+  from { transform: translateX(-15%); }
+  to { transform: translateX(215%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .study-history-complete-pulse,
+  .study-processing-bar {
+    animation: none;
+  }
+}
+
 /* Chrome / Edge / Safari */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;

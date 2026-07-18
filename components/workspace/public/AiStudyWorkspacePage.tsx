@@ -2,11 +2,9 @@
 
 import { StudyUI } from "@/components/workspace/study/StudyUI";
 import { WorkspaceSignInPrompt } from "@/components/auth/WorkspaceSignInPrompt";
-import { ToolLandingPageSection } from "@/components/seo/ToolLandingPageSection";
 import type { Entitlement } from "@/components/chat/billing/types";
 import type { StudyEntitlement } from "@/components/workspace/study/study-types";
 import { getStudyBasePlanLimits, normalizePlan } from "@/lib/plans/productLimits";
-import { toolPageContent } from "@/lib/seo/toolPageContent";
 
 import { PublicWorkspaceShell } from "./PublicWorkspaceShell";
 
@@ -35,11 +33,7 @@ export function AiStudyWorkspacePage() {
       {({ entitlement, locked, isZh, authLoading, authProviders, refreshEntitlement }) => {
         const studyEntitlement = toStudyEntitlement(entitlement);
 
-        return (
-          <ToolLandingPageSection hero={toolPageContent.study}>
-            {locked && !authLoading ? <WorkspaceSignInPrompt isZh={isZh} toolName="AI Study" callbackUrl="/ai-study" providers={authProviders} /> : <StudyUI isZh={isZh} locked={locked} entitlement={studyEntitlement} onUsageRefresh={refreshEntitlement} />}
-          </ToolLandingPageSection>
-        );
+        return locked && !authLoading ? <WorkspaceSignInPrompt isZh={isZh} toolName="AI Study" callbackUrl="/ai-study" providers={authProviders} /> : <StudyUI isZh={isZh} locked={locked} entitlement={studyEntitlement} onUsageRefresh={refreshEntitlement} />;
       }}
     </PublicWorkspaceShell>
   );

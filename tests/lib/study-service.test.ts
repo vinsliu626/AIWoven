@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getStudyPlanLimits } from "@/lib/study/limits";
+import { studyCardsFromResult } from "@/lib/study/material";
 import { sanitizeStudyText, truncateStudyText, validateGeneratedQuizItem } from "@/lib/study/service";
+import type { StudyGenerationResult } from "@/lib/study/types";
 
 describe("study limits", () => {
   it("returns conservative limits for basic users", () => {
@@ -46,5 +48,39 @@ describe("generated quiz validation", () => {
 
   it("accepts a fully explained valid question", () => {
     expect(validateGeneratedQuizItem({ type: "multiple_choice", question: "Q?", options: ["A", "B"], answer: "A", explanation: "The document identifies A." })).toMatchObject({ answer: "A", explanation: "The document identifies A." });
+  });
+});
+
+describe("reusable study material", () => {
+  const meta: StudyGenerationResult["meta"] = {
+    selectedModes: ["quiz"],
+    generatedCounts: { quiz: 2 },
+    truncated: false,
+    originalCharCount: 100,
+    usedCharCount: 100,
+  };
+
+  it("uses generated flashcards as the shared dataset and removes normalized duplicates", () => {
+    expect(studyCardsFromResult({
+      flashcards: [
+        { front: " ATP ", back: "Cellular energy" },
+        { front: "atp", back: " cellular energy " },
+      ],
+      quiz: [{ type: "fill_blank", question: "This quiz item is ignored", answer: "when flashcards exist", explanation: "Flashcards are the primary material." }],
+      meta: { ...meta, selectedModes: ["flashcards", "quiz"] },
+    })).toEqual([{ frontText: "ATP", backText: "Cellular energy" }]);
+  });
+
+  it("derives reusable cards from quiz questions and matching pairs", () => {
+    expect(studyCardsFromResult({
+      quiz: [
+        { type: "fill_blank", question: "Organelle that makes ATP", answer: "Mitochondrion", explanation: "It performs cellular respiration." },
+        { type: "matching", prompt: "Match the organelles", pairs: [{ left: "Chloroplast", right: "Photosynthesis" }], explanation: "The document pairs each organelle with its process." },
+      ],
+      meta,
+    })).toEqual([
+      { frontText: "Organelle that makes ATP", backText: "Mitochondrion" },
+      { frontText: "Chloroplast", backText: "Photosynthesis" },
+    ]);
   });
 });

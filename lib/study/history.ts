@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import type { StudyGenerationResult, StudyMode, StudyQuizType } from "./types";
+import { studyCardsFromResult } from "./material";
 
 export type StudySessionListItem = {
   id: string;
@@ -8,6 +9,10 @@ export type StudySessionListItem = {
   fileName: string | null;
   selectedModes: StudyMode[];
   selectedQuizTypes: StudyQuizType[];
+  status: string;
+  errorSummary: string | null;
+  itemCount: number;
+  flashcardSetId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -33,16 +38,34 @@ export async function listStudySessions(userId: string): Promise<StudySessionLis
         fileName: true,
         selectedModes: true,
         selectedQuizTypes: true,
+        status: true,
+        errorSummary: true,
+        resultJson: true,
+        flashcardSet: { select: { id: true } },
         createdAt: true,
         updatedAt: true,
       },
     });
 
-    return rows.map((row) => ({
-      ...row,
-      selectedModes: (row.selectedModes as StudyMode[]) ?? [],
-      selectedQuizTypes: (row.selectedQuizTypes as StudyQuizType[]) ?? [],
-    }));
+    return rows.map((row) => {
+      const result = row.resultJson as StudyGenerationResult | null;
+      const selectedModes = (row.selectedModes as StudyMode[]) ?? [];
+      const outputType = selectedModes[0];
+      const itemCount = outputType === "notes" ? result?.notes?.length ?? 0 : outputType === "quiz" ? studyCardsFromResult(result ?? emptyResult()).length : result?.flashcards?.length ?? 0;
+      return {
+        id: row.id,
+        title: row.title,
+        fileName: row.fileName,
+        selectedModes,
+        selectedQuizTypes: (row.selectedQuizTypes as StudyQuizType[]) ?? [],
+        status: row.status,
+        errorSummary: row.errorSummary,
+        itemCount,
+        flashcardSetId: row.flashcardSet?.id ?? null,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    });
   } catch (error) {
     if (isStudySessionTableMissing(error)) {
       console.warn("[study.history] StudySession table missing; returning empty history");
@@ -65,6 +88,9 @@ export async function getStudySessionById(userId: string, id: string) {
         selectedModes: true,
         selectedQuizTypes: true,
         resultJson: true,
+        status: true,
+        errorSummary: true,
+        flashcardSet: { select: { id: true } },
         createdAt: true,
         updatedAt: true,
       },
@@ -75,7 +101,8 @@ export async function getStudySessionById(userId: string, id: string) {
       ...row,
       selectedModes: (row.selectedModes as StudyMode[]) ?? [],
       selectedQuizTypes: (row.selectedQuizTypes as StudyQuizType[]) ?? [],
-      resultJson: row.resultJson as StudyGenerationResult,
+      resultJson: row.resultJson as StudyGenerationResult | null,
+      flashcardSetId: row.flashcardSet?.id ?? null,
     };
   } catch (error) {
     if (isStudySessionTableMissing(error)) {
@@ -94,7 +121,8 @@ export async function createStudySession(input: {
   mimeType?: string;
   selectedModes: StudyMode[];
   selectedQuizTypes?: StudyQuizType[];
-  result: StudyGenerationResult;
+  result?: StudyGenerationResult;
+  status?: "PROCESSING" | "COMPLETED" | "FAILED";
 }) {
   try {
     return await prisma.studySession.create({
@@ -106,7 +134,8 @@ export async function createStudySession(input: {
         mimeType: input.mimeType ?? null,
         selectedModes: input.selectedModes,
         selectedQuizTypes: input.selectedQuizTypes ?? [],
-        resultJson: input.result,
+        resultJson: input.result ?? Prisma.JsonNull,
+        status: input.status ?? (input.result ? "COMPLETED" : "PROCESSING"),
       },
       select: {
         id: true,
@@ -114,6 +143,7 @@ export async function createStudySession(input: {
         fileName: true,
         selectedModes: true,
         selectedQuizTypes: true,
+        status: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -125,6 +155,57 @@ export async function createStudySession(input: {
     }
     throw error;
   }
+}
+
+function emptyResult(): StudyGenerationResult {
+  return { meta: { selectedModes: [], generatedCounts: {}, truncated: false, originalCharCount: 0, usedCharCount: 0 } };
+}
+
+export async function completeStudySession(input: {
+  userId: string;
+  id: string;
+  title: string;
+  result: StudyGenerationResult;
+}) {
+  const cards = studyCardsFromResult(input.result);
+  return prisma.$transaction(async (tx) => {
+    const owned = await tx.studySession.findFirst({ where: { id: input.id, userId: input.userId }, select: { id: true } });
+    if (!owned) return null;
+
+    const session = await tx.studySession.update({
+      where: { id: input.id },
+      data: { resultJson: input.result, status: "COMPLETED", errorSummary: null },
+      select: { id: true, title: true, fileName: true, selectedModes: true, selectedQuizTypes: true, status: true, createdAt: true, updatedAt: true },
+    });
+
+    let flashcardSetId: string | null = null;
+    if (cards.length > 0) {
+      const set = await tx.flashcardSet.upsert({
+        where: { studySessionId: input.id },
+        create: {
+          userId: input.userId,
+          title: input.title,
+          studySessionId: input.id,
+          cards: { create: cards.map((card, position) => ({ ...card, position })) },
+        },
+        update: {
+          title: input.title,
+          cards: { deleteMany: {}, create: cards.map((card, position) => ({ ...card, position })) },
+        },
+        select: { id: true },
+      });
+      flashcardSetId = set.id;
+    }
+
+    return { ...session, flashcardSetId };
+  });
+}
+
+export async function failStudySession(userId: string, id: string, errorSummary: string) {
+  return prisma.studySession.updateMany({
+    where: { id, userId, status: "PROCESSING" },
+    data: { status: "FAILED", errorSummary: errorSummary.slice(0, 280) },
+  });
 }
 
 export async function renameStudySession(userId: string, id: string, title: string) {
