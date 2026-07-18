@@ -166,6 +166,59 @@ a {
 .flashcard-back { transform: rotateY(180deg); }
 @media (prefers-reduced-motion: reduce) { .flashcard-inner { transition-duration: 1ms; } }
 
+.manual-flashcard-perspective {
+  perspective: 1400px;
+  perspective-origin: 50% 50%;
+}
+
+.manual-flashcard-inner {
+  position: relative;
+  height: clamp(20rem, 52vh, 34rem);
+  transform-style: preserve-3d;
+  transition: transform 620ms cubic-bezier(.45, .05, .2, 1);
+  will-change: transform;
+}
+
+.manual-flashcard-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, .035);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.manual-flashcard-face-front { transform: rotateX(0deg) translateZ(.1px); }
+.manual-flashcard-face-back { transform: rotateX(180deg) translateZ(.1px); }
+
+.manual-flashcard-perspective:hover .manual-flashcard-face {
+  border-color: rgba(103, 232, 249, .22);
+  background: rgba(255, 255, 255, .045);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manual-flashcard-inner {
+    transform: none !important;
+    transition: none;
+    will-change: opacity;
+  }
+
+  .manual-flashcard-inner.is-animating {
+    animation: manual-flashcard-reduced 140ms ease-in-out;
+  }
+
+  .manual-flashcard-face-back { display: none; }
+}
+
+@keyframes manual-flashcard-reduced {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.995); }
+}
+
 /* Chrome / Edge / Safari */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;

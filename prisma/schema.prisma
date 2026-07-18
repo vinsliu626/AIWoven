@@ -4,8 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -53,36 +53,36 @@ model ChatMessage {
 /// *
 /// * ===================== Billing / Plans =====================
 model UserEntitlement {
-  userId                    String    @unique
-  plan                      String    @default("basic")
-  createdAt                 DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
+  userId                    String            @unique
+  plan                      String            @default("basic")
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
   stripeCustomerId          String?
   stripeStatus              String?
   stripeSubId               String?
-  id                        String    @id @default(cuid())
-  canSeeSuspiciousSentences Boolean   @default(false)
+  id                        String            @id @default(cuid())
+  canSeeSuspiciousSentences Boolean           @default(false)
   chatPerDay                Int?
   detectorWordsPerWeek      Int?
   noteSecondsPerWeek        Int?
-  unlimited                 Boolean   @default(false)
-  cancelAtPeriodEnd         Boolean?  @default(false)
+  unlimited                 Boolean           @default(false)
+  cancelAtPeriodEnd         Boolean?          @default(false)
   currentPeriodEnd          DateTime?
   dailyUsageKey             String?
   unlimitedSource           String?
   weeklyUsageKey            String?
-  usedChatCountToday        Int       @default(0)
-  usedDetectorWordsThisWeek Int       @default(0)
-  usedNoteSecondsThisWeek   Int       @default(0)
-  developerBypass           Boolean   @default(false)
+  usedChatCountToday        Int               @default(0)
+  usedDetectorWordsThisWeek Int               @default(0)
+  usedNoteSecondsThisWeek   Int               @default(0)
+  developerBypass           Boolean           @default(false)
   developerBypassSetAt      DateTime?
   developerBypassNote       String?
   promoPlan                 String?
   promoAccessStartAt        DateTime?
   promoAccessEndAt          DateTime?
-  promoAccessActive         Boolean   @default(false)
+  promoAccessActive         Boolean           @default(false)
   promoRedemptions          PromoRedemption[]
-  role                      UserRole  @default(USER)
+  role                      UserRole          @default(USER)
 
   @@index([developerBypass])
   @@index([promoAccessActive, promoAccessEndAt])
@@ -121,40 +121,40 @@ model GiftCodeRedemption {
 }
 
 model PromoCode {
-  id               String            @id @default(cuid())
-  codeHash         String            @unique
-  codeType         PromoCodeType     @default(LIMITED)
-  targetPlan       PromoTargetPlan   @default(PRO)
-  startsAt         DateTime?
-  expiresAt        DateTime?
+  id                String            @id @default(cuid())
+  codeHash          String            @unique
+  codeType          PromoCodeType     @default(LIMITED)
+  targetPlan        PromoTargetPlan   @default(PRO)
+  startsAt          DateTime?
+  expiresAt         DateTime?
   grantDurationDays Int?
-  grantFixedEndsAt DateTime?
-  maxRedemptions   Int?
-  redeemedCount    Int               @default(0)
-  perUserLimit     Int               @default(1)
-  isActive         Boolean           @default(true)
-  notes            String?
-  createdBy        String?
-  lastRedeemedAt   DateTime?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  redemptions      PromoRedemption[]
+  grantFixedEndsAt  DateTime?
+  maxRedemptions    Int?
+  redeemedCount     Int               @default(0)
+  perUserLimit      Int               @default(1)
+  isActive          Boolean           @default(true)
+  notes             String?
+  createdBy         String?
+  lastRedeemedAt    DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  redemptions       PromoRedemption[]
 
   @@index([isActive, expiresAt])
   @@index([createdAt])
 }
 
 model PromoRedemption {
-  id             String      @id @default(cuid())
-  promoCodeId    String
-  userId         String
-  redeemedAt     DateTime    @default(now())
-  grantedPlan    PromoTargetPlan @default(PRO)
-  grantStartAt   DateTime
-  grantEndAt     DateTime?
-  grantStatus    String      @default("active")
-  promoCode      PromoCode   @relation(fields: [promoCodeId], references: [id], onDelete: Restrict)
-  entitlement    UserEntitlement @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  id           String          @id @default(cuid())
+  promoCodeId  String
+  userId       String
+  redeemedAt   DateTime        @default(now())
+  grantedPlan  PromoTargetPlan @default(PRO)
+  grantStartAt DateTime
+  grantEndAt   DateTime?
+  grantStatus  String          @default("active")
+  promoCode    PromoCode       @relation(fields: [promoCodeId], references: [id], onDelete: Restrict)
+  entitlement  UserEntitlement @relation(fields: [userId], references: [userId], onDelete: Restrict)
 
   @@index([promoCodeId, redeemedAt])
   @@index([userId, redeemedAt])
@@ -174,20 +174,20 @@ model UsageEvent {
 /// *
 /// * ===================== Internal Analytics =====================
 model FeatureUsageEvent {
-  id           String   @id @default(cuid())
-  userId       String?  @map("user_id")
-  anonymousVisitorId String? @map("anonymous_visitor_id")
-  sessionId    String?  @map("session_id")
-  featureKey   String   @map("feature_key")
-  featureName  String   @map("feature_name")
-  pagePath     String?  @map("page_path")
-  actionType   String   @map("action_type")
-  metadata     Json?
-  success      Boolean  @default(true)
-  errorMessage String?  @map("error_message")
-  userAgent    String?  @map("user_agent")
-  ipHash       String?  @map("ip_hash")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                 String   @id @default(cuid())
+  userId             String?  @map("user_id")
+  anonymousVisitorId String?  @map("anonymous_visitor_id")
+  sessionId          String?  @map("session_id")
+  featureKey         String   @map("feature_key")
+  featureName        String   @map("feature_name")
+  pagePath           String?  @map("page_path")
+  actionType         String   @map("action_type")
+  metadata           Json?
+  success            Boolean  @default(true)
+  errorMessage       String?  @map("error_message")
+  userAgent          String?  @map("user_agent")
+  ipHash             String?  @map("ip_hash")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([featureKey, createdAt])
@@ -234,20 +234,65 @@ model FeatureDailyStat {
 }
 
 model StudySession {
-  id            String   @id @default(cuid())
-  userId        String
-  title         String
-  fileName      String?
-  fileSizeBytes Int?
-  mimeType      String?
-  selectedModes String[]
+  id                String   @id @default(cuid())
+  userId            String
+  title             String
+  fileName          String?
+  fileSizeBytes     Int?
+  mimeType          String?
+  selectedModes     String[]
   selectedQuizTypes String[]
-  resultJson    Json
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  resultJson        Json
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([userId, updatedAt])
   @@index([userId, createdAt])
+}
+
+/// Manually authored study material. Kept separate from AI-generated StudySession
+/// records so existing generated results remain backward compatible.
+model FlashcardSet {
+  id        String      @id @default(cuid())
+  userId    String
+  title     String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  cards     Flashcard[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, createdAt])
+}
+
+model Flashcard {
+  id        String           @id @default(cuid())
+  setId     String
+  frontText String
+  backText  String
+  position  Int
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  set       FlashcardSet     @relation(fields: [setId], references: [id], onDelete: Cascade)
+  images    FlashcardImage[]
+
+  @@unique([setId, position])
+  @@index([setId])
+}
+
+model FlashcardImage {
+  id        String    @id @default(cuid())
+  cardId    String
+  side      String
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+  data      Bytes
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  card      Flashcard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, side])
+  @@index([cardId])
 }
 
 /// *

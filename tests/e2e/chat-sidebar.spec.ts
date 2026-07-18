@@ -12,6 +12,9 @@ test("desktop workspace navigation collapses, expands the chat, and persists", a
   const toggle = page.getByTestId("workspace-nav-toggle");
   await expect(nav).toBeVisible();
   await expect(nav).toHaveAttribute("data-collapsed", "false");
+  await expect(nav.getByLabel("AIWoven home")).toBeVisible();
+  await expect(page.getByRole("banner").getByText("AIWoven", { exact: true })).toHaveCount(0);
+  expect(await nav.evaluate((element) => element.scrollWidth === element.clientWidth)).toBe(true);
   await expect(page.getByRole("link", { name: "Chat", exact: true }).first()).toHaveAttribute("aria-current", "page");
 
   const expandedNavWidth = (await nav.boundingBox())?.width ?? 0;
@@ -24,6 +27,7 @@ test("desktop workspace navigation collapses, expands the chat, and persists", a
   await expect(nav).toHaveAttribute("data-collapsed", "true");
   await expect(toggle).toHaveAttribute("aria-label", "Expand sidebar");
   await expect.poll(async () => (await nav.boundingBox())?.width ?? 0).toBeLessThanOrEqual(82);
+  expect(await nav.evaluate((element) => element.scrollWidth === element.clientWidth)).toBe(true);
   const collapsedMainWidth = (await main.boundingBox())?.width ?? 0;
   const collapsedComposerWidth = (await composer.boundingBox())?.width ?? 0;
   expect(collapsedMainWidth - expandedMainWidth).toBeGreaterThan(140);
@@ -56,6 +60,7 @@ test("mobile workspace navigation remains an overlay drawer", async ({ page }) =
   const drawer = page.getByTestId("mobile-workspace-nav");
   await expect(drawer).toBeVisible();
   await expect(drawer).toHaveAttribute("data-collapsed", "false");
+  expect(await drawer.evaluate((element) => element.scrollWidth === element.clientWidth)).toBe(true);
 
   await page.keyboard.press("Escape");
   await expect(drawer).toBeHidden();

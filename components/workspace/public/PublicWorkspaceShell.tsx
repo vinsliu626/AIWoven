@@ -16,7 +16,6 @@ import type { Entitlement } from "@/components/chat/billing/types";
 import { SettingsModal } from "@/components/chat/settings/SettingsModal";
 import { ModeDropdown } from "@/components/chat/ui/workflow/ModeDropdown";
 import type { ChatMode } from "@/components/chat/ui/workflow/types";
-import { NexusOrb } from "@/components/shared/NexusOrb";
 import { useProTrialWheel } from "@/lib/hooks/useProTrialWheel";
 import { routeForMode } from "@/lib/productRoutes";
 
@@ -275,11 +274,34 @@ export function PublicWorkspaceShell({
   const [redeemSuccess, setRedeemSuccess] = useState<RedeemSuccessState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [workspaceNavCollapsed, setWorkspaceNavCollapsed] = useState(false);
+  const [workspaceNavTransitionReady, setWorkspaceNavTransitionReady] = useState(false);
   const [authProviders, setAuthProviders] = useState<Record<string, ClientSafeProvider>>({});
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
 
   const sessionExists = !!session;
   const authLoading = status === "loading";
+
+  useEffect(() => {
+    try {
+      setWorkspaceNavCollapsed(localStorage.getItem("aiwoven:chat-sidebar-collapsed") === "true");
+    } catch {}
+    setWorkspaceNavTransitionReady(true);
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const toggleWorkspaceNav = () => setWorkspaceNavCollapsed((current) => {
+    const next = !current;
+    try { localStorage.setItem("aiwoven:chat-sidebar-collapsed", String(next)); } catch {}
+    return next;
+  });
 
   const refreshEntitlement = useCallback(async () => {
     if (!sessionExists) {
@@ -410,20 +432,18 @@ export function PublicWorkspaceShell({
       <div className="relative z-10 flex min-h-screen">
         <AIWovenAppNav
           isOwner={session?.user?.role === "OWNER"}
+          collapsible
+          collapsed={workspaceNavCollapsed}
+          transitionReady={workspaceNavTransitionReady}
+          onToggleCollapsed={toggleWorkspaceNav}
           onBilling={() => { void refreshEntitlement(); setPlanOpen(true); }}
           onSettings={() => setSettingsOpen(true)}
         />
         <div className="flex min-w-0 flex-1 flex-col">
         <header className="relative z-50 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-white/5 bg-[#080808]/80 px-4 backdrop-blur-md md:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <button type="button" onClick={() => setMobileNavOpen(true)} className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 lg:hidden" aria-label="Open workspace navigation">☰</button>
-            <div className="ml-1 flex items-center gap-3">
-              <NexusOrb sizeClass="h-7 w-7" />
-              <div className="flex flex-col">
-                <p className="text-sm font-semibold tracking-wide text-slate-100">AIWoven</p>
-                <p className="font-mono text-[10px] uppercase tracking-wider text-slate-500">{modeTitle(mode, isZh)}</p>
-              </div>
-            </div>
+            <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[.16em] text-slate-500">{modeTitle(mode, isZh)}</p>
           </div>
 
           <div className="hidden flex-1 items-center justify-center md:flex">

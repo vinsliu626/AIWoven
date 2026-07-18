@@ -2,7 +2,6 @@
 
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSession, signIn, signOut, getProviders, type ClientSafeProvider } from "next-auth/react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Existing components
@@ -491,6 +490,7 @@ function ChatPageInner() {
   const [workspaceNavTransitionReady, setWorkspaceNavTransitionReady] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const querySessionLoadedRef = useRef<string | null>(null);
 
   // billing modal
   const [planOpen, setPlanOpen] = useState(false);
@@ -851,6 +851,15 @@ function ChatPageInner() {
       abortRef.current = null;
     }
   }
+
+  useEffect(() => {
+    const requestedSessionId = searchParams.get("session");
+    if (!sessionExists || !requestedSessionId || querySessionLoadedRef.current === requestedSessionId) return;
+    querySessionLoadedRef.current = requestedSessionId;
+    void handleSelectSession(requestedSessionId);
+    // The URL is the source of truth for navigation from the persistent sidebar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, sessionExists]);
 
   async function handleSend() {
     if (mode === "detector" || mode === "note" || mode === "study") return;
@@ -1257,13 +1266,7 @@ function ChatPageInner() {
                 ☰
               </button>
 
-              <div className="ml-1 hidden items-center gap-3 sm:flex">
-                <NexusOrb sizeClass="h-7 w-7" />
-                <div className="flex flex-col">
-                  <h1 className="font-semibold text-sm text-slate-100 tracking-wide">AIWoven</h1>
-                  <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">{modeTitle(mode, isZh)}</p>
-                </div>
-              </div>
+              <p className="ml-1 hidden max-w-44 truncate font-mono text-[10px] font-medium uppercase tracking-[.16em] text-slate-500 sm:block">{modeTitle(mode, isZh)}</p>
             </div>
 
             {/* Center (Billing) */}

@@ -109,6 +109,18 @@ Notes:
 - repeated identical requests are cached in-process to reduce duplicate AI spend
 - PPTX extraction is best-effort and reads slide text from the presentation XML; speaker notes and complex embedded objects are not guaranteed
 
+## AI-Assisted Development
+
+AIWoven was developed using an AI-assisted workflow centered around GPT-5.6 and Codex.
+
+Rather than relying on AI to independently generate the application, GPT-5.6 was first used to refine product requirements through iterative conversations. Product ideas were translated into precise engineering tasks only after the model had a high-confidence understanding of the intended functionality.
+
+Those implementation plans were then provided to Codex, which accelerated feature development, code refactoring, debugging, boilerplate generation, and implementation of repetitive tasks.
+
+Every generated change was manually reviewed, tested, and refined before being committed to the codebase. This iterative workflow allowed rapid development while maintaining control over product design, architecture, and software quality.
+
+In this project, AI functioned as an engineering assistant rather than a replacement for software engineering judgment.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
