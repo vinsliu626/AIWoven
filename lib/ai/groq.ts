@@ -29,6 +29,7 @@ export async function callGroqChat(opts: {
   timeoutMs?: number;
   maxTokens?: number;
   temperature?: number;
+  reasoningEffort?: "none" | "default" | "low" | "medium" | "high";
 }) {
   const timeoutMs = opts.timeoutMs ?? parseEnvInt("AI_NOTE_LLM_TIMEOUT_MS", 60_000);
   const { controller, cancel } = withTimeout(timeoutMs);
@@ -42,6 +43,7 @@ export async function callGroqChat(opts: {
         messages: opts.messages,
         max_tokens: opts.maxTokens ?? parseEnvInt("AI_NOTE_LLM_MAX_TOKENS", 900),
         temperature: opts.temperature ?? 0.6,
+        reasoning_effort: opts.reasoningEffort,
       }),
       signal: controller.signal,
     });
@@ -51,7 +53,8 @@ export async function callGroqChat(opts: {
       const err: any = new Error(`GROQ_HTTP_${res.status}`);
       err.httpStatus = res.status;
       err.code = `GROQ_HTTP_${res.status}`;
-      err.extra = { head: text.slice(0, 1200) };
+      const retryMatch = text.match(/try again in\s*([0-9.]+)s/i);
+      if (retryMatch) err.retryAfterMs = Math.ceil(Number(retryMatch[1]) * 1000);
       throw err;
     }
 
@@ -62,7 +65,6 @@ export async function callGroqChat(opts: {
       const err: any = new Error("GROQ_BAD_JSON");
       err.httpStatus = 502;
       err.code = "GROQ_BAD_JSON";
-      err.extra = { head: text.slice(0, 1200) };
       throw err;
     }
 
@@ -71,7 +73,6 @@ export async function callGroqChat(opts: {
       const err: any = new Error("GROQ_NO_RESPONSE");
       err.httpStatus = 502;
       err.code = "GROQ_NO_RESPONSE";
-      err.extra = data;
       throw err;
     }
 

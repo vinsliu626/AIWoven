@@ -4,6 +4,7 @@ import { buildAudioStudyNoteSystemPrompt, buildAudioStudyNoteUserPrompt, buildSt
 import { callGroqChat } from "@/lib/ai/providers/groq";
 import { callHfRouterChat } from "@/lib/ai/providers/hfRouter";
 import { normalizeAiText } from "@/lib/ui/aiTextFormat";
+import { callAiNoteChatWithFallback } from "@/lib/aiNote/providerRouter";
 
 const FAST_MODEL = "llama-3.1-8b-instant";
 
@@ -315,22 +316,25 @@ export function ensureOutline(note: unknown): OutlineResult {
 export function mapGenerationProviderError(error: unknown): AiNoteGenerationError {
   if (error instanceof AiNoteGenerationError) return error;
   const message = error instanceof Error ? error.message : String(error);
-  const statusMatch = message.match(/(?:Groq|HF Router) failed:\s*(\d{3})/i);
-  const status = statusMatch ? Number.parseInt(statusMatch[1], 10) : undefined;
+  const structuredStatus = Number((error as { httpStatus?: number } | undefined)?.httpStatus || 0);
+  const statusMatch = message.match(/(?:(?:Groq|HF Router) failed:|GROQ_HTTP_|OPENROUTER_HTTP_)[\s:]*(\d{3})/i);
+  const status = structuredStatus || (statusMatch ? Number.parseInt(statusMatch[1], 10) : undefined);
   const retryMsMatch = message.match(/try again in\s*([0-9.]+)ms/i);
   const retryMinuteMatch = message.match(/try again in\s*([0-9.]+)m(?:([0-9.]+)s)?/i);
   const retrySecondMatch = message.match(/try again in\s*([0-9.]+)s/i);
-  const retryAfterMs = retryMsMatch
+  const structuredRetryAfter = Number((error as { retryAfterMs?: number } | undefined)?.retryAfterMs || 0);
+  const retryAfterMs = structuredRetryAfter || (retryMsMatch
     ? Math.ceil(Number(retryMsMatch[1]))
     : retryMinuteMatch
       ? Math.ceil((Number(retryMinuteMatch[1]) * 60 + Number(retryMinuteMatch[2] || 0)) * 1000)
       : retrySecondMatch
         ? Math.ceil(Number(retrySecondMatch[1]) * 1000)
-        : undefined;
-  if (status === 401 || status === 403) return new AiNoteGenerationError("NOTE_GENERATION_AUTH_FAILED", message, false, status);
-  if (status === 429) return new AiNoteGenerationError("NOTE_GENERATION_RATE_LIMITED", message, true, status, retryAfterMs);
-  if (/timeout|abort/i.test(message)) return new AiNoteGenerationError("NOTE_GENERATION_TIMEOUT", message, true, status);
-  return new AiNoteGenerationError("NOTE_GENERATION_FAILED", message, !status || status >= 500, status);
+        : undefined);
+  const safeMessage = status ? `The note provider returned status ${status}.` : "The note provider request failed.";
+  if (status === 401 || status === 403) return new AiNoteGenerationError("NOTE_GENERATION_AUTH_FAILED", safeMessage, false, status);
+  if (status === 429) return new AiNoteGenerationError("NOTE_GENERATION_RATE_LIMITED", safeMessage, true, status, retryAfterMs);
+  if (/timeout|abort/i.test(message)) return new AiNoteGenerationError("NOTE_GENERATION_TIMEOUT", safeMessage, true, status);
+  return new AiNoteGenerationError("NOTE_GENERATION_FAILED", safeMessage, !status || status >= 500, status);
 }
 
 export function assertFinalStudyNoteStructure(markdown: string) {
@@ -734,51 +738,46 @@ async function callFinalMergeRobust(args: { hfToken: string; groqKey: string; me
 }
 
 /** ===================== Main Pipeline ===================== */
-export async function runAiNotePipeline(rawText: string, options?: { phase?: "segment" | "final" }): Promise<string> {
+export async function runAiNotePipeline(rawText: string, options?: { phase?: "segment" | "final"; traceId?: string; noteId?: string }): Promise<string> {
   const text = normalizeInput(rawText);
   if (text.length < 20) throw new Error("Text too short");
 
-  const groqKey = mustEnv("GROQ_API_KEY");
+  mustEnv("GROQ_API_KEY");
   const phase = options?.phase ?? "segment";
   const studyModel = process.env.AI_NOTE_STUDY_MODEL || process.env.AI_NOTE_TEXT_MODEL || "openai/gpt-oss-120b";
   const configuredTokens = Number.parseInt(process.env.AI_NOTE_STUDY_MAX_TOKENS || "2200", 10);
   const maxTokens = Math.max(1_600, Math.min(2_400, Number.isFinite(configuredTokens) ? configuredTokens : 2_200));
   const generationTokenLimit = phase === "final" ? Math.min(maxTokens, 1_800) : maxTokens;
 
-  async function callWithRateRetry(
+  async function callWithProviderFallback(
     model: string,
     messages: Array<{ role: "system" | "user"; content: string }>,
     tokenLimit: number,
+    operation: "generation" | "audit" | "precision_repair",
     reasoningEffort?: "none" | "default" | "low" | "medium" | "high"
   ) {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        return await callGroqChat(groqKey, model, messages, {
-          temperature: 0,
-          max_tokens: tokenLimit,
-          reasoning_effort: reasoningEffort,
-        });
-      } catch (error) {
-        const mapped = mapGenerationProviderError(error);
-        if (mapped.code === "NOTE_GENERATION_RATE_LIMITED" && attempt === 0) {
-          const waitMs = Math.max(1_000, Math.min(30_000, mapped.retryAfterMs ?? 5_000)) + 250;
-          await sleep(waitMs);
-          continue;
-        }
-        throw mapped;
-      }
-    }
-    throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The provider returned no note.", true);
+    const result = await callAiNoteChatWithFallback({
+      messages,
+      groqModel: model,
+      maxTokens: tokenLimit,
+      reasoningEffort,
+      traceId: options?.traceId,
+      noteId: options?.noteId,
+      stage: `${phase}:${operation}`,
+      inputChars: messages.reduce((total, message) => total + message.content.length, 0),
+    });
+    return result.content;
   }
 
   try {
-    const raw = await callWithRateRetry(
+    const raw = await callWithProviderFallback(
       studyModel,
       [
         { role: "system", content: buildAudioStudyNoteSystemPrompt(phase) },
         { role: "user", content: buildAudioStudyNoteUserPrompt(text, phase) },
       ],
-      generationTokenLimit
+      generationTokenLimit,
+      "generation"
     );
     let normalized = normalizeAiText(String(raw || "").trim());
     if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The provider returned an empty note.", true);
@@ -787,7 +786,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
       const auditModel = process.env.AI_NOTE_AUDIT_MODEL || "qwen/qwen3.6-27b";
       const auditTokenLimit = Math.min(maxTokens, 1_800);
       const draftPrecisionIssues = findStudyNotePrecisionIssues(normalized, text);
-      const audited = await callWithRateRetry(
+      const audited = await callWithProviderFallback(
         auditModel,
         [
           { role: "system", content: buildStudyNoteAuditSystemPrompt() },
@@ -799,6 +798,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
           },
         ],
         auditTokenLimit,
+        "audit",
         "none"
       );
       normalized = normalizeAiText(String(audited || "").trim());
@@ -808,13 +808,14 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
       if (precisionIssues.length > 0) {
         const precisionModel = process.env.AI_NOTE_PRECISION_MODEL || auditModel;
         const repairIssues = mergeStudyNotePrecisionIssues(draftPrecisionIssues, precisionIssues);
-        const repaired = await callWithRateRetry(
+        const repaired = await callWithProviderFallback(
           precisionModel,
           [
             { role: "system", content: buildStudyNotePrecisionRepairSystemPrompt() },
             { role: "user", content: buildStudyNotePrecisionRepairUserPrompt(text, normalized, repairIssues) },
           ],
           auditTokenLimit,
+          "precision_repair",
           "none"
         );
         normalized = normalizeAiText(String(repaired || "").trim());

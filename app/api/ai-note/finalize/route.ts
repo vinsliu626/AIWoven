@@ -861,7 +861,7 @@ export async function POST(req: Request) {
           await refreshJobLock(noteId, lock.lockId);
 
           const text = chunks[p];
-          const part = await withTimeout(runAiNotePipeline(text, { phase: "segment" }), llmTimeoutMs, `llm_part_${p}`);
+          const part = await withTimeout(runAiNotePipeline(text, { phase: "segment", traceId, noteId }), llmTimeoutMs, `llm_part_${p}`);
           const normalizedPart = String(part || "").trim();
 
           await prisma.aiNoteSummaryPart.upsert({
@@ -923,7 +923,7 @@ export async function POST(req: Request) {
           select: { text: true },
         });
         const merged = parts.map((p) => String(p.text || "").trim()).filter(Boolean).join("\n\n---\n\n");
-        const final = await withTimeout(runAiNotePipeline(merged, { phase: "final" }), llmTimeoutMs, "llm_merge").catch((error) => {
+        const final = await withTimeout(runAiNotePipeline(merged, { phase: "final", traceId, noteId }), llmTimeoutMs, "llm_merge").catch((error) => {
           if (error && typeof error === "object") Object.assign(error, { failedStage: "merge" });
           throw error;
         });

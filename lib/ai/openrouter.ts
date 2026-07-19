@@ -11,6 +11,7 @@ export async function callOpenRouterChat(opts: {
   timeoutMs?: number;
   maxTokens?: number;
   temperature?: number;
+  reasoningEffort?: "none" | "default" | "low" | "medium" | "high";
 }) {
   const siteUrl = process.env.OPENROUTER_SITE_URL || "http://localhost:3000";
   const appName = process.env.OPENROUTER_APP_NAME || "AIWoven";
@@ -32,6 +33,7 @@ export async function callOpenRouterChat(opts: {
         messages: opts.messages,
         max_tokens: opts.maxTokens ?? parseEnvInt("AI_NOTE_LLM_MAX_TOKENS", 900),
         temperature: opts.temperature ?? 0.6,
+        reasoning_effort: opts.reasoningEffort,
       }),
       signal: controller.signal,
     });
@@ -39,8 +41,7 @@ export async function callOpenRouterChat(opts: {
     const text = await res.text().catch(() => "");
 
     if (!res.ok) {
-      const head = text.slice(0, 1200);
-      const err: any = new Error(`OPENROUTER_HTTP_${res.status}: ${head || "(empty body)"}`);
+      const err: any = new Error(`OPENROUTER_HTTP_${res.status}`);
       err.httpStatus = res.status;
 
       if (res.status === 402) err.code = "OR_CREDIT_DEPLETED";
@@ -50,7 +51,7 @@ export async function callOpenRouterChat(opts: {
       else if (res.status === 502) err.code = "OPENROUTER_NO_RESPONSE";
       else err.code = `OPENROUTER_HTTP_${res.status}`;
 
-      err.extra = { modelId: opts.modelId, status: res.status, head };
+      err.extra = { modelId: opts.modelId, status: res.status };
       throw err;
     }
 
@@ -61,7 +62,7 @@ export async function callOpenRouterChat(opts: {
       const err: any = new Error("OPENROUTER_BAD_JSON");
       err.httpStatus = 502;
       err.code = "OPENROUTER_BAD_JSON";
-      err.extra = { modelId: opts.modelId, head: text.slice(0, 1200) };
+      err.extra = { modelId: opts.modelId };
       throw err;
     }
 
@@ -72,7 +73,7 @@ export async function callOpenRouterChat(opts: {
       const err: any = new Error("OPENROUTER_NO_RESPONSE");
       err.httpStatus = 502;
       err.code = "OPENROUTER_NO_RESPONSE";
-      err.extra = { modelId: opts.modelId, data };
+      err.extra = { modelId: opts.modelId };
       throw err;
     }
 
@@ -94,7 +95,7 @@ export async function callOpenRouterChat(opts: {
 export function shouldFallback(e: any) {
   const httpStatus = Number(e?.httpStatus || 0);
   const code = String(e?.code || "");
-  if (httpStatus === 402 || httpStatus === 429 || httpStatus === 503) return true;
+  if (httpStatus === 402 || httpStatus === 408 || httpStatus === 409 || httpStatus === 429 || httpStatus >= 500) return true;
   if (httpStatus === 400 && code === "MODEL_NOT_SUPPORTED") return true;
   if (code === "MODEL_NOT_SUPPORTED" || code === "UPSTREAM_RATE_LIMIT" || code === "UPSTREAM_OVERLOADED") return true;
   if (code === "OPENROUTER_NO_RESPONSE" || code === "OPENROUTER_TIMEOUT") return true;
