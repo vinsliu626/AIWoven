@@ -360,6 +360,18 @@ export function assertFinalStudyNoteStructure(markdown: string) {
   return note;
 }
 
+export function preserveStructurallyCompleteStudyNote(draft: string, audited: string) {
+  try {
+    return assertFinalStudyNoteStructure(audited);
+  } catch (auditError) {
+    try {
+      return assertFinalStudyNoteStructure(draft);
+    } catch {
+      throw auditError;
+    }
+  }
+}
+
 export function findStudyNotePrecisionIssues(markdown: string, evidence: string) {
   const note = String(markdown || "");
   const source = String(evidence || "");
@@ -783,6 +795,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
     if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The provider returned an empty note.", true);
 
     if (phase === "final") {
+      const generatedDraft = normalized;
       const auditModel = process.env.AI_NOTE_AUDIT_MODEL || "qwen/qwen3.6-27b";
       const auditTokenLimit = Math.min(maxTokens, 1_800);
       const draftPrecisionIssues = findStudyNotePrecisionIssues(normalized, text);
@@ -803,6 +816,16 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
       );
       normalized = normalizeAiText(String(audited || "").trim());
       if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The grounding audit returned an empty note.", true);
+      const structurallySafe = preserveStructurallyCompleteStudyNote(generatedDraft, normalized);
+      if (structurallySafe === generatedDraft && normalized !== generatedDraft) {
+        console.warn("[ai-note/audit] preserving structurally complete draft", {
+          traceId: options?.traceId || "unknown",
+          noteId: options?.noteId || "unknown",
+          stage: "final:audit",
+          outcome: "audit_structure_rejected",
+        });
+      }
+      normalized = structurallySafe;
       normalized = applySafeStudyNotePrecisionCorrections(normalized);
       let precisionIssues = findStudyNotePrecisionIssues(normalized, text);
       if (precisionIssues.length > 0) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AiNoteGenerationError, applySafeStudyNotePrecisionCorrections, assertFinalStudyNoteStructure, ensureOutline, findStudyNotePrecisionIssues, mapGenerationProviderError, mergeStudyNotePrecisionIssues } from "@/lib/aiNote/pipeline";
+import { AiNoteGenerationError, applySafeStudyNotePrecisionCorrections, assertFinalStudyNoteStructure, ensureOutline, findStudyNotePrecisionIssues, mapGenerationProviderError, mergeStudyNotePrecisionIssues, preserveStructurallyCompleteStudyNote } from "@/lib/aiNote/pipeline";
 import { buildAudioStudyNoteSystemPrompt, buildStudyNoteAuditSystemPrompt, buildStudyNotePrecisionRepairSystemPrompt } from "@/lib/aiNote/prompts";
 
 describe("AI Note generation pipeline normalization", () => {
@@ -194,5 +194,17 @@ describe("AI Note generation pipeline normalization", () => {
         "# Notes\n\n## Executive Summary\nSummary\n\n## Key Definitions\nTerms\n\n## Key Concepts\nConcepts\n\n## Relationships Between Concepts\nLinks\n\n## Key Takeaways\n- Review"
       )
     ).toContain("## Key Takeaways");
+  });
+
+  it("preserves a valid generated draft when a successful audit strips required Markdown structure", () => {
+    const draft = "# Cellular Respiration\n\n## Executive Summary\nSummary\n\n## Key Definitions\nTerms\n\n## Key Concepts\nConcepts\n\n## Relationships Between Concepts\nLinks\n\n## Key Takeaways\n- Review";
+    const degradedAudit = "Cellular respiration converts energy into ATP, but this response lost its headings.";
+    expect(preserveStructurallyCompleteStudyNote(draft, degradedAudit)).toBe(draft);
+  });
+
+  it("prefers a structurally complete audit and still rejects two incomplete candidates", () => {
+    const audited = "# Audited\n\n## Executive Summary\nSummary\n\n## Key Definitions\nTerms\n\n## Key Concepts\nConcepts\n\n## Relationships Between Concepts\nLinks\n\n## Key Takeaways\n- Review";
+    expect(preserveStructurallyCompleteStudyNote("incomplete draft", audited)).toBe(audited);
+    expect(() => preserveStructurallyCompleteStudyNote("incomplete draft", "incomplete audit")).toThrowError(AiNoteGenerationError);
   });
 });
