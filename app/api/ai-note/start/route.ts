@@ -9,24 +9,18 @@ import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ApiErr = "AUTH_REQUIRED" | "DB_ERROR" | "INTERNAL_ERROR";
+type ApiErr = "AUTH_REQUIRED" | "INVALID_UPLOAD" | "NOTE_NOT_FOUND" | "FORBIDDEN" | "INTERNAL_ERROR";
 
-function bad(code: ApiErr, status = 400, message?: string, extra?: Record<string, any>) {
+function bad(traceId: string, code: ApiErr, status = 400, message?: string, extra?: Record<string, unknown>) {
   return NextResponse.json(
-    { ok: false, error: code, message: message ?? code, ...(extra ? { extra } : {}) },
-    { status }
+    { ok: false, error: code, message: message ?? "Unable to start the upload.", traceId, ...(extra ? { extra } : {}) },
+    { status, headers: { "x-trace-id": traceId } }
   );
 }
 
-function dbHead() {
-  return String(process.env.DATABASE_URL || "").slice(0, 40);
-}
-
 export async function POST(req: NextRequest) {
+  const traceId = req.headers.get("x-vercel-id") || randomUUID();
   try {
-    // ✅ 打印一下到底有没有进来
-    console.log("[ai-note/start] hit", { dbHead: dbHead() });
-
     const sessionUser = await getRouteSessionUser(req);
     const userId = sessionUser?.id ?? devBypassUserId();
 
@@ -46,7 +40,18 @@ export async function POST(req: NextRequest) {
           hasEmail: !!sessionUser?.email,
         });
       }
-      return bad("AUTH_REQUIRED", 401);
+      return bad(traceId, "AUTH_REQUIRED", 401, "Please sign in to use AI Notes.");
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const sourceType = body?.sourceType === "upload" ? "upload" : "record";
+    if (sourceType === "upload") {
+      const size = Number(body?.size);
+      const totalChunks = Number(body?.totalChunks);
+      const maxBytes = Number.parseInt(process.env.AI_NOTE_MAX_UPLOAD_BYTES || "", 10) || 100 * 1024 * 1024;
+      if (!Number.isSafeInteger(size) || size <= 0 || size > maxBytes || !Number.isSafeInteger(totalChunks) || totalChunks <= 0) {
+        return bad(traceId, "INVALID_UPLOAD", 400, `Choose an audio file smaller than ${Math.round(maxBytes / 1024 / 1024)} MB.`);
+      }
     }
 
     const noteId = randomUUID();
@@ -56,14 +61,33 @@ export async function POST(req: NextRequest) {
       data: { id: noteId, userId } as any,
     });
 
-    return NextResponse.json({ ok: true, noteId });
+    return NextResponse.json(
+      { ok: true, noteId, traceId },
+      { headers: { "x-trace-id": traceId } }
+    );
   } catch (e: any) {
-    // ✅ 一定要打完整错误（你现在缺的就是它）
-    console.error("[ai-note/start] ERROR:", e);
-    return bad("INTERNAL_ERROR", 500, String(e?.message || e), {
-      name: e?.name,
-      code: e?.code,
-      dbHead: dbHead(),
-    });
+    console.error("[ai-note/start] error", { traceId, error: e });
+    return bad(traceId, "INTERNAL_ERROR", 500, "Unable to start the upload. Please try again.");
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const traceId = req.headers.get("x-vercel-id") || randomUUID();
+  try {
+    const sessionUser = await getRouteSessionUser(req);
+    const userId = sessionUser?.id ?? devBypassUserId();
+    if (!userId) return bad(traceId, "AUTH_REQUIRED", 401, "Please sign in to use AI Notes.");
+
+    const body = await req.json().catch(() => null);
+    const noteId = String(body?.noteId || "").trim();
+    const existing = noteId ? await prisma.aiNoteSession.findUnique({ where: { id: noteId }, select: { userId: true } }) : null;
+    if (!existing) return bad(traceId, "NOTE_NOT_FOUND", 404, "This upload session no longer exists.");
+    if (existing.userId !== userId) return bad(traceId, "FORBIDDEN", 403, "You cannot cancel this upload session.");
+
+    await prisma.aiNoteSession.delete({ where: { id: noteId } });
+    return NextResponse.json({ ok: true, traceId }, { headers: { "x-trace-id": traceId } });
+  } catch (e) {
+    console.error("[ai-note/start] delete error", { traceId, error: e });
+    return bad(traceId, "INTERNAL_ERROR", 500, "Unable to cancel the upload. Please try again.");
   }
 }

@@ -19,20 +19,10 @@ type NoteEntitlement = {
   usedNoteGeneratesToday?: number;
 };
 
-function StatPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] text-slate-300">
-      <span className="text-slate-500">{label}</span>
-      <span className="ml-2 text-slate-100">{value}</span>
-    </div>
-  );
-}
-
 export function NoteUI({
   isLoadingGlobal,
   isZh,
   locked,
-  entitlement,
   onUsageRefresh,
 }: {
   isLoadingGlobal: boolean;
@@ -72,13 +62,6 @@ export function NoteUI({
             </div>
           ) : null}
 
-          {!locked && entitlement ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <StatPill label="Today" value={`${entitlement.usedNoteGeneratesToday ?? 0}/${entitlement.noteGeneratesPerDay ?? 0}`} />
-              <StatPill label="Text limit" value={`${(entitlement.noteInputMaxChars ?? 0).toLocaleString()} chars`} />
-              <StatPill label="Item cap" value={`${entitlement.noteMaxItems ?? 0}`} />
-            </div>
-          ) : null}
         </div>
 
         <div className="custom-scrollbar flex-1 overflow-y-auto px-6 py-6">
@@ -91,16 +74,23 @@ export function NoteUI({
                     <p className="mt-2 text-sm text-slate-300">{helperText}</p>
                   </div>
 
-                  <button
-                    onClick={ctl.generateNotes}
-                    disabled={!ctl.canGenerate}
-                    className="h-11 rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 px-5 text-sm font-semibold text-white shadow-md shadow-blue-500/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:from-slate-700 disabled:via-slate-700 disabled:to-slate-700 disabled:text-slate-300 disabled:shadow-none"
-                  >
-                    {ctl.loading ? "Generating..." : "Generate Notes"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {ctl.loading ? (
+                      <button onClick={ctl.cancelGeneration} className="h-11 rounded-full border border-white/10 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/5">
+                        Cancel
+                      </button>
+                    ) : null}
+                    <button
+                      onClick={ctl.generateNotes}
+                      disabled={!ctl.canGenerate}
+                      className="h-11 rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 px-5 text-sm font-semibold text-white shadow-md shadow-blue-500/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:from-slate-700 disabled:via-slate-700 disabled:to-slate-700 disabled:text-slate-300 disabled:shadow-none"
+                    >
+                      {ctl.loading ? (ctl.phase === "uploading" ? "Uploading..." : "Generating...") : "Generate Notes"}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
                   <NoteTabs
                     tab={ctl.tab}
                     isZh={isZh}
@@ -111,13 +101,6 @@ export function NoteUI({
                     onSwitch={ctl.switchTab}
                   />
 
-                  <div className="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-[11px] text-slate-400">
-                    {ctl.tab === "record"
-                      ? `${ctl.recordSecs}s recorded`
-                      : ctl.tab === "upload"
-                      ? ctl.file?.name || "Ready for upload"
-                      : `${ctl.text.trim().length.toLocaleString()} chars`}
-                  </div>
                 </div>
               </div>
 
@@ -140,11 +123,7 @@ export function NoteUI({
                     isLoadingGlobal={isLoadingGlobal}
                     recording={ctl.recording}
                     recordSecs={ctl.recordSecs}
-                    noteId={ctl.noteId}
-                    uploadedChunks={ctl.uploadedChunks}
                     liveTranscript={ctl.liveTranscript}
-                    finalizeStage={ctl.finalizeStage}
-                    finalizeProgress={ctl.finalizeProgress}
                     onStart={ctl.startRecording}
                     onStop={ctl.stopRecording}
                   />
@@ -168,15 +147,12 @@ export function NoteUI({
               <NoteGenerationProgress
                 isZh={isZh}
                 loading={ctl.loading}
-                progress={resultReady ? 100 : ctl.displayProgress}
-                stage={resultReady ? "done" : ctl.displayStage}
+                phase={resultReady ? "done" : ctl.phase}
+                uploadProgress={ctl.uploadProgress}
                 resultReady={resultReady}
                 error={ctl.loading ? null : ctl.error}
+                traceId={ctl.errorTraceId}
               />
-
-              {ctl.error && !ctl.loading ? (
-                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[12px] text-red-200">{ctl.error}</div>
-              ) : null}
             </div>
 
             <div className="lg:col-span-2">
@@ -185,10 +161,6 @@ export function NoteUI({
                 result={ctl.result}
                 resultComplete={ctl.resultComplete}
                 loading={ctl.loading}
-                error={ctl.error}
-                success={ctl.success}
-                progressStage={ctl.displayStage}
-                progressPercent={ctl.displayProgress}
               />
             </div>
           </div>

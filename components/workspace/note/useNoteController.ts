@@ -4,6 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRms, createSpeechSegmenter } from "./audioVad";
 
 export type NoteTab = "upload" | "record" | "text";
+export type NotePhase = "idle" | "uploading" | "transcribing" | "organizing" | "finalizing" | "done" | "error";
+
+const UPLOAD_CHUNK_BYTES = 3 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+const MAX_UPLOAD_ATTEMPTS = 3;
 
 export function useNoteController({
   locked,
@@ -36,7 +41,6 @@ export function useNoteController({
 
   const [recordSecs, setRecordSecs] = useState(0);
   const timerRef = useRef<number | null>(null);
-  const progressTimerRef = useRef<number | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
@@ -48,6 +52,9 @@ export function useNoteController({
   const [finalizeProgress, setFinalizeProgress] = useState<number>(0);
   const [displayStage, setDisplayStage] = useState<string>("idle");
   const [displayProgress, setDisplayProgress] = useState<number>(0);
+  const [phase, setPhase] = useState<NotePhase>("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [errorTraceId, setErrorTraceId] = useState<string | null>(null);
 
   const [noteId, setNoteId] = useState<string | null>(null);
   const [uploadedChunks, setUploadedChunks] = useState(0);
@@ -63,6 +70,8 @@ export function useNoteController({
   const sliceSpeechDetectedRef = useRef(false);
   const recordingStartedAtRef = useRef<number | null>(null);
   const recordedDurationMsRef = useRef<number | null>(null);
+  const uploadAbortRef = useRef<AbortController | null>(null);
+  const uploadRequestRef = useRef<XMLHttpRequest | null>(null);
   const speechSegmenterRef = useRef(
     createSpeechSegmenter<Blob>({
       sliceMs: RECORDER_SLICE_MS,
@@ -92,6 +101,8 @@ export function useNoteController({
     if (code === "NOTE_INPUT_TOO_LARGE") {
       return isZh ? "这段文本超过了当前套餐限制。" : "This text is too long for your current plan.";
     }
+    const traceId = String(payload?.traceId || "").trim();
+    if (traceId) setErrorTraceId(traceId);
     return payload?.message || fallback;
   }
 
@@ -99,13 +110,6 @@ export function useNoteController({
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
-    }
-  }
-
-  function stopProgressTimer() {
-    if (progressTimerRef.current) {
-      window.clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
     }
   }
 
@@ -145,34 +149,19 @@ export function useNoteController({
 
   function resetAll() {
     setError(null);
+    setErrorTraceId(null);
     setResult("");
     setResultComplete(false);
     setSuccess(null);
   }
 
   function resetProgress() {
-    stopProgressTimer();
     setFinalizeStage("idle");
     setFinalizeProgress(0);
     setDisplayStage("idle");
     setDisplayProgress(0);
-  }
-
-  function startSimulatedProgress() {
-    stopProgressTimer();
-    setDisplayStage("analyzing");
-    setDisplayProgress(8);
-
-    progressTimerRef.current = window.setInterval(() => {
-      setDisplayProgress((current) => {
-        const next = Math.min(current + (current < 36 ? 8 : current < 64 ? 6 : current < 82 ? 4 : 2), 94);
-        if (next < 30) setDisplayStage("analyzing");
-        else if (next < 52) setDisplayStage("extracting");
-        else if (next < 82) setDisplayStage("summarizing");
-        else setDisplayStage("formatting");
-        return next;
-      });
-    }, 1100);
+    setPhase("idle");
+    setUploadProgress(0);
   }
 
   async function startRecording() {
@@ -386,7 +375,149 @@ export function useNoteController({
       return;
     }
 
+    if (nextFile.size > MAX_UPLOAD_BYTES) {
+      setError(isZh ? "音频文件必须小于 100 MB。" : "Choose an audio file smaller than 100 MB.");
+      setFile(null);
+      return;
+    }
+
     setFile(nextFile);
+  }
+
+  function parseApiPayload(raw: string, responseTraceId?: string | null) {
+    let payload: any = null;
+    try {
+      payload = raw ? JSON.parse(raw) : null;
+    } catch {
+      payload = null;
+    }
+    if (!payload || typeof payload !== "object") payload = {};
+    if (!payload.traceId && responseTraceId) payload.traceId = responseTraceId;
+    return payload;
+  }
+
+  function uploadPart({
+    noteId: activeNoteId,
+    part,
+    index,
+    completedBytes,
+    totalBytes,
+    signal,
+  }: {
+    noteId: string;
+    part: Blob;
+    index: number;
+    completedBytes: number;
+    totalBytes: number;
+    signal: AbortSignal;
+  }) {
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      uploadRequestRef.current = xhr;
+      const abort = () => xhr.abort();
+      signal.addEventListener("abort", abort, { once: true });
+
+      xhr.open("POST", "/api/ai-note/chunk");
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const loaded = Math.min(part.size, event.loaded);
+        setUploadProgress(Math.min(100, Math.round(((completedBytes + loaded) / totalBytes) * 100)));
+      };
+      xhr.onerror = () => reject(new Error("Network interruption while uploading audio."));
+      xhr.onabort = () => reject(new DOMException("Upload cancelled", "AbortError"));
+      xhr.onload = () => {
+        signal.removeEventListener("abort", abort);
+        uploadRequestRef.current = null;
+        const payload = parseApiPayload(xhr.responseText, xhr.getResponseHeader("x-trace-id") || xhr.getResponseHeader("x-vercel-id"));
+        if (xhr.status < 200 || xhr.status >= 300 || payload?.ok === false) {
+          const apiError = new Error(friendlyMessageFromApi(payload, "Unable to upload the audio file."));
+          Object.assign(apiError, { status: xhr.status });
+          reject(apiError);
+          return;
+        }
+        resolve();
+      };
+
+      const form = new FormData();
+      form.append("noteId", activeNoteId);
+      form.append("chunkIndex", String(index));
+      form.append("file", part, `part-${index}.bin`);
+      xhr.send(form);
+    });
+  }
+
+  async function uploadAudioFile(activeFile: File) {
+    const totalChunks = Math.ceil(activeFile.size / UPLOAD_CHUNK_BYTES);
+    const startResponse = await fetch("/api/ai-note/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceType: "upload", name: activeFile.name, mime: activeFile.type, size: activeFile.size, totalChunks }),
+    });
+    const startRaw = await startResponse.text();
+    const startPayload = parseApiPayload(startRaw, startResponse.headers.get("x-trace-id") || startResponse.headers.get("x-vercel-id"));
+    if (!startResponse.ok || !startPayload?.ok || !startPayload?.noteId) {
+      throw new Error(friendlyMessageFromApi(startPayload, "Unable to start the audio upload."));
+    }
+
+    const activeNoteId = String(startPayload.noteId);
+    setNoteId(activeNoteId);
+    setUploadedChunks(0);
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
+    setPhase("uploading");
+    setDisplayStage("uploading");
+    setUploadProgress(0);
+
+    for (let index = 0; index < totalChunks; index += 1) {
+      const start = index * UPLOAD_CHUNK_BYTES;
+      const part = activeFile.slice(start, Math.min(activeFile.size, start + UPLOAD_CHUNK_BYTES), activeFile.type || "application/octet-stream");
+      let lastError: unknown = null;
+      for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt += 1) {
+        try {
+          await uploadPart({ noteId: activeNoteId, part, index, completedBytes: start, totalBytes: activeFile.size, signal: controller.signal });
+          lastError = null;
+          break;
+        } catch (partError: any) {
+          lastError = partError;
+          const status = Number(partError?.status || 0);
+          const retryable = !status || status === 429 || status >= 500;
+          if (!retryable || attempt === MAX_UPLOAD_ATTEMPTS || controller.signal.aborted) break;
+          await new Promise((resolve) => window.setTimeout(resolve, 400 * 2 ** (attempt - 1)));
+        }
+      }
+      if (lastError) throw lastError;
+      setUploadedChunks(index + 1);
+      setUploadProgress(Math.round(((index + 1) / totalChunks) * 100));
+    }
+
+    uploadAbortRef.current = null;
+    uploadRequestRef.current = null;
+    return { noteId: activeNoteId, expectedChunks: totalChunks, expectedBytes: activeFile.size };
+  }
+
+  async function cancelGeneration() {
+    finalizeAbortRef.current = true;
+    uploadAbortRef.current?.abort();
+    uploadRequestRef.current?.abort();
+    uploadAbortRef.current = null;
+    uploadRequestRef.current = null;
+    const activeNoteId = noteId;
+    setLoading(false);
+    setPhase("idle");
+    setDisplayStage("idle");
+    setDisplayProgress(0);
+    setUploadProgress(0);
+    setError(null);
+    if (activeNoteId) {
+      void fetch("/api/ai-note/start", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ noteId: activeNoteId }),
+      }).catch(() => {});
+    }
+    setNoteId(null);
+    setUploadedChunks(0);
   }
 
   async function generateNotes() {
@@ -405,22 +536,25 @@ export function useNoteController({
     setResult("");
     setResultComplete(false);
     setSuccess(null);
-    if (tab !== "record") startSimulatedProgress();
+    setErrorTraceId(null);
 
     try {
       if (tab === "text") {
+        setPhase("organizing");
+        setDisplayStage("organizing");
         const response = await fetch("/api/ai-note", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ inputType: "text", text: text.trim() }),
         });
 
-        const data = await response.json().catch(() => ({}));
+        const raw = await response.text();
+        const data = parseApiPayload(raw, response.headers.get("x-trace-id") || response.headers.get("x-vercel-id"));
         if (!response.ok || data?.ok === false) {
           throw new Error(friendlyMessageFromApi(data, isZh ? "生成笔记失败。" : "Unable to generate notes."));
         }
 
-        stopProgressTimer();
+        setPhase("done");
         setDisplayStage("done");
         setDisplayProgress(100);
         setResult(String(data?.note ?? data?.result ?? ""));
@@ -429,36 +563,28 @@ export function useNoteController({
         onUsageRefresh?.();
         return;
       }
+
+      let processingNoteId = noteId;
+      let inputType: "upload" | "record" = "record";
+      let expectedChunks: number | undefined;
+      let expectedBytes: number | undefined;
 
       if (tab === "upload") {
-        const fd = new FormData();
-        fd.append("inputType", "upload");
         if (!file) throw new Error(isZh ? "缺少上传文件。" : "Missing file.");
-        fd.append("file", file, file.name);
-
-        const response = await fetch("/api/ai-note", { method: "POST", body: fd });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || data?.ok === false) {
-          throw new Error(friendlyMessageFromApi(data, isZh ? "生成笔记失败。" : "Unable to generate notes."));
-        }
-
-        stopProgressTimer();
-        setDisplayStage("done");
-        setDisplayProgress(100);
-        setResult(String(data?.note ?? data?.result ?? ""));
-        setResultComplete(true);
-        setSuccess(isZh ? "笔记已生成。" : "Notes generated.");
-        onUsageRefresh?.();
-        return;
+        const uploaded = await uploadAudioFile(file);
+        processingNoteId = uploaded.noteId;
+        expectedChunks = uploaded.expectedChunks;
+        expectedBytes = uploaded.expectedBytes;
+        inputType = "upload";
       }
 
-      if (!noteId) {
+      if (!processingNoteId) {
         throw new Error(isZh ? "缺少 noteId，请重新开始录音。" : "Missing noteId. Please start recording again.");
       }
-      if (recording) {
+      if (tab === "record" && recording) {
         throw new Error(isZh ? "请先停止录音，再生成笔记。" : "Stop recording before generating notes.");
       }
-      if (uploadedChunks <= 0) {
+      if (tab === "record" && uploadedChunks <= 0) {
         throw new Error(isZh ? "还没有上传任何分片。" : "No chunks uploaded yet.");
       }
 
@@ -469,8 +595,9 @@ export function useNoteController({
       finalizeAbortRef.current = false;
       setFinalizeStage("asr");
       setFinalizeProgress(1);
+      setPhase("transcribing");
       setDisplayStage("extracting");
-      setDisplayProgress(1);
+      setDisplayProgress(0);
 
       const maxAttempts = 180;
       let finalNote = "";
@@ -483,7 +610,13 @@ export function useNoteController({
         const response = await fetch("/api/ai-note/finalize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ noteId, totalDurationMs: recordedDurationMsRef.current ?? Math.max(1, recordSecs * 1000) }),
+          body: JSON.stringify({
+            noteId: processingNoteId,
+            inputType,
+            expectedChunks,
+            expectedBytes,
+            totalDurationMs: inputType === "record" ? recordedDurationMsRef.current ?? Math.max(1, recordSecs * 1000) : undefined,
+          }),
         });
 
         const raw = await response.text();
@@ -526,6 +659,7 @@ export function useNoteController({
             ? "formatting"
             : nextStage
         );
+        setPhase(nextStage === "asr" ? "transcribing" : nextStage === "merge" || nextStage === "done" ? "finalizing" : "organizing");
         setDisplayProgress(nextProgress);
         if (partialNote) {
           setResult(partialNote);
@@ -546,22 +680,31 @@ export function useNoteController({
 
       setDisplayStage("done");
       setDisplayProgress(100);
+      setPhase("done");
       setResult(finalNote);
       setResultComplete(true);
       setSuccess(isZh ? "笔记已生成。" : "Notes generated.");
       onUsageRefresh?.();
     } catch (generateError: any) {
-      stopProgressTimer();
+      if (generateError?.name === "AbortError") {
+        setError(null);
+        setPhase("idle");
+        return;
+      }
       setDisplayStage("failed");
+      setPhase("error");
       setError(generateError?.message || (isZh ? "生成失败。" : "Failed to generate notes."));
     } finally {
-      stopProgressTimer();
+      uploadAbortRef.current = null;
+      uploadRequestRef.current = null;
       setLoading(false);
     }
   }
 
   function switchTab(next: NoteTab) {
     finalizeAbortRef.current = true;
+    uploadAbortRef.current?.abort();
+    uploadRequestRef.current?.abort();
     if (recording) {
       try {
         void stopRecording();
@@ -587,7 +730,8 @@ export function useNoteController({
     return () => {
       finalizeAbortRef.current = true;
       stopTimer();
-      stopProgressTimer();
+      uploadAbortRef.current?.abort();
+      uploadRequestRef.current?.abort();
       cleanupAudioProcessing();
       cleanupStream();
     };
@@ -608,6 +752,9 @@ export function useNoteController({
     finalizeProgress,
     displayStage,
     displayProgress,
+    phase,
+    uploadProgress,
+    errorTraceId,
     noteId,
     uploadedChunks,
     chunkError,
@@ -620,5 +767,6 @@ export function useNoteController({
     generateNotes,
     switchTab,
     resetAll,
+    cancelGeneration,
   };
 }

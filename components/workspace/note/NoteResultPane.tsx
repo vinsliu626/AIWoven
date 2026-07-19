@@ -8,29 +8,12 @@ export function NoteResultPane({
   isZh,
   result,
   resultComplete,
-  loading,
-  error,
-  success,
-  progressStage,
-  progressPercent,
 }: {
   isZh: boolean;
   result: string;
   resultComplete?: boolean;
   loading?: boolean;
-  error?: string | null;
-  success?: string | null;
-  progressStage?: string;
-  progressPercent?: number;
 }) {
-  const statusText = loading
-    ? `Generating... ${Math.round(progressPercent ?? 0)}%`
-    : error
-    ? error
-    : success
-    ? success
-    : null;
-
   return (
     <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-6">
       <div className="flex flex-col gap-3 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -39,13 +22,9 @@ export function NoteResultPane({
           <p className="mt-2 text-lg font-semibold text-slate-50">
             {result ? (resultComplete ? "Final note output" : "Generating note draft") : "Awaiting result"}
           </p>
-          <p className="mt-1 text-sm text-slate-400">{progressStage ? `Stage: ${progressStage}` : " "}</p>
         </div>
 
         <div className="flex items-center gap-3">
-          {statusText ? (
-            <span className={`text-[11px] ${error ? "text-red-300" : loading ? "text-cyan-300" : "text-emerald-300"}`}>{statusText}</span>
-          ) : null}
           <CopyButton text={result} />
         </div>
       </div>

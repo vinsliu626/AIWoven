@@ -8,6 +8,7 @@ import { devBypassUserId } from "@/lib/auth/devBypass";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import { randomUUID } from "node:crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,10 +26,10 @@ type ApiErr =
   | "BAD_BODY"
   | "INTERNAL_ERROR";
 
-function bad(code: ApiErr, status = 400, message?: string, extra?: Record<string, any>) {
+function bad(traceId: string, code: ApiErr, status = 400, message?: string, extra?: Record<string, unknown>) {
   return NextResponse.json(
-    { ok: false, error: code, message: message ?? code, ...(extra ? { extra } : {}) },
-    { status }
+    { ok: false, error: code, message: message ?? "Unable to upload this audio part.", traceId, ...(extra ? { extra } : {}) },
+    { status, headers: { "x-trace-id": traceId } }
   );
 }
 
@@ -101,10 +102,11 @@ async function writeOfflineChunk(noteId: string, chunkIndex: number, dataBuf: Bu
 }
 
 export async function POST(req: Request) {
+  const traceId = req.headers.get("x-vercel-id") || randomUUID();
   try {
     const session = await getServerSession(authOptions);
     const userId = ((session as any)?.user?.id as string | undefined) ?? devBypassUserId();
-    if (!userId) return bad("AUTH_REQUIRED", 401);
+    if (!userId) return bad(traceId, "AUTH_REQUIRED", 401, "Please sign in to use AI Notes.");
 
     const ct = (req.headers.get("content-type") || "").toLowerCase();
 
@@ -119,7 +121,7 @@ export async function POST(req: Request) {
       try {
         body = await req.json();
       } catch {
-        return bad("BAD_BODY", 400, "Invalid JSON body");
+        return bad(traceId, "BAD_BODY", 400, "Invalid JSON body");
       }
 
       noteId = String(body?.noteId || "").trim();
@@ -132,7 +134,7 @@ export async function POST(req: Request) {
       try {
         dataBuf = bytesToBuffer(body?.data, encoding);
       } catch (e: any) {
-        return bad("MISSING_DATA", 400, e?.message || "Missing/invalid data");
+        return bad(traceId, "MISSING_DATA", 400, "The audio part is missing or invalid.");
       }
     }
 
@@ -145,7 +147,7 @@ export async function POST(req: Request) {
       if (idx.ok) chunkIndex = idx.value;
 
       const file = fd.get("file");
-      if (!(file instanceof File)) return bad("MISSING_DATA", 400, "Missing file field");
+      if (!(file instanceof File)) return bad(traceId, "MISSING_DATA", 400, "The audio part is missing.");
 
       mime = file.type || "audio/webm";
       const ab = await file.arrayBuffer();
@@ -154,18 +156,18 @@ export async function POST(req: Request) {
 
     // 其他类型不支持
     else {
-      return bad("UNSUPPORTED_CONTENT_TYPE", 415, "Expected application/json or multipart/form-data", { got: ct });
+      return bad(traceId, "UNSUPPORTED_CONTENT_TYPE", 415, "Unsupported upload format.");
     }
 
-    if (!noteId) return bad("MISSING_NOTE_ID", 400);
-    if (!isValidNoteId(noteId)) return bad("INVALID_NOTE_ID", 400, "noteId must be a UUID.");
-    if (chunkIndex === null) return bad("MISSING_CHUNK_INDEX", 400);
-    if (chunkIndex < 0) return bad("INVALID_CHUNK_INDEX", 400);
-    if (!dataBuf) return bad("MISSING_DATA", 400);
+    if (!noteId) return bad(traceId, "MISSING_NOTE_ID", 400, "The upload session is missing.");
+    if (!isValidNoteId(noteId)) return bad(traceId, "INVALID_NOTE_ID", 400, "The upload session is invalid.");
+    if (chunkIndex === null) return bad(traceId, "MISSING_CHUNK_INDEX", 400, "The audio part number is missing.");
+    if (chunkIndex < 0) return bad(traceId, "INVALID_CHUNK_INDEX", 400, "The audio part number is invalid.");
+    if (!dataBuf) return bad(traceId, "MISSING_DATA", 400, "The audio part is missing.");
 
     const MAX_CHUNK_BYTES = Number.parseInt(process.env.AI_NOTE_MAX_CHUNK_BYTES || "", 10) || 3 * 1024 * 1024;
     if (dataBuf.length > MAX_CHUNK_BYTES) {
-      return bad("CHUNK_TOO_LARGE", 413, `Max ${MAX_CHUNK_BYTES} bytes`, {
+      return bad(traceId, "CHUNK_TOO_LARGE", 413, "This audio part is too large to upload safely.", {
         size: dataBuf.length,
         max: MAX_CHUNK_BYTES,
       });
@@ -178,7 +180,7 @@ export async function POST(req: Request) {
     });
 
     if (existing && existing.userId !== userId) {
-      return bad("FORBIDDEN", 403, "This noteId belongs to another user.", { noteId });
+      return bad(traceId, "FORBIDDEN", 403, "You cannot upload to this session.");
     }
 
     await prisma.aiNoteSession.upsert({
@@ -208,9 +210,10 @@ export async function POST(req: Request) {
       bytes: dataBuf.length,
       mime,
       chunksNow,
-    });
+      traceId,
+    }, { headers: { "x-trace-id": traceId } });
   } catch (e: any) {
-    console.error("[ai-note/chunk] error:", e?.message || e);
-    return bad("INTERNAL_ERROR", 500, e?.message || "Internal error");
+    console.error("[ai-note/chunk] error", { traceId, error: e });
+    return bad(traceId, "INTERNAL_ERROR", 500, "Unable to upload this audio part. Please try again.");
   }
 }

@@ -9,11 +9,7 @@ export function NoteRecordPane({
   isLoadingGlobal,
   recording,
   recordSecs,
-  noteId,
-  uploadedChunks,
   liveTranscript,
-  finalizeStage,
-  finalizeProgress,
   onStart,
   onStop,
 }: {
@@ -23,11 +19,7 @@ export function NoteRecordPane({
   isLoadingGlobal: boolean;
   recording: boolean;
   recordSecs: number;
-  noteId: string | null;
-  uploadedChunks: number;
   liveTranscript: string;
-  finalizeStage: string;
-  finalizeProgress: number;
   onStart: () => void;
   onStop: () => void;
 }) {
@@ -54,29 +46,12 @@ export function NoteRecordPane({
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Chunks</p>
-          <p className="mt-2 text-sm font-semibold text-slate-100">{uploadedChunks}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Session</p>
-          <p className="mt-2 truncate text-sm font-semibold text-slate-100">{noteId ? noteId.slice(0, 12) : "Not started"}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Finalize</p>
-          <p className="mt-2 text-sm font-semibold text-slate-100">
-            {loading ? `${finalizeStage} ${Math.round(finalizeProgress)}%` : recording ? "Recording" : "Ready"}
-          </p>
-        </div>
-      </div>
-
       <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-[12px] text-slate-300">
         {recording
-          ? "Audio is being captured and chunked in the background."
-          : noteId
-          ? "Recording stopped. You can generate notes from the uploaded chunks."
-          : "Start recording to create a chunked note session."}
+          ? "Recording in progress. Stop when you are ready to generate notes."
+          : recordSecs > 0
+          ? "Recording stopped. Generate notes when you are ready."
+          : "Start recording when you are ready."}
       </div>
 
       {liveTranscript.trim() ? (

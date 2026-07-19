@@ -11,6 +11,7 @@ import path from "node:path";
 import os from "node:os";
 import { spawn } from "node:child_process";
 import { Buffer } from "node:buffer";
+import { randomUUID } from "node:crypto";
 
 import { transcribeAudioToText } from "@/lib/asr/transcribe";
 import { callGroqTranscribe } from "@/lib/ai/groq";
@@ -38,12 +39,13 @@ type ApiErr =
   | "ASR_FAILED"
   | "LLM_FAILED"
   | "INTERNAL_ERROR"
+  | "INCOMPLETE_UPLOAD"
   | "LOCKED";
 
-function bad(code: ApiErr, status = 400, message?: string, extra?: Record<string, any>) {
+function bad(code: ApiErr, status = 400, message?: string, extra?: Record<string, unknown>, traceId: string = randomUUID()) {
   return NextResponse.json(
-    { ok: false, error: code, message: message ?? code, ...(extra ? { extra } : {}) },
-    { status }
+    { ok: false, error: code, message: message ?? "Unable to generate notes right now.", traceId, ...(extra ? { extra } : {}) },
+    { status, headers: { "x-trace-id": traceId } }
   );
 }
 
@@ -351,21 +353,25 @@ async function releaseJobLock(noteId: string, lockId: string) {
 export async function POST(req: Request) {
   const t0 = Date.now();
   const { noteId, body } = await readBodyNoteId(req);
+  const traceId = req.headers.get("x-vercel-id") || randomUUID();
+  const sourceType = body?.inputType === "upload" ? "upload" : "record";
+  const expectedChunks = Number(body?.expectedChunks);
+  const expectedBytes = Number(body?.expectedBytes);
 
   try {
     const session = await getServerSession(authOptions);
     const userId = ((session as any)?.user?.id as string | undefined) ?? devBypassUserId();
-    if (!userId) return bad("AUTH_REQUIRED", 401);
+    if (!userId) return bad("AUTH_REQUIRED", 401, "Please sign in to use AI Notes.", undefined, traceId);
 
-    if (!noteId) return bad("MISSING_NOTE_ID", 400);
+    if (!noteId) return bad("MISSING_NOTE_ID", 400, "The upload session is missing.", undefined, traceId);
 
     // ownership check
     const sess = await prisma.aiNoteSession.findUnique({
       where: { id: noteId },
       select: { userId: true, createdAt: true },
     });
-    if (!sess) return bad("NOTE_NOT_FOUND", 404);
-    if (sess.userId !== userId) return bad("FORBIDDEN", 403);
+    if (!sess) return bad("NOTE_NOT_FOUND", 404, "This upload session no longer exists.", undefined, traceId);
+    if (sess.userId !== userId) return bad("FORBIDDEN", 403, "You cannot access this upload session.", undefined, traceId);
     const reportedDurationMs = parseRecordedDurationMs(body?.totalDurationMs);
     const recordedSeconds = deriveRecordedSeconds({
       totalDurationMs: reportedDurationMs ?? undefined,
@@ -411,10 +417,31 @@ export async function POST(req: Request) {
           const chunks = await prisma.aiNoteChunk.findMany({
             where: { noteId },
             orderBy: { chunkIndex: "asc" },
-            select: { chunkIndex: true },
+            select: { chunkIndex: true, size: true },
           });
 
           if (chunks.length === 0) return bad("NO_CHUNKS", 409, "No chunks uploaded.");
+          if (sourceType === "upload") {
+            const contiguous = chunks.every((chunk, index) => chunk.chunkIndex === index);
+            const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.size, 0);
+            if (
+              !Number.isSafeInteger(expectedChunks) ||
+              expectedChunks <= 0 ||
+              !Number.isSafeInteger(expectedBytes) ||
+              expectedBytes <= 0 ||
+              chunks.length !== expectedChunks ||
+              totalBytes !== expectedBytes ||
+              !contiguous
+            ) {
+              return bad(
+                "INCOMPLETE_UPLOAD",
+                409,
+                "The audio upload is incomplete. Please retry the upload.",
+                { receivedChunks: chunks.length, receivedBytes: totalBytes },
+                traceId
+              );
+            }
+          }
         }
 
         await prisma.aiNoteJob.update({
@@ -840,10 +867,7 @@ export async function POST(req: Request) {
       }
 
       if (job.stage === "failed") {
-        return NextResponse.json(
-          { ok: false, stage: "failed", progress: job.progress, noteId, error: job.error ?? "FAILED" },
-          { status: 500 }
-        );
+        return bad("INTERNAL_ERROR", 500, "Note generation stopped unexpectedly. Please retry.", { stage: "failed", progress: job.progress }, traceId);
       }
 
       return NextResponse.json({ ok: true, stage: job.stage, progress: job.progress, noteId });
@@ -852,31 +876,29 @@ export async function POST(req: Request) {
     }
   } catch (e: any) {
     const msg = String(e?.message || e);
-    console.error("[ai-note/finalize] error:", msg);
+    console.error("[ai-note/finalize] error", { traceId, noteId, error: e });
 
-    if (e?._code === "FFMPEG_FAILED") return bad("FFMPEG_FAILED", 500, msg);
+    if (e?._code === "FFMPEG_FAILED") return bad("FFMPEG_FAILED", 422, "This audio file could not be decoded. Try a supported MP3, WAV, M4A, MP4, WebM, OGG, AAC, or FLAC file.", undefined, traceId);
     if (e?._code === "ASR_FAILED") {
-      let extra: Record<string, any> | undefined;
-      let message = msg;
+      let message = "Audio transcription failed. Please retry.";
       try {
         const parsed = JSON.parse(msg);
         if (parsed && typeof parsed === "object") {
-          extra = parsed;
           message = `ASR failed on segment ${Number(parsed.segmentNumber || 0)}/${Number(parsed.segmentsTotal || 0)}. Retry to resume from the next unfinished segment.`;
         }
       } catch {}
-      return bad("ASR_FAILED", 502, message, extra);
+      return bad("ASR_FAILED", 502, message, undefined, traceId);
     }
 
     if (e?._code === "LLM_FAILED") {
       const m = msg.match(/try again in\s+([0-9.]+)s/i);
       if (msg.includes("429") && m) {
         const sec = Math.ceil(Number(m[1]) + 1);
-        return bad("LLM_FAILED", 429, `LLM rate limited. Retry after ${sec}s.`, { retryAfterMs: sec * 1000 });
+        return bad("LLM_FAILED", 429, `The note service is busy. Retry after ${sec} seconds.`, { retryAfterMs: sec * 1000 }, traceId);
       }
-      return bad("LLM_FAILED", 503, msg);
+      return bad("LLM_FAILED", 503, "The note service is temporarily unavailable. Please retry.", undefined, traceId);
     }
 
-    return bad("INTERNAL_ERROR", 500, msg);
+    return bad("INTERNAL_ERROR", 500, "Unable to generate notes right now. Please try again.", undefined, traceId);
   }
 }

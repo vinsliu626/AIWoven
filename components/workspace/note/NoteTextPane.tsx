@@ -33,7 +33,17 @@ export function NoteTextPane({
       />
       <div className="flex items-center justify-between gap-3 text-[11px] text-slate-400">
         <span>{text.trim().length.toLocaleString()} chars</span>
-        <span>{isZh ? "Longer, cleaner input usually produces better notes." : "Longer, cleaner input usually produces better notes."}</span>
+        <button
+          type="button"
+          onClick={() => {
+            onResetAll();
+            onChangeText("");
+          }}
+          disabled={!text || loading || isLoadingGlobal || locked}
+          className="rounded-full border border-white/10 px-3 py-1.5 text-slate-300 transition hover:bg-white/5 disabled:opacity-40"
+        >
+          Clear
+        </button>
       </div>
     </div>
   );

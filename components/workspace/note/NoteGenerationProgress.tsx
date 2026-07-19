@@ -1,124 +1,61 @@
 "use client";
 
 import React from "react";
+import type { NotePhase } from "./useNoteController";
 
-const STAGES = ["analyzing", "extracting", "summarizing", "merge", "formatting"] as const;
-
-function normalizedStage(stage: string) {
-  const value = stage.toLowerCase();
-  if (value === "idle") return "idle";
-  if (value === "prep") return "analyzing";
-  if (value === "asr") return "extracting";
-  if (value === "llm") return "summarizing";
-  if (value === "merge") return "merge";
-  if (value === "done") return "formatting";
-  if (value === "failed") return "failed";
-  return STAGES.includes(value as (typeof STAGES)[number]) ? value : "analyzing";
-}
-
-function stageLabel(stage: string) {
-  const value = normalizedStage(stage);
-  if (value === "idle") return "Ready";
-  if (value === "failed") return "Failed";
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function stageDescription(stage: string) {
-  const value = normalizedStage(stage);
-  if (value === "idle") return "Choose an input mode and start a generation.";
-  if (value === "analyzing") return "Preparing the request and checking the input.";
-  if (value === "extracting") return "Transcribing or extracting the source material.";
-  if (value === "summarizing") return "Summarizing completed transcript sections into note parts.";
-  if (value === "merge") return "Generating the final merged note from completed sections.";
-  if (value === "formatting") return "Finalizing the note output.";
-  return "Processing stopped unexpectedly.";
-}
+const PHASE_COPY: Record<NotePhase, { title: string; description: string }> = {
+  idle: { title: "Ready", description: "Choose Upload, Record, or Text to create structured notes." },
+  uploading: { title: "Uploading audio", description: "Your audio is being transferred securely. You can cancel at any time." },
+  transcribing: { title: "Transcribing", description: "Converting the audio into text. Longer recordings can take a few minutes." },
+  organizing: { title: "Organizing notes", description: "Turning the source material into a clear, structured study note." },
+  finalizing: { title: "Finalizing", description: "Finishing the note and checking the final structure." },
+  done: { title: "Notes ready", description: "Your generated note is available below." },
+  error: { title: "Generation interrupted", description: "The request did not complete." },
+};
 
 export function NoteGenerationProgress({
-  progress,
-  stage,
+  phase,
+  uploadProgress,
   resultReady,
   error,
+  traceId,
 }: {
   isZh: boolean;
   loading: boolean;
-  progress: number;
-  stage: string;
+  phase: NotePhase;
+  uploadProgress: number;
   resultReady: boolean;
   error?: string | null;
+  traceId?: string | null;
 }) {
-  const currentStage = normalizedStage(stage);
-  const stageIndex = currentStage === "idle" || currentStage === "failed" ? -1 : STAGES.indexOf(currentStage as (typeof STAGES)[number]);
-  const percent = Math.max(0, Math.min(100, Math.round(progress)));
-  const title = error ? "Generation interrupted" : resultReady ? "Notes ready" : stageLabel(stage);
-  const description = error ? error : resultReady ? "The generated note is available below." : stageDescription(stage);
+  const effectivePhase: NotePhase = error ? "error" : resultReady ? "done" : phase;
+  const copy = PHASE_COPY[effectivePhase];
+  const showUploadProgress = effectivePhase === "uploading";
+  const isWorking = effectivePhase === "transcribing" || effectivePhase === "organizing" || effectivePhase === "finalizing";
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Progress</p>
-          <p className="mt-2 text-lg font-semibold text-slate-50">{title}</p>
-          <p className="mt-1 text-sm text-slate-400">{description}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-3xl font-semibold tracking-tight text-slate-50">{percent}%</p>
-          <p className="mt-1 text-[11px] text-slate-500">Completion</p>
+    <div className={`rounded-3xl border p-5 ${error ? "border-red-500/30 bg-red-500/10" : "border-white/10 bg-white/[0.04]"}`} aria-live="polite">
+      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Status</p>
+      <div className="mt-3 flex items-start gap-3">
+        {isWorking ? <span className="mt-1 h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-cyan-300/30 border-t-cyan-200" aria-hidden="true" /> : null}
+        <div className="min-w-0">
+          <p className="text-lg font-semibold text-slate-50">{copy.title}</p>
+          <p className={`mt-1 text-sm ${error ? "text-red-100" : "text-slate-400"}`}>{error || copy.description}</p>
+          {traceId && error ? <p className="mt-3 break-all text-[11px] text-red-200/70">Reference: {traceId}</p> : null}
         </div>
       </div>
 
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-300 transition-[width] duration-500"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-
-      <div className="mt-5 space-y-2">
-        {STAGES.map((item, index) => {
-          const state =
-            currentStage === "failed"
-              ? "idle"
-              : index < stageIndex
-              ? "done"
-              : index === stageIndex
-              ? resultReady
-                ? "done"
-                : "active"
-              : "idle";
-
-          return (
-            <div
-              key={item}
-              className={[
-                "flex items-center justify-between rounded-2xl border px-3 py-3",
-                state === "done"
-                  ? "border-emerald-400/20 bg-emerald-400/10"
-                  : state === "active"
-                  ? "border-cyan-400/20 bg-cyan-400/10"
-                  : "border-white/8 bg-white/[0.03]",
-              ].join(" ")}
-            >
-              <div>
-                <p className="text-sm font-medium text-slate-100">{stageLabel(item)}</p>
-                <p className="mt-1 text-[11px] text-slate-400">{stageDescription(item)}</p>
-              </div>
-              <span
-                className={[
-                  "rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.16em]",
-                  state === "done"
-                    ? "bg-emerald-300/15 text-emerald-200"
-                    : state === "active"
-                    ? "bg-cyan-300/15 text-cyan-200"
-                    : "bg-white/5 text-slate-500",
-                ].join(" ")}
-              >
-                {state === "done" ? "Done" : state === "active" ? "Active" : "Queued"}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {showUploadProgress ? (
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Uploaded</span>
+            <span>{Math.round(uploadProgress)}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-label="Audio upload" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(uploadProgress)}>
+            <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-300 transition-[width] duration-150" style={{ width: `${Math.max(0, Math.min(100, uploadProgress))}%` }} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
