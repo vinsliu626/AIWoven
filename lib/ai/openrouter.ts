@@ -11,7 +11,8 @@ export async function callOpenRouterChat(opts: {
   timeoutMs?: number;
   maxTokens?: number;
   temperature?: number;
-  reasoningEffort?: "none" | "default" | "low" | "medium" | "high";
+  reasoningEffort?: "none" | "minimal" | "default" | "low" | "medium" | "high";
+  excludeReasoning?: boolean;
 }) {
   const siteUrl = process.env.OPENROUTER_SITE_URL || "http://localhost:3000";
   const appName = process.env.OPENROUTER_APP_NAME || "AIWoven";
@@ -34,6 +35,7 @@ export async function callOpenRouterChat(opts: {
         max_tokens: opts.maxTokens ?? parseEnvInt("AI_NOTE_LLM_MAX_TOKENS", 900),
         temperature: opts.temperature ?? 0.6,
         reasoning_effort: opts.reasoningEffort,
+        reasoning: opts.excludeReasoning ? { exclude: true } : undefined,
       }),
       signal: controller.signal,
     });

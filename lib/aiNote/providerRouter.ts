@@ -152,6 +152,7 @@ export async function callAiNoteChatWithFallback(
   for (let index = 0; index < models.length; index += 1) {
     const model = models[index];
     const started = Date.now();
+    const openRouterReasoningEffort = input.reasoningEffort === "none" ? "minimal" : input.reasoningEffort ?? "minimal";
     try {
       const result = await openRouter({
         apiKey: openRouterKey!,
@@ -159,7 +160,8 @@ export async function callAiNoteChatWithFallback(
         messages: input.messages,
         maxTokens: input.maxTokens,
         temperature: 0,
-        reasoningEffort: input.reasoningEffort,
+        reasoningEffort: openRouterReasoningEffort,
+        excludeReasoning: true,
       });
       emitAttempt(log, { ...common, provider: "openrouter", model: result.modelUsed, attempt: index + 1, startedAt: new Date(started).toISOString() }, started, {
         status: "succeeded", retryable: false, fallbackEligible: false, outcome: "fallback_success", errorClass: undefined,

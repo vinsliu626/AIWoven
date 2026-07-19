@@ -42,6 +42,7 @@ describe("AI Note provider routing", () => {
     const result = await callAiNoteChatWithFallback(base, { callGroq, callOpenRouter, log });
     expect(result).toMatchObject({ content: "# Fallback note", provider: "openrouter", fallbackUsed: true });
     expect(callOpenRouter).toHaveBeenCalledOnce();
+    expect(callOpenRouter).toHaveBeenCalledWith(expect.objectContaining({ reasoningEffort: "minimal", excludeReasoning: true }));
     expect(log).toHaveBeenNthCalledWith(1, expect.objectContaining({
       traceId: "trace-1", noteId: "note-1", provider: "groq", status: "failed",
       retryable: true, fallbackEligible: true, outcome: "fallback_started",
