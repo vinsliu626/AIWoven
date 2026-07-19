@@ -817,7 +817,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
     if (phase === "final") {
       const generatedDraft = normalized;
       const auditModel = process.env.AI_NOTE_AUDIT_MODEL || "qwen/qwen3.6-27b";
-      const auditTokenLimit = Math.min(maxTokens, 1_800);
+      const auditTokenLimit = maxTokens;
       const draftPrecisionIssues = findStudyNotePrecisionIssues(normalized, text);
       const audited = await callWithProviderFallback(
         auditModel,

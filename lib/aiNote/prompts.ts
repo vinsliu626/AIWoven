@@ -96,6 +96,15 @@ function technicalPrecisionRegressionRules() {
   ].join(" ");
 }
 
+function finalStudyNoteOutputContract() {
+  return [
+    "FINAL OUTPUT CONTRACT:",
+    "Return only the complete corrected Markdown document. Do not repeat the evidence-ledger headings.",
+    "Use these required level-two headings exactly and in this order: ## Executive Summary, ## Key Definitions, ## Key Concepts, ## Relationships Between Concepts, ## Key Takeaways.",
+    "Begin with # Title. Finish the document with ## Key Takeaways. Keep explanations concise enough to complete every required section.",
+  ].join("\n");
+}
+
 export function buildAudioStudyNoteSystemPrompt(phase: "segment" | "final") {
   if (phase === "segment") {
     return [
@@ -164,6 +173,8 @@ export function buildStudyNoteAuditUserPrompt(evidence: string, draft: string) {
     "",
     "DRAFT TO AUDIT:",
     draft,
+    "",
+    finalStudyNoteOutputContract(),
   ].join("\n");
 }
 
@@ -189,6 +200,8 @@ export function buildStudyNotePrecisionRepairUserPrompt(evidence: string, draft:
     "",
     "NOTE TO REPAIR:",
     draft,
+    "",
+    finalStudyNoteOutputContract(),
   ].join("\n");
 }
 

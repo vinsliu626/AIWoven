@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AiNoteGenerationError, applySafeStudyNotePrecisionCorrections, assertFinalStudyNoteStructure, ensureOutline, findStudyNotePrecisionIssues, mapGenerationProviderError, mergeStudyNotePrecisionIssues, normalizeRequiredStudyNoteHeadings, preserveStructurallyCompleteStudyNote, stripProviderPlanningFromMarkdown } from "@/lib/aiNote/pipeline";
-import { buildAudioStudyNoteSystemPrompt, buildStudyNoteAuditSystemPrompt, buildStudyNotePrecisionRepairSystemPrompt } from "@/lib/aiNote/prompts";
+import { buildAudioStudyNoteSystemPrompt, buildStudyNoteAuditSystemPrompt, buildStudyNoteAuditUserPrompt, buildStudyNotePrecisionRepairSystemPrompt, buildStudyNotePrecisionRepairUserPrompt } from "@/lib/aiNote/prompts";
 
 describe("AI Note generation pipeline normalization", () => {
   it("accepts useful model output when optional enum and source fields drift", () => {
@@ -223,5 +223,14 @@ describe("AI Note generation pipeline normalization", () => {
     expect(normalized).toContain("## Relationships Between Concepts");
     expect(normalized).toContain("## Key Takeaways");
     expect(normalizeRequiredStudyNoteHeadings("# Notes\n\nSummary only")).not.toContain("## Executive Summary");
+  });
+
+  it("places the required output contract after the draft for audit and repair recency", () => {
+    const auditPrompt = buildStudyNoteAuditUserPrompt("evidence", "draft ending");
+    const repairPrompt = buildStudyNotePrecisionRepairUserPrompt("evidence", "draft ending", ["fix this"]);
+    for (const prompt of [auditPrompt, repairPrompt]) {
+      expect(prompt.indexOf("draft ending")).toBeLessThan(prompt.indexOf("FINAL OUTPUT CONTRACT:"));
+      expect(prompt).toMatch(/Finish the document with ## Key Takeaways\.[\s\S]*$/);
+    }
   });
 });
