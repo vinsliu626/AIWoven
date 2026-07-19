@@ -139,6 +139,12 @@ function stripThinkBlocks(s: string) {
   return String(s || "").replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 }
 
+export function stripProviderPlanningFromMarkdown(value: string) {
+  const text = stripThinkBlocks(String(value || "")).trim();
+  const markdownStart = text.search(/^#{1,2}\s+(?:Segment Topic|Executive Summary|[^\n]+)$/m);
+  return markdownStart > 0 ? text.slice(markdownStart).trim() : text;
+}
+
 function looksLikeHtml(s: string) {
   const t = String(s || "").trim().toLowerCase();
   return t.startsWith("<!doctype html") || t.startsWith("<html") || t.includes("<head>") || t.includes("<body>");
@@ -791,7 +797,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
       generationTokenLimit,
       "generation"
     );
-    let normalized = normalizeAiText(String(raw || "").trim());
+    let normalized = normalizeAiText(stripProviderPlanningFromMarkdown(String(raw || "")));
     if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The provider returned an empty note.", true);
 
     if (phase === "final") {
@@ -814,7 +820,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
         "audit",
         "none"
       );
-      normalized = normalizeAiText(String(audited || "").trim());
+      normalized = normalizeAiText(stripProviderPlanningFromMarkdown(String(audited || "")));
       if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The grounding audit returned an empty note.", true);
       const structurallySafe = preserveStructurallyCompleteStudyNote(generatedDraft, normalized);
       if (structurallySafe === generatedDraft && normalized !== generatedDraft) {
@@ -841,7 +847,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
           "precision_repair",
           "none"
         );
-        normalized = normalizeAiText(String(repaired || "").trim());
+        normalized = normalizeAiText(stripProviderPlanningFromMarkdown(String(repaired || "")));
         if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The precision repair returned an empty note.", true);
         normalized = applySafeStudyNotePrecisionCorrections(normalized);
         precisionIssues = findStudyNotePrecisionIssues(normalized, text);

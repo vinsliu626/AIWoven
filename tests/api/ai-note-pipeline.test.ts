@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AiNoteGenerationError, applySafeStudyNotePrecisionCorrections, assertFinalStudyNoteStructure, ensureOutline, findStudyNotePrecisionIssues, mapGenerationProviderError, mergeStudyNotePrecisionIssues, preserveStructurallyCompleteStudyNote } from "@/lib/aiNote/pipeline";
+import { AiNoteGenerationError, applySafeStudyNotePrecisionCorrections, assertFinalStudyNoteStructure, ensureOutline, findStudyNotePrecisionIssues, mapGenerationProviderError, mergeStudyNotePrecisionIssues, preserveStructurallyCompleteStudyNote, stripProviderPlanningFromMarkdown } from "@/lib/aiNote/pipeline";
 import { buildAudioStudyNoteSystemPrompt, buildStudyNoteAuditSystemPrompt, buildStudyNotePrecisionRepairSystemPrompt } from "@/lib/aiNote/prompts";
 
 describe("AI Note generation pipeline normalization", () => {
@@ -206,5 +206,11 @@ describe("AI Note generation pipeline normalization", () => {
     const audited = "# Audited\n\n## Executive Summary\nSummary\n\n## Key Definitions\nTerms\n\n## Key Concepts\nConcepts\n\n## Relationships Between Concepts\nLinks\n\n## Key Takeaways\n- Review";
     expect(preserveStructurallyCompleteStudyNote("incomplete draft", audited)).toBe(audited);
     expect(() => preserveStructurallyCompleteStudyNote("incomplete draft", "incomplete audit")).toThrowError(AiNoteGenerationError);
+  });
+
+  it("removes provider planning text before the actual Markdown note", () => {
+    const raw = "We need to reason through the source first.\nDo not expose this planning.\n\n# Cellular Respiration\n\n## Executive Summary\n- ATP production.";
+    expect(stripProviderPlanningFromMarkdown(raw)).toBe("# Cellular Respiration\n\n## Executive Summary\n- ATP production.");
+    expect(stripProviderPlanningFromMarkdown("## Segment Topic\nCellular respiration")).toBe("## Segment Topic\nCellular respiration");
   });
 });

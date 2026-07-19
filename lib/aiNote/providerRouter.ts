@@ -34,10 +34,10 @@ type ProviderDependencies = {
 };
 
 const DEFAULT_OPENROUTER_MODELS = [
-  "nvidia/nemotron-3-super-120b-a12b:free",
   "qwen/qwen3-next-80b-a3b-instruct:free",
   "openai/gpt-oss-20b:free",
   "meta-llama/llama-3.3-70b-instruct:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
   "openrouter/free",
 ];
 
