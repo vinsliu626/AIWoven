@@ -13,6 +13,8 @@ const HF_DEEPSEEK_MODEL = "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B";
 const HF_KIMI_MODEL = "moonshotai/Kimi-K2-Instruct-0905";
 
 export class AiNoteGenerationError extends Error {
+  public readonly bestDraft?: string;
+
   constructor(
     public readonly code:
       | "NOTE_GENERATION_AUTH_FAILED"
@@ -22,10 +24,14 @@ export class AiNoteGenerationError extends Error {
     message: string,
     public readonly retryable: boolean,
     public readonly providerStatus?: number,
-    public readonly retryAfterMs?: number
+    public readonly retryAfterMs?: number,
+    bestDraft?: string
   ) {
     super(message);
     this.name = "AiNoteGenerationError";
+    if (bestDraft) {
+      Object.defineProperty(this, "bestDraft", { value: bestDraft, enumerable: false });
+    }
   }
 }
 
@@ -449,6 +455,215 @@ export function mergeStudyNotePrecisionIssues(...groups: string[][]) {
   return Array.from(new Set(groups.flat()));
 }
 
+export type StudyNoteAuditSeverity = "fatal" | "repairable" | "warning";
+export type StudyNoteCandidateName = "generated" | "audited" | "repaired";
+
+export type StudyNoteAuditFinding = {
+  code: string;
+  severity: StudyNoteAuditSeverity;
+  message: string;
+};
+
+const AUDIT_STOP_WORDS = new Set([
+  "about", "after", "again", "also", "and", "are", "because", "before", "being", "between", "from", "have",
+  "into", "more", "most", "note", "notes", "only", "other", "section", "that", "their", "there", "these", "this",
+  "through", "under", "use", "used", "using", "when", "where", "which", "with", "would", "your",
+]);
+
+function auditTokens(value: string) {
+  return String(value || "").toLowerCase().match(/[a-z0-9][a-z0-9-]{2,}/g)?.filter((token) => !AUDIT_STOP_WORDS.has(token)) || [];
+}
+
+function sourceOverlapRatio(note: string, evidence: string) {
+  const sourceTokens = new Set(auditTokens(evidence));
+  const noteTokens = Array.from(new Set(auditTokens(note)));
+  if (sourceTokens.size < 8 || noteTokens.length < 8) return 1;
+  return noteTokens.filter((token) => sourceTokens.has(token)).length / noteTokens.length;
+}
+
+function requiredSectionBodies(note: string) {
+  return REQUIRED_STUDY_NOTE_HEADINGS.map((heading) => {
+    const marker = `## ${heading}`;
+    const start = note.indexOf(marker);
+    if (start < 0) return { heading, body: "" };
+    const afterMarker = start + marker.length;
+    const remaining = note.slice(afterMarker);
+    const nextHeadingOffset = remaining.search(/^##\s+/m);
+    return { heading, body: (nextHeadingOffset >= 0 ? remaining.slice(0, nextHeadingOffset) : remaining).trim() };
+  });
+}
+
+function directionOf(value: string) {
+  if (/\b(?:increase[sd]?|increasing|higher|rise[sd]?|rising)\b/i.test(value)) return 1;
+  if (/\b(?:decrease[sd]?|decreasing|lower|fall[sd]?|falling)\b/i.test(value)) return -1;
+  return 0;
+}
+
+const CENTRAL_TREND_CONCEPTS = [
+  "atomic radius", "atomic size", "ionization energy", "electron affinity", "electronegativity",
+  "effective nuclear charge", "shielding", "valence electrons", "reactivity",
+] as const;
+
+function centralTrendConcepts(value: string) {
+  const normalized = value.toLowerCase().replace(/[-‑]/g, " ");
+  return CENTRAL_TREND_CONCEPTS.filter((concept) => normalized.includes(concept));
+}
+
+function centralTrendAxes(value: string) {
+  const axes: string[] = [];
+  if (/\b(?:across (?:a |the )?period|left\s+to\s+right|right\s+to\s+left)\b/i.test(value)) axes.push("period");
+  if (/\b(?:down (?:a |the )?group|up (?:a |the )?group|top\s+to\s+bottom|bottom\s+to\s+top)\b/i.test(value)) axes.push("group");
+  return axes;
+}
+
+function hasRepeatedCentralDirectionReversal(note: string, evidence: string) {
+  const splitClaims = (value: string) => String(value || "").split(/\n|(?<=[.!?])\s+|\b(?:because|while|whereas)\b|;/i).filter((line) => directionOf(line) !== 0);
+  const sourceStatements = splitClaims(evidence);
+  const noteStatements = splitClaims(note);
+  let contradictions = 0;
+  for (const statement of noteStatements) {
+    const statementDirection = directionOf(statement);
+    const concepts = centralTrendConcepts(statement);
+    const axes = centralTrendAxes(statement);
+    if (concepts.length === 0 || axes.length === 0) continue;
+    const contradicted = sourceStatements.some((sourceStatement) => {
+      if (directionOf(sourceStatement) !== -statementDirection) return false;
+      const sourceConcepts = centralTrendConcepts(sourceStatement);
+      const sourceAxes = centralTrendAxes(sourceStatement);
+      return concepts.some((concept) => sourceConcepts.includes(concept)) && axes.some((axis) => sourceAxes.includes(axis));
+    });
+    if (contradicted) contradictions += 1;
+  }
+  return contradictions >= 2;
+}
+
+export function classifyStudyNotePrecisionIssues(issues: string[], afterRepair = false): StudyNoteAuditFinding[] {
+  return mergeStudyNotePrecisionIssues(issues).map((message) => ({
+    code: /neutral gaseous atom/i.test(message)
+      ? "DEFINITION_CONDITION_IMPRECISE"
+      : /sign\/energy convention/i.test(message)
+        ? "SIGN_CONVENTION_IMPRECISE"
+        : "PRECISION_WORDING_IMPRECISE",
+    severity: afterRepair ? "warning" : "repairable",
+    message,
+  }));
+}
+
+export function assessStudyNoteCandidate(markdown: string, evidence: string) {
+  const note = String(markdown || "").trim();
+  const findings: StudyNoteAuditFinding[] = [];
+  if (note.length < 240) findings.push({ code: "OUTPUT_TOO_SHORT", severity: "fatal", message: "The note is empty or too short." });
+  if (/<think>|\breason through\b|\bwe need to plan\b/i.test(note)) findings.push({ code: "PLANNING_TEXT_PRESENT", severity: "fatal", message: "The note contains provider planning text." });
+  const sections = requiredSectionBodies(note);
+  const missingCount = sections.filter((section) => !note.includes(`## ${section.heading}`)).length;
+  const emptyCount = sections.filter((section) => note.includes(`## ${section.heading}`) && section.body.replace(/[#>*_`\-\s]/g, "").length < 8).length;
+  if (missingCount >= 3) findings.push({ code: "MOST_REQUIRED_SECTIONS_MISSING", severity: "fatal", message: "Most required sections are missing." });
+  if (emptyCount >= 3) findings.push({ code: "MOST_REQUIRED_SECTIONS_EMPTY", severity: "fatal", message: "Most required sections are empty." });
+  const overlap = sourceOverlapRatio(note, evidence);
+  if (note.length >= 240 && overlap < 0.08) findings.push({ code: "OUTPUT_UNRELATED_TO_SOURCE", severity: "fatal", message: "The note is not grounded in the supplied source." });
+  if (hasRepeatedCentralDirectionReversal(note, evidence)) findings.push({ code: "REPEATED_CENTRAL_DIRECTION_REVERSAL", severity: "fatal", message: "Central directional claims repeatedly contradict the source." });
+  const complete = missingCount === 0 && emptyCount === 0;
+  const precisionIssueCount = findStudyNotePrecisionIssues(note, evidence).length;
+  const score = (complete ? 10_000 : 0) + Math.round(overlap * 1_000) + Math.min(note.length, 6_000) - precisionIssueCount * 250;
+  return { complete, valid: findings.length === 0, findings, overlap, precisionIssueCount, score };
+}
+
+export function selectBestStudyNoteCandidate(
+  candidates: Array<{ name: StudyNoteCandidateName; markdown: string }>,
+  evidence: string
+) {
+  const assessed = candidates.map((candidate) => ({ ...candidate, assessment: assessStudyNoteCandidate(candidate.markdown, evidence) }));
+  const valid = assessed.filter((candidate) => candidate.assessment.valid).sort((a, b) => b.assessment.score - a.assessment.score);
+  if (valid[0]) return valid[0];
+  const bestDraft = assessed.filter((candidate) => candidate.markdown.trim()).sort((a, b) => b.assessment.score - a.assessment.score)[0]?.markdown;
+  const fatal = assessed.flatMap((candidate) => candidate.assessment.findings).filter((finding) => finding.severity === "fatal");
+  throw new AiNoteGenerationError(
+    "NOTE_GENERATION_FAILED",
+    `The final study note did not pass its fatal quality checks: ${fatal.map((finding) => finding.code).join(", ") || "NO_STRUCTURALLY_COMPLETE_CANDIDATE"}.`,
+    true,
+    undefined,
+    undefined,
+    bestDraft
+  );
+}
+
+export async function resolveFinalStudyNoteCandidates(args: {
+  generatedDraft: string;
+  auditedDraft: string;
+  evidence: string;
+  repair: (issues: string[], bestDraft: string) => Promise<{ content: string; provider: string; model: string }>;
+  log?: (entry: Record<string, unknown>) => void;
+  traceId?: string;
+  noteId?: string;
+}) {
+  const prepare = (value: string) => applySafeStudyNotePrecisionCorrections(
+    normalizeRequiredStudyNoteHeadings(normalizeAiText(stripProviderPlanningFromMarkdown(String(value || ""))))
+  );
+  const candidates: Array<{ name: StudyNoteCandidateName; markdown: string }> = [
+    { name: "generated", markdown: prepare(args.generatedDraft) },
+    { name: "audited", markdown: prepare(args.auditedDraft) },
+  ];
+  const log = args.log || ((value: Record<string, unknown>) => console.info("[ai-note/precision-audit]", value));
+  let best;
+  try {
+    best = selectBestStudyNoteCandidate(candidates, args.evidence);
+  } catch (error) {
+    const fatalIssueCount = candidates.reduce(
+      (total, candidate) => total + assessStudyNoteCandidate(candidate.markdown, args.evidence).findings.filter((finding) => finding.severity === "fatal").length,
+      0
+    );
+    log({
+      traceId: args.traceId || "unknown",
+      noteId: args.noteId || "unknown",
+      auditSeverity: "fatal",
+      issueCount: 0,
+      repairAttempted: false,
+      repairProvider: null,
+      repairModel: null,
+      bestCandidateSelected: null,
+      remainingWarningCount: 0,
+      fatalIssueCount: Math.max(1, fatalIssueCount),
+      finalOutcome: "rejected",
+    });
+    throw error;
+  }
+  const initialIssues = findStudyNotePrecisionIssues(best.markdown, args.evidence);
+  const initialFindings = classifyStudyNotePrecisionIssues(initialIssues);
+  let repairAttempted = false;
+  let repairProvider: string | null = null;
+  let repairModel: string | null = null;
+  if (initialFindings.length > 0) {
+    repairAttempted = true;
+    try {
+      const repaired = await args.repair(initialIssues, best.markdown);
+      repairProvider = repaired.provider;
+      repairModel = repaired.model;
+      candidates.push({ name: "repaired", markdown: prepare(repaired.content) });
+      best = selectBestStudyNoteCandidate(candidates, args.evidence);
+    } catch (error) {
+      if (error instanceof AiNoteGenerationError && error.bestDraft) throw error;
+      repairProvider = "failed";
+    }
+  }
+  const remainingFindings = classifyStudyNotePrecisionIssues(findStudyNotePrecisionIssues(best.markdown, args.evidence), true);
+  const fatalFindings = best.assessment.findings.filter((finding) => finding.severity === "fatal");
+  const entry = {
+    traceId: args.traceId || "unknown",
+    noteId: args.noteId || "unknown",
+    auditSeverity: fatalFindings.length ? "fatal" : remainingFindings.length ? "warning" : initialFindings.length ? "repairable" : "none",
+    issueCount: initialFindings.length,
+    repairAttempted,
+    repairProvider,
+    repairModel,
+    bestCandidateSelected: best.name,
+    remainingWarningCount: remainingFindings.length,
+    fatalIssueCount: fatalFindings.length,
+    finalOutcome: fatalFindings.length ? "rejected" : "accepted",
+  };
+  log(entry);
+  return { note: best.markdown, warnings: remainingFindings, selected: best.name, logEntry: entry };
+}
+
 export function applySafeStudyNotePrecisionCorrections(markdown: string) {
   return String(markdown || "")
     .split("\n")
@@ -798,11 +1013,11 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
       stage: `${phase}:${operation}`,
       inputChars: messages.reduce((total, message) => total + message.content.length, 0),
     });
-    return result.content;
+    return result;
   }
 
   try {
-    const raw = await callWithProviderFallback(
+    const generationResult = await callWithProviderFallback(
       studyModel,
       [
         { role: "system", content: buildAudioStudyNoteSystemPrompt(phase) },
@@ -811,6 +1026,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
       generationTokenLimit,
       "generation"
     );
+    const raw = generationResult.content;
     let normalized = normalizeRequiredStudyNoteHeadings(normalizeAiText(stripProviderPlanningFromMarkdown(String(raw || ""))));
     if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The provider returned an empty note.", true);
 
@@ -819,7 +1035,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
       const auditModel = process.env.AI_NOTE_AUDIT_MODEL || "qwen/qwen3.6-27b";
       const auditTokenLimit = maxTokens;
       const draftPrecisionIssues = findStudyNotePrecisionIssues(normalized, text);
-      const audited = await callWithProviderFallback(
+      const auditResult = await callWithProviderFallback(
         auditModel,
         [
           { role: "system", content: buildStudyNoteAuditSystemPrompt() },
@@ -834,46 +1050,30 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
         "audit",
         "none"
       );
-      normalized = normalizeRequiredStudyNoteHeadings(normalizeAiText(stripProviderPlanningFromMarkdown(String(audited || ""))));
-      if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The grounding audit returned an empty note.", true);
-      const structurallySafe = preserveStructurallyCompleteStudyNote(generatedDraft, normalized);
-      if (structurallySafe === generatedDraft && normalized !== generatedDraft) {
-        console.warn("[ai-note/audit] preserving structurally complete draft", {
-          traceId: options?.traceId || "unknown",
-          noteId: options?.noteId || "unknown",
-          stage: "final:audit",
-          outcome: "audit_structure_rejected",
-        });
-      }
-      normalized = structurallySafe;
-      normalized = applySafeStudyNotePrecisionCorrections(normalized);
-      let precisionIssues = findStudyNotePrecisionIssues(normalized, text);
-      if (precisionIssues.length > 0) {
-        const precisionModel = process.env.AI_NOTE_PRECISION_MODEL || auditModel;
-        const repairIssues = mergeStudyNotePrecisionIssues(draftPrecisionIssues, precisionIssues);
-        const repaired = await callWithProviderFallback(
-          precisionModel,
-          [
-            { role: "system", content: buildStudyNotePrecisionRepairSystemPrompt() },
-            { role: "user", content: buildStudyNotePrecisionRepairUserPrompt(text, normalized, repairIssues) },
-          ],
-          auditTokenLimit,
-          "precision_repair",
-          "none"
-        );
-        normalized = normalizeRequiredStudyNoteHeadings(normalizeAiText(stripProviderPlanningFromMarkdown(String(repaired || ""))));
-        if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The precision repair returned an empty note.", true);
-        normalized = applySafeStudyNotePrecisionCorrections(normalized);
-        precisionIssues = findStudyNotePrecisionIssues(normalized, text);
-        if (precisionIssues.length > 0) {
-          throw new AiNoteGenerationError(
-            "NOTE_GENERATION_FAILED",
-            `The final study note did not pass its precision audit: ${precisionIssues.join(" ")}`,
-            true
+      const auditedDraft = normalizeRequiredStudyNoteHeadings(normalizeAiText(stripProviderPlanningFromMarkdown(String(auditResult.content || ""))));
+      const resolved = await resolveFinalStudyNoteCandidates({
+        generatedDraft,
+        auditedDraft,
+        evidence: text,
+        traceId: options?.traceId,
+        noteId: options?.noteId,
+        repair: async (issues, bestDraft) => {
+          const precisionModel = process.env.AI_NOTE_PRECISION_MODEL || auditModel;
+          const repairIssues = mergeStudyNotePrecisionIssues(draftPrecisionIssues, issues);
+          const repaired = await callWithProviderFallback(
+            precisionModel,
+            [
+              { role: "system", content: buildStudyNotePrecisionRepairSystemPrompt() },
+              { role: "user", content: buildStudyNotePrecisionRepairUserPrompt(text, bestDraft, repairIssues) },
+            ],
+            auditTokenLimit,
+            "precision_repair",
+            "none"
           );
-        }
-      }
-      normalized = assertFinalStudyNoteStructure(normalized);
+          return { content: repaired.content, provider: repaired.provider, model: repaired.model };
+        },
+      });
+      normalized = resolved.note;
     }
 
     return normalized;

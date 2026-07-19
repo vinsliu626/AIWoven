@@ -77,6 +77,7 @@ export function useNoteController({
   const uploadRequestRef = useRef<XMLHttpRequest | null>(null);
   const retrySessionRef = useRef<UploadRetrySession | null>(null);
   const retryRequestedRef = useRef(false);
+  const resumeAttemptedRef = useRef(false);
   const speechSegmenterRef = useRef(
     createSpeechSegmenter<Blob>({
       sliceMs: RECORDER_SLICE_MS,
@@ -90,7 +91,7 @@ export function useNoteController({
   const canGenerate = useMemo(() => {
     if (locked) return false;
     if (loading || isLoadingGlobal) return false;
-    if (tab === "upload") return !!file;
+    if (tab === "upload") return !!file || !!retrySessionRef.current;
     if (tab === "record") return !!noteId && !recording && uploadedChunks > 0 && !chunkError;
     return text.trim().length > 0;
   }, [tab, file, text, loading, isLoadingGlobal, locked, noteId, recording, uploadedChunks, chunkError]);
@@ -584,10 +585,10 @@ export function useNoteController({
       let expectedSha256: string | undefined;
 
       if (tab === "upload") {
-        if (!file) throw new Error(isZh ? "缺少上传文件。" : "Missing file.");
         const reusable = retryRequestedRef.current ? retrySessionRef.current : null;
         retryRequestedRef.current = false;
-        const uploaded = reusable ?? (await uploadAudioFile(file));
+        if (!file && !reusable) throw new Error(isZh ? "缺少上传文件。" : "Missing file.");
+        const uploaded = reusable ?? (await uploadAudioFile(file!));
         retrySessionRef.current = uploaded;
         processingNoteId = uploaded.noteId;
         expectedChunks = uploaded.expectedChunks;
@@ -740,6 +741,47 @@ export function useNoteController({
     retryRequestedRef.current = true;
     await generateNotes();
   }
+
+  useEffect(() => {
+    if (locked || isLoadingGlobal || resumeAttemptedRef.current) return;
+    const resumeNoteId = new URLSearchParams(window.location.search).get("resumeNoteId")?.trim() || "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resumeNoteId)) return;
+    resumeAttemptedRef.current = true;
+    void (async () => {
+      try {
+        const response = await fetch("/api/ai-note/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ noteId: resumeNoteId }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok) return;
+        const job = payload.job;
+        if (job?.stage === "done" && String(job.noteMarkdown || "").trim()) {
+          setNoteId(resumeNoteId);
+          setResult(String(job.noteMarkdown));
+          setResultComplete(true);
+          setDisplayStage("done");
+          setDisplayProgress(100);
+          setPhase("done");
+          setSuccess(isZh ? "笔记已生成。" : "Notes generated.");
+          return;
+        }
+        if (job?.stage !== "merge") return;
+        setTab("upload");
+        setNoteId(resumeNoteId);
+        retrySessionRef.current = { noteId: resumeNoteId, expectedChunks: 0, expectedBytes: 0, expectedSha256: "" };
+        setFinalizeStage("failed");
+        setFinalizeProgress(Number(job.progress) || 96);
+        setDisplayStage("failed");
+        setDisplayProgress(Number(job.progress) || 96);
+        setFailedPhase("finalizing");
+        setErrorRetryable(true);
+        setPhase("error");
+        setError(isZh ? "笔记已恢复，可从最终整理阶段重试。" : "Saved note restored. Retry from finalizing without uploading again.");
+      } catch {}
+    })();
+  }, [isLoadingGlobal, isZh, locked]);
 
   function switchTab(next: NoteTab) {
     finalizeAbortRef.current = true;

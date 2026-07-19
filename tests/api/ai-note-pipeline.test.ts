@@ -1,8 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { AiNoteGenerationError, applySafeStudyNotePrecisionCorrections, assertFinalStudyNoteStructure, ensureOutline, findStudyNotePrecisionIssues, mapGenerationProviderError, mergeStudyNotePrecisionIssues, normalizeRequiredStudyNoteHeadings, preserveStructurallyCompleteStudyNote, stripProviderPlanningFromMarkdown } from "@/lib/aiNote/pipeline";
+import { AiNoteGenerationError, applySafeStudyNotePrecisionCorrections, assessStudyNoteCandidate, assertFinalStudyNoteStructure, classifyStudyNotePrecisionIssues, ensureOutline, findStudyNotePrecisionIssues, mapGenerationProviderError, mergeStudyNotePrecisionIssues, normalizeRequiredStudyNoteHeadings, preserveStructurallyCompleteStudyNote, resolveFinalStudyNoteCandidates, stripProviderPlanningFromMarkdown } from "@/lib/aiNote/pipeline";
 import { buildAudioStudyNoteSystemPrompt, buildStudyNoteAuditSystemPrompt, buildStudyNoteAuditUserPrompt, buildStudyNotePrecisionRepairSystemPrompt, buildStudyNotePrecisionRepairUserPrompt } from "@/lib/aiNote/prompts";
 
 describe("AI Note generation pipeline normalization", () => {
+  const chemistryEvidence = "The periodic trends lecture explains first ionization energy, successive ionization energies, electron affinity, valence electrons, and the large jump after valence electrons are removed. Atomic radius decreases across a period because effective nuclear charge increases.";
+  const usableChemistryNote = `# Periodic Trends
+
+## Executive Summary
+Periodic trends connect electron arrangement to predictable changes in atomic properties across the periodic table.
+
+## Key Definitions
+**First ionization energy** is the energy needed to remove an electron from a neutral atom.
+
+## Key Concepts
+Electron affinity increases across a period. Valence electrons help explain recurring group behavior and ionization patterns.
+
+## Relationships Between Concepts
+After valence electrons are removed, a large jump in ionization energy occurs because the next electron is held more strongly.
+
+## Key Takeaways
+- Atomic radius decreases across a period.
+- Ionization energy and electron affinity help compare how atoms interact with electrons.`;
   it("accepts useful model output when optional enum and source fields drift", () => {
     const outline = ensureOutline({
       title: "Electronegativity and Atomic Trends",
@@ -232,5 +250,108 @@ describe("AI Note generation pipeline normalization", () => {
       expect(prompt.indexOf("draft ending")).toBeLessThan(prompt.indexOf("FINAL OUTPUT CONTRACT:"));
       expect(prompt).toMatch(/Finish the document with ## Key Takeaways\.[\s\S]*$/);
     }
+  });
+
+  it("classifies definition and sign-convention imprecision as repairable, then warning after repair", () => {
+    const issues = findStudyNotePrecisionIssues(usableChemistryNote, chemistryEvidence);
+    const initial = classifyStudyNotePrecisionIssues(issues);
+    const remaining = classifyStudyNotePrecisionIssues(issues, true);
+    expect(initial.find((finding) => finding.code === "DEFINITION_CONDITION_IMPRECISE")?.severity).toBe("repairable");
+    expect(initial.find((finding) => finding.code === "SIGN_CONVENTION_IMPRECISE")?.severity).toBe("repairable");
+    expect(remaining.every((finding) => finding.severity === "warning")).toBe(true);
+  });
+
+  it("attempts one repair and accepts a usable note with remaining precision warnings", async () => {
+    let repairCalls = 0;
+    const logs: Array<Record<string, unknown>> = [];
+    const result = await resolveFinalStudyNoteCandidates({
+      generatedDraft: usableChemistryNote,
+      auditedDraft: usableChemistryNote,
+      evidence: chemistryEvidence,
+      traceId: "trace-safe",
+      noteId: "note-safe",
+      repair: async () => {
+        repairCalls += 1;
+        return { content: usableChemistryNote, provider: "openrouter", model: "test-model" };
+      },
+      log: (entry) => logs.push(entry),
+    });
+    expect(repairCalls).toBe(1);
+    expect(result.note).toContain("## Key Takeaways");
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.logEntry).toMatchObject({ finalOutcome: "accepted", repairAttempted: true, remainingWarningCount: result.warnings.length });
+    const serializedLogs = JSON.stringify(logs);
+    expect(serializedLogs).toContain("note-safe");
+    expect(serializedLogs).not.toContain("Periodic trends connect electron arrangement");
+    expect(serializedLogs).not.toContain(chemistryEvidence);
+  });
+
+  it("preserves the stronger valid draft when a repair degrades its structure", async () => {
+    const result = await resolveFinalStudyNoteCandidates({
+      generatedDraft: usableChemistryNote,
+      auditedDraft: usableChemistryNote,
+      evidence: chemistryEvidence,
+      repair: async () => ({ content: "# Broken repair\n\n## Executive Summary\nOnly one section survived.", provider: "openrouter", model: "test-model" }),
+    });
+    expect(result.note).toContain("## Relationships Between Concepts");
+    expect(result.note).toContain("neutral atom");
+    expect(result.selected).not.toBe("repaired");
+  });
+
+  it("keeps repeated central trend reversals fatal", () => {
+    const reversed = usableChemistryNote
+      .replace("Atomic radius decreases across a period.", "Atomic radius increases across a period.")
+      .replace("Periodic trends connect", "Atomic radius increases across a period. Periodic trends connect");
+    expect(assessStudyNoteCandidate(reversed, chemistryEvidence).findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "REPEATED_CENTRAL_DIRECTION_REVERSAL", severity: "fatal" })])
+    );
+  });
+
+  it("does not confuse opposite trends for different named properties", () => {
+    const evidence = "Atomic radius decreases across a period because effective nuclear charge increases. Ionization energy increases across a period.";
+    const note = usableChemistryNote.replace(
+      "Periodic trends connect electron arrangement to predictable changes in atomic properties across the periodic table.",
+      "Atomic radius decreases across a period, while ionization energy increases across a period. Effective nuclear charge also increases across a period."
+    );
+    expect(assessStudyNoteCandidate(note, evidence).findings).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "REPEATED_CENTRAL_DIRECTION_REVERSAL" })])
+    );
+  });
+
+  it("keeps empty, unrelated, and mostly sectionless output fatal", () => {
+    expect(assessStudyNoteCandidate("", chemistryEvidence).findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "OUTPUT_TOO_SHORT", severity: "fatal" })])
+    );
+    const unrelated = `# Medieval Poetry
+
+## Executive Summary
+Courtly verse used elaborate imagery and formal meter in manuscripts copied by scribes.
+
+## Key Definitions
+**Alliteration** repeats consonant sounds for literary effect.
+
+## Key Concepts
+Poets developed narrative voices, symbolic landscapes, and recurring heroic motifs.
+
+## Relationships Between Concepts
+Patronage influenced manuscript production and the circulation of literary traditions.
+
+## Key Takeaways
+- Poetry reflects the language, institutions, and artistic conventions of its culture.`;
+    expect(assessStudyNoteCandidate(unrelated, chemistryEvidence).findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "OUTPUT_UNRELATED_TO_SOURCE", severity: "fatal" })])
+    );
+    const sectionless = `# Notes\n\n## Executive Summary\n${"A supported sentence about periodic trends. ".repeat(12)}`;
+    expect(assessStudyNoteCandidate(sectionless, chemistryEvidence).findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "MOST_REQUIRED_SECTIONS_MISSING", severity: "fatal" })])
+    );
+  });
+
+  it("does not make one missing section an unconditional fatal rejection", () => {
+    const fourSectionNote = usableChemistryNote.replace(/\n## Key Definitions[\s\S]*?(?=\n## Key Concepts)/, "");
+    const assessment = assessStudyNoteCandidate(fourSectionNote, chemistryEvidence);
+    expect(assessment.complete).toBe(false);
+    expect(assessment.valid).toBe(true);
+    expect(assessment.findings).toEqual([]);
   });
 });

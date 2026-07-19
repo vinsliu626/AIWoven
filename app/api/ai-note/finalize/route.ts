@@ -980,7 +980,18 @@ export async function POST(req: Request) {
     }
   } catch (e: any) {
     const msg = String(e?.message || e);
-    console.error("[ai-note/finalize] error", { traceId, noteId, error: e });
+    const preservedDraft = e instanceof AiNoteGenerationError && typeof e.bestDraft === "string" ? e.bestDraft.trim() : "";
+    if (preservedDraft && noteId) {
+      await prisma.aiNoteJob.update({ where: { noteId }, data: { noteMarkdown: preservedDraft } }).catch(() => {});
+    }
+    console.error("[ai-note/finalize] error", {
+      traceId,
+      noteId,
+      errorClass: e instanceof Error ? e.name : "UnknownError",
+      code: typeof e?.code === "string" ? e.code : undefined,
+      failedStage: typeof e?.failedStage === "string" ? e.failedStage : undefined,
+      bestDraftPreserved: Boolean(preservedDraft),
+    });
 
     if (e?._code === "UPLOAD_INTEGRITY_FAILED") return bad("UPLOAD_INTEGRITY_FAILED", 409, "The uploaded audio failed its integrity check. Please upload it again.", { stage: "uploading", retryable: false }, traceId);
     if (e?._code === "AUDIO_VALIDATION_FAILED") return bad("AUDIO_VALIDATION_FAILED", 422, "This file is not valid audio or uses an unsupported container.", { stage: "transcribing", retryable: false }, traceId);
