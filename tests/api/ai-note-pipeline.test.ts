@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AiNoteGenerationError, applySafeStudyNotePrecisionCorrections, assertFinalStudyNoteStructure, ensureOutline, findStudyNotePrecisionIssues, mapGenerationProviderError, mergeStudyNotePrecisionIssues, preserveStructurallyCompleteStudyNote, stripProviderPlanningFromMarkdown } from "@/lib/aiNote/pipeline";
+import { AiNoteGenerationError, applySafeStudyNotePrecisionCorrections, assertFinalStudyNoteStructure, ensureOutline, findStudyNotePrecisionIssues, mapGenerationProviderError, mergeStudyNotePrecisionIssues, normalizeRequiredStudyNoteHeadings, preserveStructurallyCompleteStudyNote, stripProviderPlanningFromMarkdown } from "@/lib/aiNote/pipeline";
 import { buildAudioStudyNoteSystemPrompt, buildStudyNoteAuditSystemPrompt, buildStudyNotePrecisionRepairSystemPrompt } from "@/lib/aiNote/prompts";
 
 describe("AI Note generation pipeline normalization", () => {
@@ -212,5 +212,16 @@ describe("AI Note generation pipeline normalization", () => {
     const raw = "We need to reason through the source first.\nDo not expose this planning.\n\n# Cellular Respiration\n\n## Executive Summary\n- ATP production.";
     expect(stripProviderPlanningFromMarkdown(raw)).toBe("# Cellular Respiration\n\n## Executive Summary\n- ATP production.");
     expect(stripProviderPlanningFromMarkdown("## Segment Topic\nCellular respiration")).toBe("## Segment Topic\nCellular respiration");
+  });
+
+  it("canonicalizes required heading levels without inventing absent sections", () => {
+    const note = "# Executive Summary\nSummary\n\n### Key Definitions\nTerms\n\n**Key Concepts**\nConcepts\n\n4. Relationships Between Concepts\nLinks\n\nKey Takeaways:\n- Review";
+    const normalized = normalizeRequiredStudyNoteHeadings(note);
+    expect(normalized).toContain("## Executive Summary");
+    expect(normalized).toContain("## Key Definitions");
+    expect(normalized).toContain("## Key Concepts");
+    expect(normalized).toContain("## Relationships Between Concepts");
+    expect(normalized).toContain("## Key Takeaways");
+    expect(normalizeRequiredStudyNoteHeadings("# Notes\n\nSummary only")).not.toContain("## Executive Summary");
   });
 });
