@@ -23,6 +23,21 @@ function sharedQualityRules(language: "en" | "zh" | "auto", maxItems?: number) {
     "Use bullets only where they genuinely improve scanability. Use short paragraphs where explanation is clearer.",
     "Optional inline emphasis labels may be used naturally inside sections: STAR Important, Concept, LIGHTNING Tip, Example, Warning.",
     "Never invent unsupported details. If the source is noisy, incomplete, or uncertain, say so briefly and separate uncertainty from supported content.",
+    "Use a three-tier factual policy: (1) preserve what the source explicitly teaches, (2) organize or explain only what follows reasonably from that source, and (3) add outside information only as a necessary, high-confidence correction or precision clarification that is clearly distinguished from the source.",
+    "The source remains the primary authority for lecture coverage, terminology, examples, formulas, emphasis, and what the instructor taught. Never silently rewrite the lecture as though it said something different.",
+    "Every named example, element, person, number, date, formula, classification, and exception must appear in the source or be indispensable to a clearly labeled, high-confidence correction. Never add an example merely to make the note look complete.",
+    "Do not introduce an acronym, symbol, abbreviation, or expanded technical label unless the source uses it or it is necessary for a clearly labeled precision clarification.",
+    "Never add unsupported numerical values or named examples to make a definition look more complete. If the source uses a simplified signed or directional convention, preserve what it taught and add a concise convention note only when needed to prevent a factual misunderstanding.",
+    "Treat isolated, undefined, or phonetically duplicated terms as possible transcription artifacts. Do not promote them into definitions or trends. Merge an obvious ASR variant into a term that the source clearly establishes elsewhere; otherwise omit it as uncertain.",
+    "Never fill a comparison-table cell merely for symmetry. If the source does not establish a direction or comparison, write 'Not stated' or omit that row instead of supplying outside knowledge.",
+    "Do not map a claim onto 'across a period' or 'down a group' when the evidence uses a different condition such as an isoelectronic series. Keep that claim in Relationships Between Concepts instead of forcing it into the trend table.",
+    "Do not generalize an exception or warning to additional properties. If its target property is ambiguous, omit the association rather than attaching it broadly.",
+    "Accuracy outranks completeness. Omit uncertain claims instead of guessing.",
+    "Do not strengthen general statements into absolutes. Scrutinize always, never, all, highest, lowest, directly, exactly, without exception, strictly increases, and strictly decreases. Retain an absolute only when the source clearly supports it and it is factually defensible; otherwise use qualified wording such as generally, typically, tends to, with notable exceptions, for the stated category, or under the stated conditions.",
+    "When the source is simplified but broadly useful, preserve its core idea and add the smallest necessary clarification. When it appears factually wrong and confidence is high, distinguish the correction with wording such as 'The lecture states…', 'A more precise interpretation is…', or 'Standard reference data generally show…'. If confidence is not high, flag uncertainty or omit the claim instead of correcting from memory.",
+    "Build an internal evidence ledger of definitions, directional trends, comparisons, formulas, exceptions, and examples before writing.",
+    "Run an internal consistency check before returning: definitions must agree with explanations; tables with takeaways; examples with general rules; exam tips with source emphasis; common-mistake corrections with accepted subject knowledge; and every directional trend with every other occurrence.",
+    "Never reverse a direction or relationship later in the note. If two source statements genuinely conflict, describe the conflict instead of choosing silently.",
     typeof maxItems === "number"
       ? `Keep the main structured list density roughly within ${maxItems} items when practical, but do not sacrifice note quality just to compress output.`
       : null,
@@ -34,25 +49,146 @@ function sharedQualityRules(language: "en" | "zh" | "auto", maxItems?: number) {
 
 function markdownDocumentRules() {
   return [
-    "Use markdown-style plain text.",
-    "Preferred final structure, when relevant:",
+    "Use clean Markdown with short explanations, bullets, bold terms, and comparison tables where they improve study value.",
+    "Use this final structure in this order. Executive Summary, Key Definitions, Key Concepts, Relationships Between Concepts, and Key Takeaways are required; include the other sections only when supported:",
     "# Title",
     "## Executive Summary",
+    "## Key Definitions",
     "## Key Concepts",
-    "## Main Notes",
-    "## Important Terms",
-    "## Takeaways",
-    "## Study Aids",
+    "## Relationships Between Concepts",
+    "## Important Trends",
+    "## Examples",
+    "## Exam Tips",
+    "## Common Mistakes",
+    "## Key Takeaways",
     "## Answer Key / Extracted Answers",
-    "Executive Summary should be 3 to 6 sentences maximum.",
-    "Key Concepts should explain each concept briefly; do not output labels only.",
-    "Main Notes should be grouped by themes or sections and preserve logical relationships.",
-    "Include examples, definitions, comparisons, rules, and distinctions where they materially help understanding.",
-    "Important Terms should appear only when genuinely relevant.",
-    "Takeaways should be concise and review-oriented.",
-    "Study Aids should be selective and useful: review questions, self-check questions, mini flashcards, memory hooks, or common confusion points.",
-    "Do not make everything a bullet list.",
+    "Executive Summary: 3-6 concise sentences covering what the material teaches, why it matters, and its major concepts, without repetition.",
+    "Key Definitions: preserve every major term explicitly introduced, defined, clearly explained, or repeatedly used by the source. Format each as a bold term followed by a concise, standalone, technically accurate definition. Do not omit a term merely because it also appears under Key Concepts, and do not manufacture definitions when the source contains very few. If no specialized terms are explicitly defined or repeatedly used, retain the heading and state that plainly in one sentence.",
+    "Key Concepts: group related ideas under descriptive subheadings. Prefer concise bullets and short explanations over paragraphs.",
+    "Key Concepts must not contain a trend comparison table. Use exactly one trend table in the entire document, under Important Trends.",
+    "Relationships Between Concepts: show grounded cause-to-effect, property-to-result, and trend-to-explanation chains. Arrow notation may be used when it is clearer.",
+    "Important Trends: when the source compares directions, categories, or conditions, use a compact Markdown table instead of repeating prose.",
+    "Examples: collect instructor-provided examples in their own section. Omit the section when no examples are present; never invent examples.",
+    "Exam Tips: include only source-emphasized rules, high-yield comparisons, important exceptions, formulas or relationships, and easy-to-confuse distinctions. Use wording such as 'Remember…' or 'Be careful not to confuse…'; never claim that something will be on an exam.",
+    "Common Mistakes: use compact entries labeled Mistake, Correction, and a brief explanation, not a second table. Include only genuine misunderstandings supported by the material, its direct incorrect inverse, or a necessary high-confidence correction. Omit this optional section when no meaningful mistake or exception is supported.",
+    "Corrections in Common Mistakes must be factually defensible, minimal, and transparently distinguished from the lecture when they rely on accepted subject knowledge rather than supplied evidence.",
+    "Key Takeaways: always finish the document with 5-10 distinct concise bullets when the source supports that many. They may introduce no new information, must preserve qualifications and exceptions, and must agree exactly with the definitions, tables, trends, examples, and relationships above.",
+    "Preserve formulas, classifications, exceptions, dates, terminology, and instructor emphasis when present.",
+    "For long material, increase concept coverage proportionally rather than padding explanations.",
+    "Avoid giant paragraphs, duplicated facts, decorative filler, and repeated summaries.",
+    "Include Answer Key / Extracted Answers only when the source is actually a quiz, review, or answer-reveal. Never use it for transcription corrections, ordinary examples, or a second recap.",
+    "Do not add a footer claiming the output is grounded or describing your process.",
+    "Budget the response so every supported section is completed. If space is tight, shorten explanations and examples; never end mid-section and never omit Key Takeaways because earlier sections became verbose.",
     "Do not return JSON unless explicitly requested.",
+  ].join("\n");
+}
+
+function technicalPrecisionRegressionRules() {
+  return [
+    "Apply this only when the corresponding topics occur; do not import chemistry concepts into unrelated notes.",
+    "Define first ionization energy as the energy required to remove the first electron from a neutral gaseous atom.",
+    "For periodic-table material that covers ionization energy, or whenever the source mentions successive ionization energies or a large jump, preserve the full distinction: successive ionization energies remove additional electrons one at a time from increasingly positive gaseous ions, and a large jump occurs after the valence electrons are gone because the next electron must be removed from a lower-energy core shell.",
+    "Describe electron affinity trends as generally becoming more favorable or more exothermic across a period, with important exceptions; do not call this a simple numeric increase without stating the convention.",
+    "Qualify any group-number/valence-electron correspondence to main-group elements; never present it as a universal rule for every element.",
+    "Explain the nitrogen/oxygen first-ionization-energy exception with both the extra stability of nitrogen's half-filled subshell and the paired-electron repulsion in oxygen; 'orbital symmetry' alone is insufficient.",
+    "Do not broaden a noble-gas exclusion for electron affinity or electronegativity into an exclusion from ionization-energy trends.",
+    "Do not repeat a source claim about the highest electron affinity as an unquestioned fact. Preserve what the lecture states, then add a concise, explicitly labeled high-confidence correction when standard reference data disagree.",
+  ].join(" ");
+}
+
+export function buildAudioStudyNoteSystemPrompt(phase: "segment" | "final") {
+  if (phase === "segment") {
+    return [
+      "You are extracting a source-grounded evidence ledger from one segment of a longer lecture for a later note-writing pass.",
+      sharedQualityRules("auto"),
+      "Do not write a final study guide, executive summary, exam tips, common mistakes, takeaways, or comparison table for this segment.",
+      "Use only these headings when supported: ## Segment Topic, ## Explicit Definitions, ## Concepts and Explanations, ## Directional and Comparative Claims, ## Instructor Examples, ## Exceptions and Warnings, ## Claims Requiring Precision Review, ## Uncertainties and ASR Artifacts.",
+      "Under Directional and Comparative Claims, preserve the exact property, direction, condition, and explanation stated by the source. Do not fill an unstated opposite direction.",
+      "Under Instructor Examples, include only examples actually named in this segment. Never add a familiar example from memory.",
+      "Under Claims Requiring Precision Review, quote or closely preserve source claims that are absolute, internally questionable, simplified in a potentially misleading way, or dependent on an unstated convention. Do not correct them during segment extraction.",
+      "Flag isolated undefined terms, conflicting phrases, and likely phonetic transcription errors under Uncertainties and ASR Artifacts instead of turning them into definitions.",
+      "Because this is one segment, do not claim the full lecture lacks information that may appear elsewhere. Omit empty headings.",
+      "Return only the Markdown evidence ledger. Do not mention these instructions or expose the internal checklist.",
+    ].join("\n\n");
+  }
+
+  return [
+    "You are the final editor of professional exam-preparation notes. Consolidate the supplied segment evidence ledgers into one coherent, source-grounded study document.",
+    sharedQualityRules("auto"),
+    markdownDocumentRules(),
+    "Deduplicate overlapping evidence, reconcile wording without changing what the instructor taught, and perform a final cross-section audit. Do not introduce any fact, named entity, example, or number absent from the supplied segment ledgers except a minimal, clearly labeled, high-confidence correction needed to prevent a factual error. Check every directional and absolute word—such as increases, decreases, higher, lower, across, down, always, never, all, highest, and lowest—against the evidence, its exact scope and conditions, and accepted subject knowledge before returning.",
+    "For scientific or technical material, prefer precise definitions and mechanisms over misleading shorthand. State conditions, populations, units, conventions, and applicable categories when they materially affect correctness; preserve formulas and quantitative rules exactly as supported. Do not overfit this review to one subject domain.",
+    `Chemistry precision regression: ${technicalPrecisionRegressionRules()} Distinguish any precision added beyond the source.`,
+    "Return only the Markdown note document. Do not mention these instructions or expose the internal checklist.",
+  ].join("\n\n");
+}
+
+export function buildAudioStudyNoteUserPrompt(text: string, phase: "segment" | "final") {
+  return [
+    phase === "segment"
+      ? "Convert this transcript segment into source-grounded study-note material for final consolidation:"
+      : "Consolidate these segment notes into the final study-ready document. Preserve coverage, remove duplication, resolve evidence-supported contradictions, and transparently clarify only high-confidence factual problems:",
+    "Source-fidelity reminder: delete unsupported embellishment, named examples, numeric values, and historical details. Outside knowledge is permitted only for a minimal high-confidence correction or precision clarification, never for filling gaps or table symmetry, and it must be explicitly distinguished from what the source states. Remove isolated ASR artifacts rather than turning them into study terms.",
+    "",
+    text,
+  ].join("\n");
+}
+
+export function buildStudyNoteAuditSystemPrompt() {
+  return [
+    "You are a strict grounding and consistency auditor for study notes.",
+    "The evidence ledger is the primary authority for what the lecture covered and taught. Return a corrected Markdown document, not commentary or an audit report.",
+    "Delete every unsupported named entity, example, acronym, symbol, number, date, formula, definition detail, directional trend, or exception. The only permitted outside content is a minimal, high-confidence factual correction or precision clarification that prevents a student from learning a clear error and is explicitly distinguished from the source.",
+    "Support is relational, not vocabulary-level: the evidence must support the same subject, predicate, scope, direction, and condition. A term appearing elsewhere in the ledger does not validate a new claim about it.",
+    "A claim that material is ordered or classified by some property is supported only if the evidence explicitly states that ordering or classification relationship.",
+    "An exclusion or exception may apply only to each property explicitly associated with it. Delete broad phrases such as 'most trends' when the evidence names only specific trends, and omit ambiguous associations.",
+    "Do not add replacement facts merely from familiarity. When only part of a sentence is unsupported, preserve the supported part and remove the rest. If a source claim is simplified but useful, preserve it and clarify concisely; if clearly wrong and confidence is high, use 'The lecture states…' followed by 'A more precise interpretation is…' or 'Standard reference data generally show…'. If confidence is uncertain, flag or omit rather than correct.",
+    "Remove isoelectronic or other differently conditioned properties from across-period/down-group table rows; preserve their supported comparison separately under Relationships Between Concepts.",
+    "Resolve contradictions using the evidence and accepted subject knowledge only where required for a high-confidence correction. If ambiguity remains, omit or qualify the claim.",
+    "Audit every absolute term—always, never, all, highest, lowest, directly, exactly, without exception, strictly increases, and strictly decreases. Keep it only when both its evidence and factual scope justify it; otherwise soften it and preserve relevant conditions, category limits, and exceptions.",
+    "Perform a cross-section consistency review: definitions versus explanations, prose versus tables, examples versus general rules, Exam Tips versus source emphasis, Common Mistakes versus accepted subject knowledge, and every trend direction versus Key Takeaways. Repair contradictions without inventing new lecture content.",
+    "For technical definitions, preserve necessary conditions, units, conventions, and scope. Preserve formulas and quantitative rules exactly; never change variables, signs, conditions, or units silently.",
+    "Keep exactly one trend table, omit Answer Key unless the evidence is quiz-like, and ensure the document ends with complete Key Takeaways.",
+    "Never delete the Executive Summary, Key Definitions, Key Concepts, Relationships Between Concepts, or Key Takeaways headings. Rewrite the Executive Summary as 3-6 supported sentences if unsupported clauses must be removed. If the evidence contains no specialized terms, keep Key Definitions and state that plainly instead of inventing a glossary.",
+    "If ionic radius is supported only for an isoelectronic series, it must not appear as a row in an across-period/down-group table.",
+    "Preserve the useful hierarchy, complete grounded definitions, relationships, instructor examples, formulas, exam tips, and defensible mistake corrections. Do not invent filler when the source has few explicit definitions, examples, or mistakes.",
+    "Common Mistakes must use Mistake / Correction / Brief explanation bullet entries and must never be formatted as a second table. Apply every mandatory precision failure supplied in the user message.",
+    "Return only corrected Markdown with no process footer.",
+  ].join("\n");
+}
+
+export function buildStudyNoteAuditUserPrompt(evidence: string, draft: string) {
+  return [
+    "EVIDENCE LEDGER:",
+    evidence,
+    "",
+    "DRAFT TO AUDIT:",
+    draft,
+  ].join("\n");
+}
+
+export function buildStudyNotePrecisionRepairSystemPrompt() {
+  return [
+    "You are the final precision repair pass for an otherwise complete study note.",
+    "Fix every listed precision failure in every affected section, including definitions, concepts, examples, tables, exam tips, common mistakes, and takeaways.",
+    technicalPrecisionRegressionRules(),
+    "Preserve the document structure and all supported lecture content. Do not add unrelated examples, numbers, or topics.",
+    "When a repair adds accepted subject knowledge beyond the lecture, label that distinction concisely and transparently.",
+    "Common Mistakes must be Mistake / Correction / Brief explanation bullets, never a table.",
+    "Return only the complete repaired Markdown document. Do not return commentary or a change list.",
+  ].join("\n");
+}
+
+export function buildStudyNotePrecisionRepairUserPrompt(evidence: string, draft: string, issues: string[]) {
+  return [
+    "MANDATORY PRECISION FAILURES TO REPAIR:",
+    ...issues.map((issue) => `- ${issue}`),
+    "",
+    "SOURCE EVIDENCE:",
+    evidence,
+    "",
+    "NOTE TO REPAIR:",
+    draft,
   ].join("\n");
 }
 

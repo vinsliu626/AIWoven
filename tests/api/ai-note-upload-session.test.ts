@@ -33,7 +33,7 @@ describe("AI Note upload sessions", () => {
       new Request("http://localhost/api/ai-note/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sourceType: "upload", name: "lesson.mp3", mime: "audio/mpeg", size: 8_000_000, totalChunks: 3 }),
+        body: JSON.stringify({ sourceType: "upload", name: "lesson.mp3", mime: "audio/mpeg", size: 8_000_000, totalChunks: 3, sha256: "a".repeat(64) }),
       }) as never
     );
     const body = await response.json();
@@ -49,7 +49,7 @@ describe("AI Note upload sessions", () => {
       new Request("http://localhost/api/ai-note/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sourceType: "upload", size: 101 * 1024 * 1024, totalChunks: 34 }),
+        body: JSON.stringify({ sourceType: "upload", size: 101 * 1024 * 1024, totalChunks: 34, sha256: "a".repeat(64) }),
       }) as never
     );
     const body = await response.json();

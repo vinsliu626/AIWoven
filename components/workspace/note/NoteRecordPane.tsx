@@ -33,6 +33,7 @@ export function NoteRecordPane({
 
         {!recording ? (
           <button
+            type="button"
             onClick={onStart}
             disabled={loading || isLoadingGlobal || locked}
             className="h-10 rounded-full border border-white/10 bg-white/8 px-5 text-sm font-semibold text-slate-100 transition hover:bg-white/12 disabled:opacity-60"
@@ -40,7 +41,7 @@ export function NoteRecordPane({
             {isZh ? "Start Recording" : "Start Recording"}
           </button>
         ) : (
-          <button onClick={onStop} className="h-10 rounded-full bg-red-500/80 px-5 text-sm font-semibold text-white transition hover:bg-red-500">
+          <button type="button" onClick={onStop} className="h-10 rounded-full bg-red-500/80 px-5 text-sm font-semibold text-white transition hover:bg-red-500">
             {isZh ? "Stop Recording" : "Stop Recording"}
           </button>
         )}

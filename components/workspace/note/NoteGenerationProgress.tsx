@@ -19,6 +19,9 @@ export function NoteGenerationProgress({
   resultReady,
   error,
   traceId,
+  failedPhase,
+  retryable,
+  onRetry,
 }: {
   isZh: boolean;
   loading: boolean;
@@ -27,9 +30,13 @@ export function NoteGenerationProgress({
   resultReady: boolean;
   error?: string | null;
   traceId?: string | null;
+  failedPhase?: NotePhase | null;
+  retryable?: boolean;
+  onRetry?: () => void;
 }) {
   const effectivePhase: NotePhase = error ? "error" : resultReady ? "done" : phase;
   const copy = PHASE_COPY[effectivePhase];
+  const failedLabel = failedPhase && failedPhase !== "error" ? PHASE_COPY[failedPhase].title : "Generation";
   const showUploadProgress = effectivePhase === "uploading";
   const isWorking = effectivePhase === "transcribing" || effectivePhase === "organizing" || effectivePhase === "finalizing";
 
@@ -39,9 +46,14 @@ export function NoteGenerationProgress({
       <div className="mt-3 flex items-start gap-3">
         {isWorking ? <span className="mt-1 h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-cyan-300/30 border-t-cyan-200" aria-hidden="true" /> : null}
         <div className="min-w-0">
-          <p className="text-lg font-semibold text-slate-50">{copy.title}</p>
+          <p className="text-lg font-semibold text-slate-50">{error ? `${failedLabel} failed` : copy.title}</p>
           <p className={`mt-1 text-sm ${error ? "text-red-100" : "text-slate-400"}`}>{error || copy.description}</p>
           {traceId && error ? <p className="mt-3 break-all text-[11px] text-red-200/70">Reference: {traceId}</p> : null}
+          {retryable && error && onRetry ? (
+            <button type="button" onClick={onRetry} className="mt-4 rounded-full border border-red-200/25 bg-red-100/10 px-4 py-2 text-sm font-semibold text-red-50 transition hover:bg-red-100/15">
+              Retry from {failedLabel.toLowerCase()}
+            </button>
+          ) : null}
         </div>
       </div>
 

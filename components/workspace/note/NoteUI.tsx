@@ -76,11 +76,12 @@ export function NoteUI({
 
                   <div className="flex items-center gap-2">
                     {ctl.loading ? (
-                      <button onClick={ctl.cancelGeneration} className="h-11 rounded-full border border-white/10 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/5">
+                      <button type="button" onClick={ctl.cancelGeneration} className="h-11 rounded-full border border-white/10 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/5">
                         Cancel
                       </button>
                     ) : null}
                     <button
+                      type="button"
                       onClick={ctl.generateNotes}
                       disabled={!ctl.canGenerate}
                       className="h-11 rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 px-5 text-sm font-semibold text-white shadow-md shadow-blue-500/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:from-slate-700 disabled:via-slate-700 disabled:to-slate-700 disabled:text-slate-300 disabled:shadow-none"
@@ -152,6 +153,9 @@ export function NoteUI({
                 resultReady={resultReady}
                 error={ctl.loading ? null : ctl.error}
                 traceId={ctl.errorTraceId}
+                failedPhase={ctl.failedPhase}
+                retryable={ctl.errorRetryable}
+                onRetry={ctl.retryGeneration}
               />
             </div>
 

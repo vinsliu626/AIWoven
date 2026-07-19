@@ -11,11 +11,11 @@ import path from "node:path";
 import os from "node:os";
 import { spawn } from "node:child_process";
 import { Buffer } from "node:buffer";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { transcribeAudioToText } from "@/lib/asr/transcribe";
 import { callGroqTranscribe } from "@/lib/ai/groq";
-import { runAiNotePipeline } from "@/lib/aiNote/pipeline";
+import { AiNoteGenerationError, runAiNotePipeline } from "@/lib/aiNote/pipeline";
 import { AI_NOTE_ASR_SKIPPED_PREFIX, buildProgressiveNote, isSkippedTranscript, nextUnprocessedIndex } from "@/lib/aiNote/finalizeHelpers";
 import { deriveRecordedSeconds, parseRecordedDurationMs } from "@/lib/aiNote/recordingUsage";
 import { assertNoteRequestAllowed, markNoteAttempt, NoteLimitError, recordNoteGenerateSuccess } from "@/lib/aiNote/quota";
@@ -40,11 +40,40 @@ type ApiErr =
   | "LLM_FAILED"
   | "INTERNAL_ERROR"
   | "INCOMPLETE_UPLOAD"
+  | "UPLOAD_INTEGRITY_FAILED"
+  | "AUDIO_VALIDATION_FAILED"
+  | "AUDIO_DECODE_FAILED"
+  | "TRANSCRIPTION_AUTH_FAILED"
+  | "TRANSCRIPTION_RATE_LIMITED"
+  | "TRANSCRIPTION_PROVIDER_FAILED"
+  | "TRANSCRIPTION_TIMEOUT"
+  | "EMPTY_TRANSCRIPT"
+  | "NOTE_GENERATION_AUTH_FAILED"
+  | "NOTE_GENERATION_RATE_LIMITED"
+  | "NOTE_GENERATION_FAILED"
+  | "NOTE_GENERATION_TIMEOUT"
+  | "PERSISTENCE_FAILED"
   | "LOCKED";
+
+class AiNoteTranscriptionError extends Error {
+  constructor(
+    public readonly code:
+      | "TRANSCRIPTION_AUTH_FAILED"
+      | "TRANSCRIPTION_RATE_LIMITED"
+      | "TRANSCRIPTION_PROVIDER_FAILED"
+      | "TRANSCRIPTION_TIMEOUT",
+    message: string,
+    public readonly retryable: boolean,
+    public readonly providerStatus?: number
+  ) {
+    super(message);
+    this.name = "AiNoteTranscriptionError";
+  }
+}
 
 function bad(code: ApiErr, status = 400, message?: string, extra?: Record<string, unknown>, traceId: string = randomUUID()) {
   return NextResponse.json(
-    { ok: false, error: code, message: message ?? "Unable to generate notes right now.", traceId, ...(extra ? { extra } : {}) },
+    { ok: false, error: code, message: message ?? "Unable to generate notes right now.", traceId, ...(extra || {}) },
     { status, headers: { "x-trace-id": traceId } }
   );
 }
@@ -101,7 +130,7 @@ function getFfmpegBin() {
 }
 
 function run(cmd: string, args: string[], cwd?: string) {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
     const p = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"], cwd });
     let out = "";
     let err = "";
@@ -109,10 +138,26 @@ function run(cmd: string, args: string[], cwd?: string) {
     p.stdout.on("data", (d) => (out += d.toString()));
     p.stderr.on("data", (d) => (err += d.toString()));
     p.on("close", (code) => {
-      if (code === 0) resolve();
+      if (code === 0) resolve({ stdout: out, stderr: err });
       else reject(new Error(`ffmpeg failed (${code}): ${(err || out).slice(0, 9000)}`));
     });
   });
+}
+
+function extensionForMime(mime: string) {
+  const value = mime.toLowerCase();
+  if (value.includes("mpeg") || value.includes("mp3")) return "mp3";
+  if (value.includes("mp4") || value.includes("m4a")) return "m4a";
+  if (value.includes("ogg")) return "ogg";
+  if (value.includes("wav")) return "wav";
+  if (value.includes("flac")) return "flac";
+  if (value.includes("aac")) return "aac";
+  return "webm";
+}
+
+async function cleanupWorkDir(noteId: string) {
+  if (!noteId) return;
+  await fs.rm(path.join(os.tmpdir(), "ai-note", noteId), { recursive: true, force: true }).catch(() => {});
 }
 
 function isOfflineMode() {
@@ -166,6 +211,28 @@ function parseHttpStatus(msg: string): number | null {
   const m2 = msg.match(/\b(\d{3})\b/);
   if (m2) return Number.parseInt(m2[1], 10);
   return null;
+}
+
+function mapTranscriptionProviderError(error: unknown) {
+  if (error instanceof AiNoteTranscriptionError) return error;
+  const message = error instanceof Error ? error.message : String(error);
+  const explicitStatus = Number((error as { httpStatus?: unknown } | null)?.httpStatus);
+  const status = Number.isInteger(explicitStatus) ? explicitStatus : parseHttpStatus(message) ?? undefined;
+  if (status === 401 || status === 403) {
+    return new AiNoteTranscriptionError("TRANSCRIPTION_AUTH_FAILED", message, false, status);
+  }
+  if (status === 429) {
+    return new AiNoteTranscriptionError("TRANSCRIPTION_RATE_LIMITED", message, true, status);
+  }
+  if (status === 408 || status === 504 || /timeout|abort/i.test(message)) {
+    return new AiNoteTranscriptionError("TRANSCRIPTION_TIMEOUT", message, true, status);
+  }
+  return new AiNoteTranscriptionError(
+    "TRANSCRIPTION_PROVIDER_FAILED",
+    message,
+    !status || status >= 500,
+    status
+  );
 }
 
 async function withRetry<T>(fn: () => Promise<T>, label: string, maxTry = 4) {
@@ -357,6 +424,7 @@ export async function POST(req: Request) {
   const sourceType = body?.inputType === "upload" ? "upload" : "record";
   const expectedChunks = Number(body?.expectedChunks);
   const expectedBytes = Number(body?.expectedBytes);
+  const expectedSha256 = String(body?.expectedSha256 || "").trim().toLowerCase();
 
   try {
     const session = await getServerSession(authOptions);
@@ -437,7 +505,7 @@ export async function POST(req: Request) {
                 "INCOMPLETE_UPLOAD",
                 409,
                 "The audio upload is incomplete. Please retry the upload.",
-                { receivedChunks: chunks.length, receivedBytes: totalBytes },
+                { stage: "uploading", retryable: false, receivedChunks: chunks.length, receivedBytes: totalBytes },
                 traceId
               );
             }
@@ -494,7 +562,7 @@ export async function POST(req: Request) {
         const chunks = await prisma.aiNoteChunk.findMany({
           where: { noteId },
           orderBy: { chunkIndex: "asc" },
-          select: { chunkIndex: true, data: true },
+          select: { chunkIndex: true, data: true, mime: true, size: true },
         });
 
         if (chunks.length === 0) return bad("NO_CHUNKS", 409);
@@ -502,17 +570,60 @@ export async function POST(req: Request) {
         const workDir = path.join(os.tmpdir(), "ai-note", noteId, "work");
         await fs.mkdir(workDir, { recursive: true });
 
-        const fullWebm = path.join(workDir, "full.webm");
-        const fh = await fs.open(fullWebm, "w");
+        const sourceMime = String(chunks[0]?.mime || "audio/webm");
+        const fullSource = path.join(workDir, `source.${extensionForMime(sourceMime)}`);
+        const hash = createHash("sha256");
+        let reconstructedBytes = 0;
+        const fh = await fs.open(fullSource, "w");
         try {
-          for (const c of chunks) await fh.write(bytesToBuffer(c.data));
+          for (const c of chunks) {
+            const bytes = bytesToBuffer(c.data);
+            await fh.write(bytes);
+            hash.update(bytes);
+            reconstructedBytes += bytes.length;
+          }
         } finally {
           await fh.close();
         }
+        const reconstructedSha256 = hash.digest("hex");
+        const fileStat = await fs.stat(fullSource);
+        const hashExpected = sourceType === "upload" && /^[a-f0-9]{64}$/.test(expectedSha256);
+        if (sourceType === "upload" && (!hashExpected || reconstructedSha256 !== expectedSha256 || reconstructedBytes !== expectedBytes || fileStat.size !== expectedBytes)) {
+          throw Object.assign(new Error("Reconstructed audio did not match the uploaded source."), {
+            _code: "UPLOAD_INTEGRITY_FAILED",
+            details: { expectedBytes, reconstructedBytes, fileBytes: fileStat.size, expectedSha256, reconstructedSha256 },
+          });
+        }
+
+        const probe = await withTimeout(
+          run(ffmpegBin, ["-hide_banner", "-i", fullSource, "-map", "0:a:0", "-t", "0.1", "-f", "null", "-"]),
+          30_000,
+          "ffmpeg_probe"
+        ).catch((error) => {
+          throw Object.assign(new Error(String((error as Error)?.message || error)), { _code: "AUDIO_VALIDATION_FAILED" });
+        });
+        const duration = probe.stderr.match(/Duration:\s*([^,]+)/i)?.[1]?.trim() || "unknown";
+        const audioStream = probe.stderr.match(/Audio:\s*([^\r\n]+)/i)?.[1]?.trim() || "unknown";
+        console.info("[ai-note/finalize] audio validated", {
+          traceId,
+          noteId,
+          expectedChunks,
+          receivedChunks: chunks.length,
+          expectedBytes,
+          reconstructedBytes,
+          sha256: reconstructedSha256,
+          sourceMime,
+          sourcePath: fullSource,
+          fileReadable: true,
+          ffmpegBin,
+          duration,
+          audioStream,
+          elapsedMs: Date.now() - t0,
+        });
 
         const fullWav = path.join(workDir, "full.wav");
         await withTimeout(
-          run(ffmpegBin, ["-y", "-hide_banner", "-i", fullWebm, "-vn", "-sn", "-dn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", fullWav]),
+          run(ffmpegBin, ["-y", "-hide_banner", "-i", fullSource, "-vn", "-sn", "-dn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", fullWav]),
           180_000,
           "ffmpeg_webm_to_wav"
         ).catch((e) => {
@@ -567,16 +678,8 @@ export async function POST(req: Request) {
           let text = "";
           try {
             text = await transcribeWithFallback(buf, fname, asrTimeoutMs, asrMaxTry);
-          } catch (e: any) {
-            const cause = String(e?.message || e);
-            console.warn(`[ai-note/finalize] skipping ASR segment noteId=${noteId} index=${i} file=${fname}: ${cause}`);
-            text = `${AI_NOTE_ASR_SKIPPED_PREFIX}${JSON.stringify({
-              noteId,
-              segmentIndex: i,
-              filename: fname,
-              cause,
-              tries: asrMaxTry,
-            })}`;
+          } catch (error) {
+            throw mapTranscriptionProviderError(error);
           }
 
           const cleaned = String(text || "").trim();
@@ -623,7 +726,7 @@ export async function POST(req: Request) {
           .filter((text) => text && !isSkippedTranscript(text))
           .join("\n")
           .trim();
-        if (!transcriptAll) return bad("ASR_FAILED", 422, "Transcript is empty.");
+        if (!transcriptAll) return bad("EMPTY_TRANSCRIPT", 422, "No speech could be transcribed from this audio.", { stage: "transcribing", retryable: false }, traceId);
         try {
           await assertNoteRequestAllowed(userId, transcriptAll.length, { allowStaged: true });
           markNoteAttempt(userId);
@@ -665,6 +768,7 @@ export async function POST(req: Request) {
           });
 
           await prisma.aiNoteChunk.deleteMany({ where: { noteId } }).catch(() => {});
+          await cleanupWorkDir(noteId);
           void trackFeatureUsage({
             userId,
             featureKey: "note",
@@ -757,9 +861,7 @@ export async function POST(req: Request) {
           await refreshJobLock(noteId, lock.lockId);
 
           const text = chunks[p];
-          const part = await withTimeout(runAiNotePipeline(text), llmTimeoutMs, `llm_part_${p}`).catch((e) => {
-            throw Object.assign(new Error(String((e as any)?.message || e)), { _code: "LLM_FAILED" });
-          });
+          const part = await withTimeout(runAiNotePipeline(text, { phase: "segment" }), llmTimeoutMs, `llm_part_${p}`);
           const normalizedPart = String(part || "").trim();
 
           await prisma.aiNoteSummaryPart.upsert({
@@ -821,8 +923,9 @@ export async function POST(req: Request) {
           select: { text: true },
         });
         const merged = parts.map((p) => String(p.text || "").trim()).filter(Boolean).join("\n\n---\n\n");
-        const final = await withTimeout(runAiNotePipeline(merged), llmTimeoutMs, "llm_merge").catch((e) => {
-          throw Object.assign(new Error(String((e as any)?.message || e)), { _code: "LLM_FAILED" });
+        const final = await withTimeout(runAiNotePipeline(merged, { phase: "final" }), llmTimeoutMs, "llm_merge").catch((error) => {
+          if (error && typeof error === "object") Object.assign(error, { failedStage: "merge" });
+          throw error;
         });
 
         await addUsageEvent(userId, "note_seconds", recordedSeconds).catch(() => {});
@@ -840,6 +943,7 @@ export async function POST(req: Request) {
         });
 
         await prisma.aiNoteChunk.deleteMany({ where: { noteId } }).catch(() => {});
+        await cleanupWorkDir(noteId);
         void trackFeatureUsage({
           userId,
           featureKey: "note",
@@ -878,7 +982,22 @@ export async function POST(req: Request) {
     const msg = String(e?.message || e);
     console.error("[ai-note/finalize] error", { traceId, noteId, error: e });
 
-    if (e?._code === "FFMPEG_FAILED") return bad("FFMPEG_FAILED", 422, "This audio file could not be decoded. Try a supported MP3, WAV, M4A, MP4, WebM, OGG, AAC, or FLAC file.", undefined, traceId);
+    if (e?._code === "UPLOAD_INTEGRITY_FAILED") return bad("UPLOAD_INTEGRITY_FAILED", 409, "The uploaded audio failed its integrity check. Please upload it again.", { stage: "uploading", retryable: false }, traceId);
+    if (e?._code === "AUDIO_VALIDATION_FAILED") return bad("AUDIO_VALIDATION_FAILED", 422, "This file is not valid audio or uses an unsupported container.", { stage: "transcribing", retryable: false }, traceId);
+    if (e?._code === "FFMPEG_FAILED") return bad("AUDIO_DECODE_FAILED", 422, "This audio file could not be decoded. Try a supported MP3, WAV, M4A, MP4, WebM, OGG, AAC, or FLAC file.", { stage: "transcribing", retryable: false }, traceId);
+    if (e instanceof AiNoteTranscriptionError) {
+      const status = e.code === "TRANSCRIPTION_AUTH_FAILED" ? 503 : e.code === "TRANSCRIPTION_RATE_LIMITED" ? 429 : e.code === "TRANSCRIPTION_TIMEOUT" ? 504 : 502;
+      const publicMessage = e.code === "TRANSCRIPTION_AUTH_FAILED"
+        ? "The transcription service is not configured correctly. Please contact support."
+        : e.code === "TRANSCRIPTION_RATE_LIMITED"
+          ? "The transcription service is busy. Please retry shortly."
+          : e.code === "TRANSCRIPTION_TIMEOUT"
+            ? "Transcription timed out. You can retry without uploading again."
+            : e.retryable
+              ? "Audio transcription failed temporarily. You can retry without uploading again."
+              : "The transcription provider could not process this audio.";
+      return bad(e.code, status, publicMessage, { stage: "transcribing", retryable: e.retryable, providerStatus: e.providerStatus }, traceId);
+    }
     if (e?._code === "ASR_FAILED") {
       let message = "Audio transcription failed. Please retry.";
       try {
@@ -887,16 +1006,24 @@ export async function POST(req: Request) {
           message = `ASR failed on segment ${Number(parsed.segmentNumber || 0)}/${Number(parsed.segmentsTotal || 0)}. Retry to resume from the next unfinished segment.`;
         }
       } catch {}
-      return bad("ASR_FAILED", 502, message, undefined, traceId);
+      return bad("TRANSCRIPTION_PROVIDER_FAILED", 502, message, { stage: "transcribing", retryable: true }, traceId);
     }
 
-    if (e?._code === "LLM_FAILED") {
-      const m = msg.match(/try again in\s+([0-9.]+)s/i);
-      if (msg.includes("429") && m) {
-        const sec = Math.ceil(Number(m[1]) + 1);
-        return bad("LLM_FAILED", 429, `The note service is busy. Retry after ${sec} seconds.`, { retryAfterMs: sec * 1000 }, traceId);
-      }
-      return bad("LLM_FAILED", 503, "The note service is temporarily unavailable. Please retry.", undefined, traceId);
+    if (e instanceof AiNoteGenerationError) {
+      const status = e.code === "NOTE_GENERATION_AUTH_FAILED" ? 503 : e.code === "NOTE_GENERATION_RATE_LIMITED" ? 429 : e.code === "NOTE_GENERATION_TIMEOUT" ? 504 : 502;
+      const publicMessage = e.code === "NOTE_GENERATION_RATE_LIMITED"
+        ? "The note service is busy. Please retry shortly."
+        : e.code === "NOTE_GENERATION_TIMEOUT"
+        ? "Note generation timed out. You can retry without uploading again."
+        : e.code === "NOTE_GENERATION_AUTH_FAILED"
+        ? "The note service is not configured correctly. Please contact support."
+        : "The note could not be organized. You can retry without uploading again.";
+      const failedStage = (e as AiNoteGenerationError & { failedStage?: string }).failedStage === "merge" ? "merge" : "llm";
+      return bad(e.code, status, publicMessage, { stage: failedStage, retryable: e.retryable, providerStatus: e.providerStatus, retryAfterMs: e.retryAfterMs }, traceId);
+    }
+
+    if (/TIMEOUT:llm_/i.test(msg)) {
+      return bad("NOTE_GENERATION_TIMEOUT", 504, "Note generation timed out. You can retry without uploading again.", { stage: "llm", retryable: true }, traceId);
     }
 
     return bad("INTERNAL_ERROR", 500, "Unable to generate notes right now. Please try again.", undefined, traceId);

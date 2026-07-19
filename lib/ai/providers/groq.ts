@@ -4,7 +4,7 @@ export async function callGroqChat(
   groqKey: string,
   modelId: string,
   messages: ChatMessage[],
-  opts?: { temperature?: number; max_tokens?: number }
+  opts?: { temperature?: number; max_tokens?: number; reasoning_effort?: "none" | "default" | "low" | "medium" | "high" }
 ): Promise<string> {
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -17,6 +17,7 @@ export async function callGroqChat(
       messages,
       temperature: opts?.temperature ?? 0.2,
       max_tokens: opts?.max_tokens,
+      reasoning_effort: opts?.reasoning_effort,
     }),
   });
 

@@ -48,7 +48,7 @@ export async function generateStructuredNotes(input: {
 
   const out = await callGroqChat({
     apiKey: groqKey,
-    modelId: process.env.AI_NOTE_TEXT_MODEL || "llama-3.3-70b-versatile",
+    modelId: process.env.AI_NOTE_TEXT_MODEL || "openai/gpt-oss-120b",
     messages,
     maxTokens: input.maxOutputTokens ?? 1200,
     temperature: 0.2,

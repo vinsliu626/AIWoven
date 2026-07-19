@@ -88,7 +88,7 @@ async function mergeChunkNotes(opts: {
 
   const out = await callGroqChat({
     apiKey: groqKey,
-    modelId: process.env.AI_NOTE_TEXT_MODEL || "llama-3.3-70b-versatile",
+    modelId: process.env.AI_NOTE_TEXT_MODEL || "openai/gpt-oss-120b",
     messages,
     maxTokens: opts.maxOutputTokens,
     temperature: 0.15,
@@ -141,7 +141,7 @@ export async function generateStructuredNotesSafely(input: {
   }
 
   const chunkItemCap = Math.max(6, Math.min(10, Math.ceil(input.maxItems * 0.7)));
-  const chunkTokenCap = Math.min(maxOutputTokens, Math.max(700, parseEnvInt("AI_NOTE_STAGED_CHUNK_MAX_TOKENS", 900)));
+  const chunkTokenCap = Math.min(maxOutputTokens, Math.max(900, parseEnvInt("AI_NOTE_STAGED_CHUNK_MAX_TOKENS", 1_300)));
   const chunkNotes: string[] = [];
 
   for (const chunk of chunks) {

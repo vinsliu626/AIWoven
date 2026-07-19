@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { outlinePrompt, sectionNotesPrompt, finalMergePrompt } from "./prompts";
+import { buildAudioStudyNoteSystemPrompt, buildAudioStudyNoteUserPrompt, buildStudyNoteAuditSystemPrompt, buildStudyNoteAuditUserPrompt, buildStudyNotePrecisionRepairSystemPrompt, buildStudyNotePrecisionRepairUserPrompt, outlinePrompt, sectionNotesPrompt, finalMergePrompt } from "./prompts";
 
 import { callGroqChat } from "@/lib/ai/providers/groq";
 import { callHfRouterChat } from "@/lib/ai/providers/hfRouter";
@@ -10,6 +10,23 @@ const FAST_MODEL = "llama-3.1-8b-instant";
 // HF Router models
 const HF_DEEPSEEK_MODEL = "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B";
 const HF_KIMI_MODEL = "moonshotai/Kimi-K2-Instruct-0905";
+
+export class AiNoteGenerationError extends Error {
+  constructor(
+    public readonly code:
+      | "NOTE_GENERATION_AUTH_FAILED"
+      | "NOTE_GENERATION_RATE_LIMITED"
+      | "NOTE_GENERATION_TIMEOUT"
+      | "NOTE_GENERATION_FAILED",
+    message: string,
+    public readonly retryable: boolean,
+    public readonly providerStatus?: number,
+    public readonly retryAfterMs?: number
+  ) {
+    super(message);
+    this.name = "AiNoteGenerationError";
+  }
+}
 
 /** ===================== JSON Schemas ===================== */
 const OutlineSchema = z.object({
@@ -251,6 +268,167 @@ function ensureMinKeyPoints(section: { summary: string; sourceText: string; keyP
   return out.slice(0, 12);
 }
 
+export function ensureOutline(note: unknown): OutlineResult {
+  const value = note && typeof note === "object" ? (note as Record<string, unknown>) : {};
+  const rawSections = Array.isArray(value.sections) ? value.sections : [];
+  const sections = rawSections
+    .map((rawSection, index) => {
+      const section = rawSection && typeof rawSection === "object" ? (rawSection as Record<string, unknown>) : {};
+      const heading = String(section.heading || section.title || `Section ${index + 1}`).trim();
+      const summary = String(section.summary || section.sourceText || "").trim();
+      const sourceText = String(section.sourceText || section.content || summary).trim();
+      const keyPoints = Array.isArray(section.keyPoints)
+        ? section.keyPoints.map((item) => String(item || "").trim()).filter(Boolean)
+        : [];
+      if (!heading || (!summary && !sourceText && keyPoints.length === 0)) return null;
+      return {
+        id: String(section.id || `section-${index + 1}`).trim() || `section-${index + 1}`,
+        heading,
+        summary: summary || keyPoints[0] || sourceText,
+        keyPoints,
+        sourceText: sourceText || summary || keyPoints.join(". "),
+      };
+    })
+    .filter((section): section is NonNullable<typeof section> => Boolean(section));
+
+  if (sections.length === 0) {
+    throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The outline contained no usable sections.", true);
+  }
+
+  const language = ["en", "zh", "auto"].includes(String(value.language))
+    ? (String(value.language) as "en" | "zh" | "auto")
+    : "auto";
+  const sourceTypes = ["lecture", "meeting", "quiz_review", "study_material", "general"] as const;
+  const sourceTypeValue = String(value.sourceType || "general");
+  const sourceType = sourceTypes.includes(sourceTypeValue as (typeof sourceTypes)[number])
+    ? (sourceTypeValue as (typeof sourceTypes)[number])
+    : "general";
+
+  return OutlineSchema.parse({
+    title: String(value.title || "Study Notes").trim() || "Study Notes",
+    language,
+    sourceType,
+    sections,
+  });
+}
+
+export function mapGenerationProviderError(error: unknown): AiNoteGenerationError {
+  if (error instanceof AiNoteGenerationError) return error;
+  const message = error instanceof Error ? error.message : String(error);
+  const statusMatch = message.match(/(?:Groq|HF Router) failed:\s*(\d{3})/i);
+  const status = statusMatch ? Number.parseInt(statusMatch[1], 10) : undefined;
+  const retryMsMatch = message.match(/try again in\s*([0-9.]+)ms/i);
+  const retryMinuteMatch = message.match(/try again in\s*([0-9.]+)m(?:([0-9.]+)s)?/i);
+  const retrySecondMatch = message.match(/try again in\s*([0-9.]+)s/i);
+  const retryAfterMs = retryMsMatch
+    ? Math.ceil(Number(retryMsMatch[1]))
+    : retryMinuteMatch
+      ? Math.ceil((Number(retryMinuteMatch[1]) * 60 + Number(retryMinuteMatch[2] || 0)) * 1000)
+      : retrySecondMatch
+        ? Math.ceil(Number(retrySecondMatch[1]) * 1000)
+        : undefined;
+  if (status === 401 || status === 403) return new AiNoteGenerationError("NOTE_GENERATION_AUTH_FAILED", message, false, status);
+  if (status === 429) return new AiNoteGenerationError("NOTE_GENERATION_RATE_LIMITED", message, true, status, retryAfterMs);
+  if (/timeout|abort/i.test(message)) return new AiNoteGenerationError("NOTE_GENERATION_TIMEOUT", message, true, status);
+  return new AiNoteGenerationError("NOTE_GENERATION_FAILED", message, !status || status >= 500, status);
+}
+
+export function assertFinalStudyNoteStructure(markdown: string) {
+  const note = String(markdown || "").trim();
+  const requiredHeadings = [
+    "## Executive Summary",
+    "## Key Definitions",
+    "## Key Concepts",
+    "## Relationships Between Concepts",
+    "## Key Takeaways",
+  ];
+  const missing = requiredHeadings.filter((heading) => !note.includes(heading));
+  if (missing.length > 0 || /<think>/i.test(note)) {
+    throw new AiNoteGenerationError(
+      "NOTE_GENERATION_FAILED",
+      `The final study note did not pass its structure audit: ${missing.join(", ") || "reasoning content present"}.`,
+      true
+    );
+  }
+  if (note.indexOf("## Key Takeaways") < note.indexOf("## Key Concepts")) {
+    throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The final study note sections were out of order.", true);
+  }
+  return note;
+}
+
+export function findStudyNotePrecisionIssues(markdown: string, evidence: string) {
+  const note = String(markdown || "");
+  const source = String(evidence || "");
+  const combined = `${source}\n${note}`;
+  const issues: string[] = [];
+
+  const keyDefinitions = note.match(/## Key Definitions([\s\S]*?)(?=\n## |$)/i)?.[1] || "";
+  if (/ionization energy/i.test(combined) && !/first ionization energy[^\n.]*neutral gaseous atom/i.test(keyDefinitions)) {
+    issues.push("Define first ionization energy precisely for a neutral gaseous atom, not merely a neutral atom or an outermost shell.");
+  }
+  const needsSuccessiveIonization = /successive ionization|large jump/i.test(source)
+    || (/periodic (?:table|trend)/i.test(combined) && /ionization energy/i.test(combined));
+  if (needsSuccessiveIonization) {
+    if (!/successive ionization energies/i.test(note) || !/increasingly positive gaseous ions/i.test(note)) {
+      issues.push("Preserve the precise definition of successive ionization energies for increasingly positive gaseous ions.");
+    }
+    if (!/valence electrons[^\n.]{0,160}(?:core shell|lower-energy)/i.test(note)) {
+      issues.push("Explain that the large jump follows removal of all valence electrons and requires removing the next electron from a lower-energy core shell.");
+    }
+  }
+  const groupValenceClaims = note
+    .split(/\n|(?<=[.!?])\s+/)
+    .filter((line) => /\bgroup\b[^.]{0,140}valence electron|valence electron[^.]{0,140}\bgroup\b/i.test(line))
+    .filter((line) => !/group\s+(?:1|2|13|14|15|16|17|18)\b/i.test(line));
+  if (groupValenceClaims.some((line) => !/main[-‑ ]group elements/i.test(line))) {
+    issues.push("Qualify group-to-valence-electron statements to main-group elements in every section, including Key Takeaways.");
+  }
+  if (/nitrogen/i.test(combined) && /oxygen/i.test(combined) && /ionization energy/i.test(combined)) {
+    if (!/half[-‑ ]filled/i.test(note) || !/paired[-‑ ]electron repulsion/i.test(note)) {
+      issues.push("Explain the nitrogen/oxygen exception with both half-filled-subshell stability and paired-electron repulsion in oxygen.");
+    }
+  }
+  if (/electron affinity/i.test(combined)) {
+    if (!/(?:more favorable|more exothermic|more negative)/i.test(note) || !/exception/i.test(note)) {
+      issues.push("Express the electron-affinity trend with its sign/energy convention and important exceptions, not as an unqualified numeric increase.");
+    }
+  }
+  if (/highest electron affinity/i.test(source) && /highest electron affinity/i.test(note)) {
+    if (!/lecture (?:states|cites|identifies)/i.test(note) || !/standard reference data/i.test(note)) {
+      issues.push("Do not repeat the source's highest-electron-affinity claim as fact; distinguish the lecture statement from the high-confidence reference correction.");
+    }
+  }
+  if (/noble gases?[^\n.]{0,140}(?:excluded|omitted)[^\n.]{0,140}ionization energy|ionization energy[^\n.]{0,140}(?:excluded|omitted)[^\n.]{0,140}noble gases?/i.test(note)) {
+    issues.push("Do not broaden a noble-gas exclusion from electron affinity or electronegativity to ionization-energy trends.");
+  }
+  const commonMistakes = note.match(/## Common Mistakes([\s\S]*?)(?=\n## |$)/i)?.[1] || "";
+  if (/^\s*\|/m.test(commonMistakes)) {
+    issues.push("Convert Common Mistakes from a table into Mistake / Correction / Brief explanation bullet entries.");
+  }
+
+  return issues;
+}
+
+export function mergeStudyNotePrecisionIssues(...groups: string[][]) {
+  return Array.from(new Set(groups.flat()));
+}
+
+export function applySafeStudyNotePrecisionCorrections(markdown: string) {
+  return String(markdown || "")
+    .split("\n")
+    .map((line) => {
+      const isUniversalGroupClaim = /\bgroup\b[^.]{0,140}valence electron|valence electron[^.]{0,140}\bgroup\b/i.test(line);
+      const alreadyQualified = /main[-‑ ]group elements/i.test(line);
+      const isSpecificGroup = /group\s+(?:1|2|13|14|15|16|17|18)\b/i.test(line);
+      if (!isUniversalGroupClaim || alreadyQualified || isSpecificGroup) return line;
+
+      const bullet = line.match(/^(\s*(?:[-*+] |\d+\. ))/i)?.[1] || "";
+      const content = line.slice(bullet.length);
+      return `${bullet}For main-group elements, ${content.replace(/^Elements\b/, "elements")}`;
+    })
+    .join("\n");
+}
+
 function ensureMinKeyTerms(
   obj: { heading: string; bullets: string[]; keyTerms?: { term: string; definition: string }[] },
   min = 1
@@ -399,10 +577,12 @@ async function callHfRouterChatRobust(hfToken: string, model: string, messages: 
       lastErr = e;
       const msg = String(e?.message || e);
 
+      const statusMatch = msg.match(/HF Router failed:\s*(\d{3})/i);
+      const status = statusMatch ? Number.parseInt(statusMatch[1], 10) : 0;
       const retryable =
-        msg.includes("503") ||
+        status === 429 ||
+        status >= 500 ||
         msg.toLowerCase().includes("service unavailable") ||
-        msg.toLowerCase().includes("hf router") ||
         msg.toLowerCase().includes("fetch") ||
         msg.toLowerCase().includes("timeout") ||
         msg.includes("returned HTML") ||
@@ -430,6 +610,15 @@ async function callSectionNotesRobust(args: {
   sourceText: string;
 }): Promise<SectionNotes> {
   const { hfToken, groqKey, id, heading, sourceText } = args;
+
+  if (!hfToken) {
+    try {
+      const raw = await callGroqChat(groqKey, FAST_MODEL, sectionNotesPrompt({ id, heading, sourceText }), { temperature: 0 });
+      return ensureSectionNotes(parseJsonFromModel<SectionNotes>(raw));
+    } catch (error) {
+      throw mapGenerationProviderError(error);
+    }
+  }
 
   // 1) HF first
   try {
@@ -516,6 +705,15 @@ async function callSectionNotesRobust(args: {
 async function callFinalMergeRobust(args: { hfToken: string; groqKey: string; mergedInput: any }): Promise<FinalNote> {
   const { hfToken, groqKey, mergedInput } = args;
 
+  if (!hfToken) {
+    try {
+      const raw = await callGroqChat(groqKey, FAST_MODEL, finalMergePrompt(mergedInput), { temperature: 0 });
+      return ensureFinalNote(parseJsonFromModel<FinalNote>(raw));
+    } catch (error) {
+      throw mapGenerationProviderError(error);
+    }
+  }
+
   // HF first
   try {
     const raw = await callHfRouterChatRobust(
@@ -536,78 +734,106 @@ async function callFinalMergeRobust(args: { hfToken: string; groqKey: string; me
 }
 
 /** ===================== Main Pipeline ===================== */
-export async function runAiNotePipeline(rawText: string): Promise<string> {
+export async function runAiNotePipeline(rawText: string, options?: { phase?: "segment" | "final" }): Promise<string> {
   const text = normalizeInput(rawText);
   if (text.length < 20) throw new Error("Text too short");
 
   const groqKey = mustEnv("GROQ_API_KEY");
-  const hfToken = mustEnv("HF_TOKEN");
+  const phase = options?.phase ?? "segment";
+  const studyModel = process.env.AI_NOTE_STUDY_MODEL || process.env.AI_NOTE_TEXT_MODEL || "openai/gpt-oss-120b";
+  const configuredTokens = Number.parseInt(process.env.AI_NOTE_STUDY_MAX_TOKENS || "2200", 10);
+  const maxTokens = Math.max(1_600, Math.min(2_400, Number.isFinite(configuredTokens) ? configuredTokens : 2_200));
+  const generationTokenLimit = phase === "final" ? Math.min(maxTokens, 1_800) : maxTokens;
 
-  // ✅ 超短文本：不走复杂 pipeline，直接 markdown（更稳）
-  if (text.length < 200) {
-    const raw = await callGroqChat(
-      groqKey,
-      FAST_MODEL,
+  async function callWithRateRetry(
+    model: string,
+    messages: Array<{ role: "system" | "user"; content: string }>,
+    tokenLimit: number,
+    reasoningEffort?: "none" | "default" | "low" | "medium" | "high"
+  ) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return await callGroqChat(groqKey, model, messages, {
+          temperature: 0,
+          max_tokens: tokenLimit,
+          reasoning_effort: reasoningEffort,
+        });
+      } catch (error) {
+        const mapped = mapGenerationProviderError(error);
+        if (mapped.code === "NOTE_GENERATION_RATE_LIMITED" && attempt === 0) {
+          const waitMs = Math.max(1_000, Math.min(30_000, mapped.retryAfterMs ?? 5_000)) + 250;
+          await sleep(waitMs);
+          continue;
+        }
+        throw mapped;
+      }
+    }
+    throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The provider returned no note.", true);
+  }
+
+  try {
+    const raw = await callWithRateRetry(
+      studyModel,
       [
-        {
-          role: "system",
-          content:
-            "You write compact but high-value study notes in markdown-style text. Use clear sections, short subpoints, and separated knowledge points. Avoid one giant wall of text and avoid shallow extraction dumps. You may use labels like ⭐ Important, 📘 Concept, ⚡ Tip, 🧪 Example, and ⚠️ Warning naturally inside sections.",
-        },
-        { role: "user", content: `Make a short but genuinely useful note from the text below.\nUse: Title, Executive Summary, Main Notes, and Takeaways.\nKeep each knowledge point distinct.\n\nText:\n${text}` },
+        { role: "system", content: buildAudioStudyNoteSystemPrompt(phase) },
+        { role: "user", content: buildAudioStudyNoteUserPrompt(text, phase) },
       ],
-      { temperature: 0 }
+      generationTokenLimit
     );
-    return normalizeAiText(String(raw || "").trim());
+    let normalized = normalizeAiText(String(raw || "").trim());
+    if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The provider returned an empty note.", true);
+
+    if (phase === "final") {
+      const auditModel = process.env.AI_NOTE_AUDIT_MODEL || "qwen/qwen3.6-27b";
+      const auditTokenLimit = Math.min(maxTokens, 1_800);
+      const draftPrecisionIssues = findStudyNotePrecisionIssues(normalized, text);
+      const audited = await callWithRateRetry(
+        auditModel,
+        [
+          { role: "system", content: buildStudyNoteAuditSystemPrompt() },
+          {
+            role: "user",
+            content: draftPrecisionIssues.length > 0
+              ? buildStudyNotePrecisionRepairUserPrompt(text, normalized, draftPrecisionIssues)
+              : buildStudyNoteAuditUserPrompt(text, normalized),
+          },
+        ],
+        auditTokenLimit,
+        "none"
+      );
+      normalized = normalizeAiText(String(audited || "").trim());
+      if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The grounding audit returned an empty note.", true);
+      normalized = applySafeStudyNotePrecisionCorrections(normalized);
+      let precisionIssues = findStudyNotePrecisionIssues(normalized, text);
+      if (precisionIssues.length > 0) {
+        const precisionModel = process.env.AI_NOTE_PRECISION_MODEL || auditModel;
+        const repairIssues = mergeStudyNotePrecisionIssues(draftPrecisionIssues, precisionIssues);
+        const repaired = await callWithRateRetry(
+          precisionModel,
+          [
+            { role: "system", content: buildStudyNotePrecisionRepairSystemPrompt() },
+            { role: "user", content: buildStudyNotePrecisionRepairUserPrompt(text, normalized, repairIssues) },
+          ],
+          auditTokenLimit,
+          "none"
+        );
+        normalized = normalizeAiText(String(repaired || "").trim());
+        if (!normalized) throw new AiNoteGenerationError("NOTE_GENERATION_FAILED", "The precision repair returned an empty note.", true);
+        normalized = applySafeStudyNotePrecisionCorrections(normalized);
+        precisionIssues = findStudyNotePrecisionIssues(normalized, text);
+        if (precisionIssues.length > 0) {
+          throw new AiNoteGenerationError(
+            "NOTE_GENERATION_FAILED",
+            `The final study note did not pass its precision audit: ${precisionIssues.join(" ")}`,
+            true
+          );
+        }
+      }
+      normalized = assertFinalStudyNoteStructure(normalized);
+    }
+
+    return normalized;
+  } catch (error) {
+    throw mapGenerationProviderError(error);
   }
-
-  // ---------------- Step 1: Outline (Groq) ----------------
-  const outlineRawText = await callGroqChat(groqKey, FAST_MODEL, outlinePrompt(text), { temperature: 0 });
-
-  if (!outlineRawText || (typeof outlineRawText === "string" && looksLikeHtml(outlineRawText))) {
-    throw new Error(`Outline model returned bad response (empty/html).`);
-  }
-
-  const outlineObj = parseJsonFromModel<OutlineResult>(outlineRawText);
-  const outlineParsed = OutlineSchema.safeParse(outlineObj);
-  if (!outlineParsed.success) {
-    throw new Error(`Outline JSON schema mismatch.\nRaw:\n${String(outlineRawText).slice(0, 1200)}${String(outlineRawText).length > 1200 ? "\n...(truncated)" : ""}`);
-  }
-
-  const outline = outlineParsed.data;
-
-  // ✅ normalize sections：补 keyPoints/sourceText
-  outline.sections = outline.sections.map((s) => ({
-    ...s,
-    keyPoints: ensureMinKeyPoints(s, 2),
-    sourceText: (s.sourceText || s.summary || " ").trim() || " ",
-  }));
-
-  // ---------------- Step 2: Section Notes ----------------
-  const sectionNotes: SectionNotes[] = [];
-  for (const s of outline.sections) {
-    const notes = await callSectionNotesRobust({
-      hfToken,
-      groqKey,
-      id: s.id,
-      heading: s.heading,
-      sourceText: s.sourceText,
-    });
-    sectionNotes.push(notes);
-  }
-
-  // ---------------- Step 3: Final Merge ----------------
-  const mergedInput = {
-    title: outline.title,
-    sourceType: outline.sourceType,
-    sections: outline.sections.map((s) => ({
-      heading: s.heading,
-      summary: s.summary,
-      keyPoints: s.keyPoints,
-      notes: sectionNotes.find((n) => n.id === s.id) || null,
-    })),
-  };
-
-  const finalNote = await callFinalMergeRobust({ hfToken, groqKey, mergedInput });
-  return normalizeAiText(finalNote.markdown);
 }

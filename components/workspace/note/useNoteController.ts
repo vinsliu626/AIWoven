@@ -5,6 +5,7 @@ import { computeRms, createSpeechSegmenter } from "./audioVad";
 
 export type NoteTab = "upload" | "record" | "text";
 export type NotePhase = "idle" | "uploading" | "transcribing" | "organizing" | "finalizing" | "done" | "error";
+type UploadRetrySession = { noteId: string; expectedChunks: number; expectedBytes: number; expectedSha256: string };
 
 const UPLOAD_CHUNK_BYTES = 3 * 1024 * 1024;
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
@@ -55,6 +56,8 @@ export function useNoteController({
   const [phase, setPhase] = useState<NotePhase>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorTraceId, setErrorTraceId] = useState<string | null>(null);
+  const [errorRetryable, setErrorRetryable] = useState(false);
+  const [failedPhase, setFailedPhase] = useState<NotePhase | null>(null);
 
   const [noteId, setNoteId] = useState<string | null>(null);
   const [uploadedChunks, setUploadedChunks] = useState(0);
@@ -72,6 +75,8 @@ export function useNoteController({
   const recordedDurationMsRef = useRef<number | null>(null);
   const uploadAbortRef = useRef<AbortController | null>(null);
   const uploadRequestRef = useRef<XMLHttpRequest | null>(null);
+  const retrySessionRef = useRef<UploadRetrySession | null>(null);
+  const retryRequestedRef = useRef(false);
   const speechSegmenterRef = useRef(
     createSpeechSegmenter<Blob>({
       sliceMs: RECORDER_SLICE_MS,
@@ -150,6 +155,8 @@ export function useNoteController({
   function resetAll() {
     setError(null);
     setErrorTraceId(null);
+    setErrorRetryable(false);
+    setFailedPhase(null);
     setResult("");
     setResultComplete(false);
     setSuccess(null);
@@ -449,10 +456,15 @@ export function useNoteController({
 
   async function uploadAudioFile(activeFile: File) {
     const totalChunks = Math.ceil(activeFile.size / UPLOAD_CHUNK_BYTES);
+    setPhase("uploading");
+    setDisplayStage("uploading");
+    setUploadProgress(0);
+    const digest = await crypto.subtle.digest("SHA-256", await activeFile.arrayBuffer());
+    const expectedSha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
     const startResponse = await fetch("/api/ai-note/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sourceType: "upload", name: activeFile.name, mime: activeFile.type, size: activeFile.size, totalChunks }),
+      body: JSON.stringify({ sourceType: "upload", name: activeFile.name, mime: activeFile.type, size: activeFile.size, totalChunks, sha256: expectedSha256 }),
     });
     const startRaw = await startResponse.text();
     const startPayload = parseApiPayload(startRaw, startResponse.headers.get("x-trace-id") || startResponse.headers.get("x-vercel-id"));
@@ -465,9 +477,6 @@ export function useNoteController({
     setUploadedChunks(0);
     const controller = new AbortController();
     uploadAbortRef.current = controller;
-    setPhase("uploading");
-    setDisplayStage("uploading");
-    setUploadProgress(0);
 
     for (let index = 0; index < totalChunks; index += 1) {
       const start = index * UPLOAD_CHUNK_BYTES;
@@ -493,7 +502,7 @@ export function useNoteController({
 
     uploadAbortRef.current = null;
     uploadRequestRef.current = null;
-    return { noteId: activeNoteId, expectedChunks: totalChunks, expectedBytes: activeFile.size };
+    return { noteId: activeNoteId, expectedChunks: totalChunks, expectedBytes: activeFile.size, expectedSha256 };
   }
 
   async function cancelGeneration() {
@@ -509,6 +518,8 @@ export function useNoteController({
     setDisplayProgress(0);
     setUploadProgress(0);
     setError(null);
+    retrySessionRef.current = null;
+    retryRequestedRef.current = false;
     if (activeNoteId) {
       void fetch("/api/ai-note/start", {
         method: "DELETE",
@@ -537,6 +548,8 @@ export function useNoteController({
     setResultComplete(false);
     setSuccess(null);
     setErrorTraceId(null);
+    setErrorRetryable(false);
+    setFailedPhase(null);
 
     try {
       if (tab === "text") {
@@ -568,13 +581,18 @@ export function useNoteController({
       let inputType: "upload" | "record" = "record";
       let expectedChunks: number | undefined;
       let expectedBytes: number | undefined;
+      let expectedSha256: string | undefined;
 
       if (tab === "upload") {
         if (!file) throw new Error(isZh ? "缺少上传文件。" : "Missing file.");
-        const uploaded = await uploadAudioFile(file);
+        const reusable = retryRequestedRef.current ? retrySessionRef.current : null;
+        retryRequestedRef.current = false;
+        const uploaded = reusable ?? (await uploadAudioFile(file));
+        retrySessionRef.current = uploaded;
         processingNoteId = uploaded.noteId;
         expectedChunks = uploaded.expectedChunks;
         expectedBytes = uploaded.expectedBytes;
+        expectedSha256 = uploaded.expectedSha256;
         inputType = "upload";
       }
 
@@ -615,6 +633,7 @@ export function useNoteController({
             inputType,
             expectedChunks,
             expectedBytes,
+            expectedSha256,
             totalDurationMs: inputType === "record" ? recordedDurationMsRef.current ?? Math.max(1, recordSecs * 1000) : undefined,
           }),
         });
@@ -636,11 +655,23 @@ export function useNoteController({
           }
 
           const nextProgress = Number.isFinite(json?.progress) ? Number(json.progress) : displayProgress;
+          const serverStage = String(json?.stage || "");
+          const stageAtFailure: NotePhase =
+            serverStage === "asr" || serverStage === "transcribing"
+              ? "transcribing"
+              : serverStage === "merge" || serverStage === "finalizing"
+                ? "finalizing"
+                : serverStage === "uploading"
+                  ? "uploading"
+                  : "organizing";
           setFinalizeStage("failed");
           setFinalizeProgress(nextProgress);
           setDisplayStage("failed");
           setDisplayProgress(nextProgress);
-          throw new Error(friendlyMessageFromApi(json, raw.slice(0, 300) || `Finalize error: ${response.status}`));
+          setFailedPhase(stageAtFailure);
+          const apiError = new Error(friendlyMessageFromApi(json, "Unable to generate notes right now."));
+          Object.assign(apiError, { retryable: Boolean(json?.retryable), failedPhase: stageAtFailure });
+          throw apiError;
         }
 
         const nextStage = String(json?.stage || "done");
@@ -684,6 +715,7 @@ export function useNoteController({
       setResult(finalNote);
       setResultComplete(true);
       setSuccess(isZh ? "笔记已生成。" : "Notes generated.");
+      retrySessionRef.current = null;
       onUsageRefresh?.();
     } catch (generateError: any) {
       if (generateError?.name === "AbortError") {
@@ -693,12 +725,20 @@ export function useNoteController({
       }
       setDisplayStage("failed");
       setPhase("error");
+      setErrorRetryable(Boolean(generateError?.retryable));
+      if (generateError?.failedPhase) setFailedPhase(generateError.failedPhase);
       setError(generateError?.message || (isZh ? "生成失败。" : "Failed to generate notes."));
     } finally {
       uploadAbortRef.current = null;
       uploadRequestRef.current = null;
       setLoading(false);
     }
+  }
+
+  async function retryGeneration() {
+    if (!retrySessionRef.current || loading) return;
+    retryRequestedRef.current = true;
+    await generateNotes();
   }
 
   function switchTab(next: NoteTab) {
@@ -720,6 +760,8 @@ export function useNoteController({
     setLiveTranscript("");
     setRecordSecs(0);
     setNoteId(null);
+    retrySessionRef.current = null;
+    retryRequestedRef.current = false;
     setFile(null);
     recordingStartedAtRef.current = null;
     recordedDurationMsRef.current = null;
@@ -755,6 +797,8 @@ export function useNoteController({
     phase,
     uploadProgress,
     errorTraceId,
+    errorRetryable,
+    failedPhase,
     noteId,
     uploadedChunks,
     chunkError,
@@ -768,5 +812,6 @@ export function useNoteController({
     switchTab,
     resetAll,
     cancelGeneration,
+    retryGeneration,
   };
 }

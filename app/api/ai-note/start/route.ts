@@ -5,6 +5,9 @@ import { randomUUID } from "crypto";
 import { devBypassUserId } from "@/lib/auth/devBypass";
 import { getRouteSessionUser } from "@/lib/auth/routeSession";
 import type { NextRequest } from "next/server";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,8 +51,9 @@ export async function POST(req: NextRequest) {
     if (sourceType === "upload") {
       const size = Number(body?.size);
       const totalChunks = Number(body?.totalChunks);
+      const sha256 = String(body?.sha256 || "").trim().toLowerCase();
       const maxBytes = Number.parseInt(process.env.AI_NOTE_MAX_UPLOAD_BYTES || "", 10) || 100 * 1024 * 1024;
-      if (!Number.isSafeInteger(size) || size <= 0 || size > maxBytes || !Number.isSafeInteger(totalChunks) || totalChunks <= 0) {
+      if (!Number.isSafeInteger(size) || size <= 0 || size > maxBytes || !Number.isSafeInteger(totalChunks) || totalChunks <= 0 || !/^[a-f0-9]{64}$/.test(sha256)) {
         return bad(traceId, "INVALID_UPLOAD", 400, `Choose an audio file smaller than ${Math.round(maxBytes / 1024 / 1024)} MB.`);
       }
     }
@@ -85,6 +89,7 @@ export async function DELETE(req: NextRequest) {
     if (existing.userId !== userId) return bad(traceId, "FORBIDDEN", 403, "You cannot cancel this upload session.");
 
     await prisma.aiNoteSession.delete({ where: { id: noteId } });
+    await fs.rm(path.join(os.tmpdir(), "ai-note", noteId), { recursive: true, force: true }).catch(() => {});
     return NextResponse.json({ ok: true, traceId }, { headers: { "x-trace-id": traceId } });
   } catch (e) {
     console.error("[ai-note/start] delete error", { traceId, error: e });

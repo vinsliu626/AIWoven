@@ -60,4 +60,31 @@ describe("POST /api/ai-note/chunk noteId validation", () => {
     expect(json.error).toBe("INVALID_NOTE_ID");
     expect(mocks.prisma.aiNoteSession.upsert).not.toHaveBeenCalled();
   });
+
+  it("stores a repeated chunk index idempotently with an upsert", async () => {
+    mocks.getServerSession.mockResolvedValue({ user: { id: "user_1" } });
+    mocks.prisma.aiNoteSession.findUnique.mockResolvedValue({ userId: "user_1" });
+    mocks.prisma.aiNoteSession.upsert.mockResolvedValue({});
+    mocks.prisma.aiNoteChunk.upsert.mockResolvedValue({});
+    mocks.prisma.aiNoteChunk.count.mockResolvedValue(1);
+    const { POST } = await import("@/app/api/ai-note/chunk/route");
+    const makeRequest = () => new Request("http://localhost/api/ai-note/chunk", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        noteId: "0e6dfbbc-fbe8-4d87-8f48-c82350a95409",
+        chunkIndex: 0,
+        mime: "audio/mpeg",
+        encoding: "base64",
+        data: "YWJj",
+      }),
+    });
+
+    expect((await POST(makeRequest())).status).toBe(200);
+    expect((await POST(makeRequest())).status).toBe(200);
+    expect(mocks.prisma.aiNoteChunk.upsert).toHaveBeenCalledTimes(2);
+    expect(mocks.prisma.aiNoteChunk.upsert).toHaveBeenLastCalledWith(expect.objectContaining({
+      where: { noteId_chunkIndex: { noteId: "0e6dfbbc-fbe8-4d87-8f48-c82350a95409", chunkIndex: 0 } },
+    }));
+  });
 });

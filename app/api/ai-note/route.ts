@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
 
     const isZh = /[\u4e00-\u9fff]/.test(inputText);
     const maxOutputTokens =
-      quota.limits.maxItems <= 8 ? 650 : quota.limits.maxItems <= 12 ? 850 : 1_000;
+      quota.limits.maxItems <= 8 ? 1_400 : quota.limits.maxItems <= 12 ? 1_700 : 2_000;
     const generated = await generateStructuredNotesSafely({
       text: inputText,
       isZh,
