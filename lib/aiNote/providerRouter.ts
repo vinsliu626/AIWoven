@@ -12,6 +12,7 @@ export type AiNoteProviderAttemptLog = {
   attempt: number;
   inputChars: number;
   estimatedInputTokens: number;
+  promptHash: string;
   startedAt: string;
   elapsedMs: number;
   status: "succeeded" | "failed";
@@ -34,9 +35,7 @@ type ProviderDependencies = {
 };
 
 const DEFAULT_OPENROUTER_MODELS = [
-  "qwen/qwen3-next-80b-a3b-instruct:free",
   "openai/gpt-oss-20b:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
   "nvidia/nemotron-3-super-120b-a12b:free",
   "openrouter/free",
 ];
@@ -67,6 +66,13 @@ export function isGroqFallbackEligible(error: unknown) {
   if (status === 408 || status === 409 || status === 429 || status >= 500) return true;
   return /TIMEOUT|RATE_LIMIT|QUOTA|CAPACITY|OVERLOAD|NO_RESPONSE|BAD_JSON/i.test(code)
     || /timeout|timed out|quota|capacity|overload|rate.?limit/i.test(error instanceof Error ? error.message : String(error || ""));
+}
+
+export function isOpenRouterModelUnavailable(error: unknown) {
+  const status = providerStatus(error);
+  const code = errorCode(error);
+  const message = error instanceof Error ? error.message : String(error || "");
+  return status === 404 || /MODEL_(?:NOT_FOUND|UNAVAILABLE)|NO_ENDPOINT/i.test(code) || /model[^\n]{0,80}(?:not found|unavailable|no endpoint)/i.test(message);
 }
 
 function isRetryable(error: unknown) {
@@ -102,6 +108,7 @@ export async function callAiNoteChatWithFallback(
     noteId?: string;
     stage: string;
     inputChars: number;
+    promptHash: string;
     groqKey?: string;
     openRouterKey?: string;
     openRouterModels?: string[];
@@ -122,6 +129,7 @@ export async function callAiNoteChatWithFallback(
     stage: input.stage,
     inputChars: input.inputChars,
     estimatedInputTokens: Math.ceil(input.inputChars / 4),
+    promptHash: input.promptHash,
   };
 
   const primaryStarted = Date.now();
@@ -169,9 +177,11 @@ export async function callAiNoteChatWithFallback(
       return { content: result.content, provider: "openrouter" as const, model: result.modelUsed, fallbackUsed: true };
     } catch (error) {
       lastError = error;
-      const canTryNext = shouldFallback(error) && index < models.length - 1;
+      const unavailableModel = isOpenRouterModelUnavailable(error);
+      const fallbackEligible = unavailableModel || shouldFallback(error);
+      const canTryNext = fallbackEligible && index < models.length - 1;
       emitAttempt(log, { ...common, provider: "openrouter", model, attempt: index + 1, startedAt: new Date(started).toISOString() }, started, {
-        status: "failed", retryable: isRetryable(error), fallbackEligible: shouldFallback(error),
+        status: "failed", retryable: isRetryable(error), fallbackEligible,
         outcome: canTryNext ? "next_fallback" : "terminal_failure", errorClass: safeErrorClass(error),
       });
       if (!canTryNext) throw error;

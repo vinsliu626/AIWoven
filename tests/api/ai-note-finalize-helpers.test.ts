@@ -24,4 +24,11 @@ describe("ai-note finalize helpers", () => {
     expect(draft).toContain("Alpha");
     expect(draft).toContain("Beta");
   });
+
+  it("does not request ASR again when a retry starts from finalizing with every segment saved", () => {
+    expect(nextUnprocessedIndex([
+      { chunkIndex: 0, text: "Canonical first segment." },
+      { chunkIndex: 1, text: "Canonical second segment." },
+    ], 2)).toBe(2);
+  });
 });

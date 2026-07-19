@@ -1,3 +1,10 @@
+import {
+  canonicalTranscriptForRow,
+  joinCanonicalTranscriptSegments,
+  rawTranscriptForRow,
+  type TranscriptRowLike,
+} from "@/lib/aiNote/transcriptCanonicalization";
+
 export const AI_NOTE_ASR_SKIPPED_PREFIX = "__AI_NOTE_ASR_SKIPPED__:";
 
 export function isSkippedTranscript(text: string) {
@@ -15,6 +22,22 @@ export function nextUnprocessedIndex(rows: { chunkIndex: number; text: string }[
     if (!processed.has(index)) return index;
   }
   return total;
+}
+
+export function buildCanonicalTranscript(rows: TranscriptRowLike[]) {
+  return joinCanonicalTranscriptSegments(
+    rows
+      .map((row) => canonicalTranscriptForRow(row))
+      .filter((text) => text && !isSkippedTranscript(text))
+  );
+}
+
+export function buildRawTranscript(rows: TranscriptRowLike[]) {
+  return rows
+    .map((row) => rawTranscriptForRow(row))
+    .filter((text) => text && !isSkippedTranscript(text))
+    .join("\n")
+    .trim();
 }
 
 export function buildProgressiveNote(parts: string[]) {

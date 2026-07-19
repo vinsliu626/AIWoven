@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { callAiNoteChatWithFallback, getAiNoteOpenRouterModels, isGroqFallbackEligible } from "@/lib/aiNote/providerRouter";
+import { callAiNoteChatWithFallback, getAiNoteOpenRouterModels, isGroqFallbackEligible, isOpenRouterModelUnavailable } from "@/lib/aiNote/providerRouter";
 
 function providerError(status: number, code = `HTTP_${status}`, message = code) {
   return Object.assign(new Error(message), { httpStatus: status, code });
@@ -16,6 +16,7 @@ const base = {
   noteId: "note-1",
   stage: "final:generation",
   inputChars: 70,
+  promptHash: "safe-prompt-hash",
   groqKey: "groq-secret",
   openRouterKey: "router-secret",
   openRouterModels: ["fallback-a:free", "fallback-b:free"],
@@ -45,7 +46,7 @@ describe("AI Note provider routing", () => {
     expect(callOpenRouter).toHaveBeenCalledWith(expect.objectContaining({ reasoningEffort: "minimal", excludeReasoning: true }));
     expect(log).toHaveBeenNthCalledWith(1, expect.objectContaining({
       traceId: "trace-1", noteId: "note-1", provider: "groq", status: "failed",
-      retryable: true, fallbackEligible: true, outcome: "fallback_started",
+      retryable: true, fallbackEligible: true, outcome: "fallback_started", promptHash: "safe-prompt-hash",
     }));
     expect(log).toHaveBeenNthCalledWith(2, expect.objectContaining({ provider: "openrouter", outcome: "fallback_success" }));
   });
@@ -80,6 +81,27 @@ describe("AI Note provider routing", () => {
     expect(callOpenRouter.mock.calls.map(([request]) => request.modelId)).toEqual(["fallback-a:free", "fallback-b:free"]);
   });
 
+  it("logs a model 404 safely and continues to the next configured OpenRouter model", async () => {
+    const log = vi.fn();
+    const callOpenRouter = vi.fn()
+      .mockRejectedValueOnce(providerError(404, "OPENROUTER_HTTP_404", "model unavailable"))
+      .mockResolvedValueOnce({ content: "# Available fallback", modelUsed: "fallback-b:free" });
+    const result = await callAiNoteChatWithFallback(base, {
+      callGroq: vi.fn().mockRejectedValue(providerError(429, "UPSTREAM_RATE_LIMIT")),
+      callOpenRouter,
+      log,
+    });
+    expect(result.model).toBe("fallback-b:free");
+    expect(callOpenRouter).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      provider: "openrouter",
+      model: "fallback-a:free",
+      errorClass: "OPENROUTER_HTTP_404",
+      fallbackEligible: true,
+      outcome: "next_fallback",
+    }));
+  });
+
   it("returns a terminal provider error when every fallback is unavailable", async () => {
     const last = providerError(503, "UPSTREAM_OVERLOADED");
     await expect(callAiNoteChatWithFallback(base, {
@@ -109,7 +131,11 @@ describe("AI Note provider routing", () => {
 
   it("parses a deduplicated configurable model order", () => {
     expect(getAiNoteOpenRouterModels(" first:free, second:free, first:free ")).toEqual(["first:free", "second:free"]);
-    expect(getAiNoteOpenRouterModels()).not.toHaveLength(0);
+    expect(getAiNoteOpenRouterModels()).toEqual([
+      "openai/gpt-oss-20b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "openrouter/free",
+    ]);
   });
 
   it("classifies quota, capacity, timeout, and retryable server failures", () => {
@@ -118,5 +144,7 @@ describe("AI Note provider routing", () => {
     expect(isGroqFallbackEligible(providerError(504, "GROQ_TIMEOUT"))).toBe(true);
     expect(isGroqFallbackEligible(providerError(500))).toBe(true);
     expect(isGroqFallbackEligible(providerError(401))).toBe(false);
+    expect(isOpenRouterModelUnavailable(providerError(404, "OPENROUTER_HTTP_404"))).toBe(true);
+    expect(isOpenRouterModelUnavailable(providerError(503))).toBe(false);
   });
 });

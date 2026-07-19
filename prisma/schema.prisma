@@ -330,12 +330,19 @@ model AiNoteChunk {
 }
 
 model AiNoteTranscript {
-  id         String        @id @default(cuid())
-  noteId     String
-  chunkIndex Int
-  text       String
-  createdAt  DateTime      @default(now())
-  session    AiNoteSession @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  id            String        @id @default(cuid())
+  noteId        String
+  chunkIndex    Int
+  text          String
+  rawText       String?
+  canonicalText String?
+  rawHash       String?
+  canonicalHash String?
+  asrProvider   String?
+  asrModel      String?
+  asrEndpoint   String?
+  createdAt     DateTime      @default(now())
+  session       AiNoteSession @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
   @@unique([noteId, chunkIndex])
   @@index([noteId])
@@ -354,25 +361,27 @@ model AiNoteSummaryPart {
 }
 
 model AiNoteJob {
-  id             String          @id @default(cuid())
-  noteId         String          @unique
-  userId         String
-  stage          String          @default("prep")
-  progress       Int             @default(0)
-  error          String?
-  updatedAt      DateTime        @updatedAt
-  createdAt      DateTime        @default(now())
-  asrNextIndex   Int             @default(0)
-  llmNextPart    Int             @default(0)
-  llmPartsTotal  Int             @default(0)
-  noteMarkdown   String?
-  secondsBilled  Int?
-  segmentTimeSec Int             @default(300)
-  segmentsTotal  Int             @default(0)
-  lockExpiresAt  DateTime?
-  lockedAt       DateTime?
-  lockedBy       String?
-  AiNoteSession  AiNoteSession[]
+  id                      String          @id @default(cuid())
+  noteId                  String          @unique
+  userId                  String
+  stage                   String          @default("prep")
+  progress                Int             @default(0)
+  error                   String?
+  updatedAt               DateTime        @updatedAt
+  createdAt               DateTime        @default(now())
+  asrNextIndex            Int             @default(0)
+  llmNextPart             Int             @default(0)
+  llmPartsTotal           Int             @default(0)
+  noteMarkdown            String?
+  secondsBilled           Int?
+  rawTranscriptHash       String?
+  canonicalTranscriptHash String?
+  segmentTimeSec          Int             @default(300)
+  segmentsTotal           Int             @default(0)
+  lockExpiresAt           DateTime?
+  lockedAt                DateTime?
+  lockedBy                String?
+  AiNoteSession           AiNoteSession[]
 
   @@index([noteId])
   @@index([lockedBy])

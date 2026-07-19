@@ -16,7 +16,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { transcribeAudioToText } from "@/lib/asr/transcribe";
 import { callGroqTranscribe } from "@/lib/ai/groq";
 import { AiNoteGenerationError, runAiNotePipeline } from "@/lib/aiNote/pipeline";
-import { AI_NOTE_ASR_SKIPPED_PREFIX, buildProgressiveNote, isSkippedTranscript, nextUnprocessedIndex } from "@/lib/aiNote/finalizeHelpers";
+import { buildCanonicalTranscript, buildProgressiveNote, buildRawTranscript, nextUnprocessedIndex } from "@/lib/aiNote/finalizeHelpers";
+import { canonicalizeTranscriptText, transcriptNormalizationMetadata } from "@/lib/aiNote/transcriptCanonicalization";
 import { deriveRecordedSeconds, parseRecordedDurationMs } from "@/lib/aiNote/recordingUsage";
 import { assertNoteRequestAllowed, markNoteAttempt, NoteLimitError, recordNoteGenerateSuccess } from "@/lib/aiNote/quota";
 import { parseEnvInt } from "@/lib/env/number";
@@ -254,19 +255,52 @@ async function withRetry<T>(fn: () => Promise<T>, label: string, maxTry = 4) {
   throw lastErr;
 }
 
+type ResolvedAsrResult = {
+  text: string;
+  provider: string;
+  model: string;
+  endpoint: string;
+};
+
+function safeEndpoint(value: string | undefined, suffix = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "unconfigured";
+  try {
+    const url = new URL(raw);
+    url.username = "";
+    url.password = "";
+    url.search = "";
+    url.hash = "";
+    const base = url.toString().replace(/\/$/, "");
+    return suffix && !base.endsWith(suffix) ? `${base}${suffix}` : base;
+  } catch {
+    return "configured-invalid-url";
+  }
+}
+
+function externalAsrProvider(value: string | undefined) {
+  try {
+    const hostname = new URL(String(value || "")).hostname.toLowerCase();
+    if (hostname.endsWith(".hf.space")) return "huggingface";
+    return hostname || "external";
+  } catch {
+    return "external";
+  }
+}
+
 async function transcribeWithFallback(
   buf: Buffer,
   fname: string,
   asrTimeoutMs: number,
   asrMaxTry: number
-): Promise<string> {
+): Promise<ResolvedAsrResult> {
   if (isOfflineMode()) {
-    return `[offline transcript] ${fname}`;
+    return { text: `[offline transcript] ${fname}`, provider: "offline", model: "offline", endpoint: "offline" };
   }
 
   // 1) External ASR (ASR_URL)
   try {
-    return await withRetry(
+    const text = await withRetry(
       async () =>
         await withTimeout(
           transcribeAudioToText(new Blob([new Uint8Array(buf)], { type: "audio/wav" }) as any, {
@@ -279,6 +313,15 @@ async function transcribeWithFallback(
       `asr_external_${fname}`,
       asrMaxTry
     );
+    if (!canonicalizeTranscriptText(text)) {
+      throw Object.assign(new Error("ASR_CANONICAL_TRANSCRIPT_EMPTY"), { httpStatus: 422, code: "ASR_CANONICAL_TRANSCRIPT_EMPTY" });
+    }
+    return {
+      text,
+      provider: externalAsrProvider(process.env.ASR_URL),
+      model: process.env.AI_NOTE_EXTERNAL_ASR_MODEL || process.env.ASR_MODEL_SIZE || "base",
+      endpoint: safeEndpoint(process.env.ASR_URL, "/transcribe"),
+    };
   } catch (e) {
     // 2) Groq fallback
     const groqKey = process.env.GROQ_API_KEY;
@@ -299,7 +342,16 @@ async function transcribeWithFallback(
       `asr_groq_${fname}`,
       asrMaxTry
     );
-    return String(out?.text || "").trim();
+    const text = String(out?.text || "").trim();
+    if (!canonicalizeTranscriptText(text)) {
+      throw Object.assign(new Error("GROQ_ASR_CANONICAL_TRANSCRIPT_EMPTY"), { httpStatus: 422, code: "GROQ_ASR_CANONICAL_TRANSCRIPT_EMPTY" });
+    }
+    return {
+      text,
+      provider: "groq",
+      model: String(out?.modelUsed || process.env.AI_NOTE_ASR_MODEL || "whisper-large-v3"),
+      endpoint: "https://api.groq.com/openai/v1/audio/transcriptions",
+    };
   }
 }
 
@@ -314,6 +366,12 @@ async function readBodyNoteId(req: Request) {
 
 function countWords(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function transcriptBundle(rows: Array<{ text: string; rawText?: string | null; canonicalText?: string | null }>) {
+  const canonicalText = buildCanonicalTranscript(rows);
+  const rawText = buildRawTranscript(rows);
+  return { rawText, canonicalText, ...transcriptNormalizationMetadata(rawText, canonicalText) };
 }
 function estimateSecondsByTranscript(transcript: string) {
   const w = countWords(transcript);
@@ -531,10 +589,33 @@ export async function POST(req: Request) {
           await prisma.aiNoteJob.update({ where: { noteId }, data: { segmentsTotal: files.length } });
 
           for (const f of files) {
+            const rawText = `[offline transcript] ${f.name}`;
+            const canonicalText = canonicalizeTranscriptText(rawText);
+            const metadata = transcriptNormalizationMetadata(rawText, canonicalText);
             await prisma.aiNoteTranscript.upsert({
               where: { noteId_chunkIndex: { noteId, chunkIndex: f.index } },
-              update: { text: `[offline transcript] ${f.name}` },
-              create: { noteId, chunkIndex: f.index, text: `[offline transcript] ${f.name}` },
+              update: {
+                text: canonicalText,
+                rawText,
+                canonicalText,
+                rawHash: metadata.rawTranscriptHash,
+                canonicalHash: metadata.canonicalTranscriptHash,
+                asrProvider: "offline",
+                asrModel: "offline",
+                asrEndpoint: "offline",
+              },
+              create: {
+                noteId,
+                chunkIndex: f.index,
+                text: canonicalText,
+                rawText,
+                canonicalText,
+                rawHash: metadata.rawTranscriptHash,
+                canonicalHash: metadata.canonicalTranscriptHash,
+                asrProvider: "offline",
+                asrModel: "offline",
+                asrEndpoint: "offline",
+              },
             });
           }
 
@@ -675,19 +756,54 @@ export async function POST(req: Request) {
           const p = path.join(workDir, fname);
           const buf = await fs.readFile(p);
 
-          let text = "";
+          let asrResult: ResolvedAsrResult;
           try {
-            text = await transcribeWithFallback(buf, fname, asrTimeoutMs, asrMaxTry);
+            asrResult = await transcribeWithFallback(buf, fname, asrTimeoutMs, asrMaxTry);
           } catch (error) {
             throw mapTranscriptionProviderError(error);
           }
 
-          const cleaned = String(text || "").trim();
+          const rawText = String(asrResult.text || "").trim();
+          const canonicalText = canonicalizeTranscriptText(rawText);
+          const metadata = transcriptNormalizationMetadata(rawText, canonicalText);
+
+          console.info("[ai-note/asr-result]", {
+            traceId,
+            noteId,
+            segmentIndex: i,
+            rawTranscriptHash: metadata.rawTranscriptHash,
+            canonicalTranscriptHash: metadata.canonicalTranscriptHash,
+            normalizationChanged: metadata.normalizationChanged,
+            normalizedCharacterDelta: metadata.normalizedCharacterDelta,
+            asrProvider: asrResult.provider,
+            asrModel: asrResult.model,
+            asrEndpoint: asrResult.endpoint,
+          });
 
           await prisma.aiNoteTranscript.upsert({
             where: { noteId_chunkIndex: { noteId, chunkIndex: i } },
-            update: { text: cleaned },
-            create: { noteId, chunkIndex: i, text: cleaned },
+            update: {
+              text: canonicalText,
+              rawText,
+              canonicalText,
+              rawHash: metadata.rawTranscriptHash,
+              canonicalHash: metadata.canonicalTranscriptHash,
+              asrProvider: asrResult.provider,
+              asrModel: asrResult.model,
+              asrEndpoint: asrResult.endpoint,
+            },
+            create: {
+              noteId,
+              chunkIndex: i,
+              text: canonicalText,
+              rawText,
+              canonicalText,
+              rawHash: metadata.rawTranscriptHash,
+              canonicalHash: metadata.canonicalTranscriptHash,
+              asrProvider: asrResult.provider,
+              asrModel: asrResult.model,
+              asrEndpoint: asrResult.endpoint,
+            },
           });
         }
 
@@ -718,15 +834,28 @@ export async function POST(req: Request) {
         const rows = await prisma.aiNoteTranscript.findMany({
           where: { noteId },
           orderBy: { chunkIndex: "asc" },
-          select: { text: true },
+          select: { text: true, rawText: true, canonicalText: true },
         });
 
-        const transcriptAll = rows
-          .map((r) => String(r.text || "").trim())
-          .filter((text) => text && !isSkippedTranscript(text))
-          .join("\n")
-          .trim();
+        const transcript = transcriptBundle(rows);
+        const transcriptAll = transcript.canonicalText;
         if (!transcriptAll) return bad("EMPTY_TRANSCRIPT", 422, "No speech could be transcribed from this audio.", { stage: "transcribing", retryable: false }, traceId);
+        await prisma.aiNoteJob.update({
+          where: { noteId },
+          data: {
+            rawTranscriptHash: transcript.rawTranscriptHash,
+            canonicalTranscriptHash: transcript.canonicalTranscriptHash,
+          },
+        });
+        console.info("[ai-note/transcript-canonicalization]", {
+          traceId,
+          noteId,
+          stage: "llm",
+          rawTranscriptHash: transcript.rawTranscriptHash,
+          canonicalTranscriptHash: transcript.canonicalTranscriptHash,
+          normalizationChanged: transcript.normalizationChanged,
+          normalizedCharacterDelta: transcript.normalizedCharacterDelta,
+        });
         try {
           await assertNoteRequestAllowed(userId, transcriptAll.length, { allowStaged: true });
           markNoteAttempt(userId);
@@ -907,14 +1036,18 @@ export async function POST(req: Request) {
         const rows = await prisma.aiNoteTranscript.findMany({
           where: { noteId },
           orderBy: { chunkIndex: "asc" },
-          select: { text: true },
+          select: { text: true, rawText: true, canonicalText: true },
         });
-        const transcriptAll = rows
-          .map((r) => String(r.text || "").trim())
-          .filter((text) => text && !isSkippedTranscript(text))
-          .join("\n")
-          .trim();
+        const transcript = transcriptBundle(rows);
+        const transcriptAll = transcript.canonicalText;
         if (!transcriptAll) return bad("ASR_FAILED", 422, "Transcript is empty.");
+        await prisma.aiNoteJob.update({
+          where: { noteId },
+          data: {
+            rawTranscriptHash: transcript.rawTranscriptHash,
+            canonicalTranscriptHash: transcript.canonicalTranscriptHash,
+          },
+        });
 
         const llmTimeoutMs = Math.max(60_000, parseEnvInt("AI_NOTE_LLM_TIMEOUT_MS", 180_000));
         const parts = await prisma.aiNoteSummaryPart.findMany({

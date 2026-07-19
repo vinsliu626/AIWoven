@@ -5,6 +5,7 @@ import { callGroqChat } from "@/lib/ai/providers/groq";
 import { callHfRouterChat } from "@/lib/ai/providers/hfRouter";
 import { normalizeAiText } from "@/lib/ui/aiTextFormat";
 import { callAiNoteChatWithFallback } from "@/lib/aiNote/providerRouter";
+import { canonicalizeTranscriptText, hashPromptMessages } from "@/lib/aiNote/transcriptCanonicalization";
 
 const FAST_MODEL = "llama-3.1-8b-instant";
 
@@ -115,7 +116,7 @@ type FinalNote = z.infer<typeof FinalNoteSchema>;
 
 /** ===================== Helpers ===================== */
 function normalizeInput(text: string) {
-  return text.replace(/\r\n/g, "\n").trim();
+  return canonicalizeTranscriptText(text);
 }
 
 function mustEnv(name: string) {
@@ -1012,6 +1013,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
       noteId: options?.noteId,
       stage: `${phase}:${operation}`,
       inputChars: messages.reduce((total, message) => total + message.content.length, 0),
+      promptHash: hashPromptMessages(messages),
     });
     return result;
   }
