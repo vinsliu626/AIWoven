@@ -1,9 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 
 import "./globals.css";
 import Providers from "./providers";
 import { SITE_NAME, getSiteUrl } from "@/lib/seo";
 import { SiteVisitTracker } from "@/components/analytics/SiteVisitTracker";
+
+const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
+
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+  colorScheme: "light",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
@@ -60,8 +68,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="bg-slate-950">
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <body className="bg-[var(--background)] text-slate-900 antialiased">
         <Providers><SiteVisitTracker />{children}</Providers>
       </body>
     </html>

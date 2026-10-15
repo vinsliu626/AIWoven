@@ -41,9 +41,10 @@ test.describe("guest access and plan comparison", () => {
     await expect(page.getByRole("heading", { name: "Basic (Free)" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Pro", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Ultra Pro" })).toBeVisible();
-    await expect(page.getByText("AI Detector", { exact: true })).toHaveCount(3);
-    await expect(page.getByText("AI Notes", { exact: true })).toHaveCount(3);
-    await expect(page.getByText("AI Study", { exact: true })).toHaveCount(3);
-    await expect(page.getByText("Converter", { exact: true })).toHaveCount(3);
+    const plans = page.getByRole("dialog", { name: "Choose the plan that fits" });
+    await expect(plans.getByText("AI Detector", { exact: true })).toHaveCount(3);
+    await expect(plans.getByText("AI Notes", { exact: true })).toHaveCount(3);
+    await expect(plans.getByText("AI Study", { exact: true })).toHaveCount(3);
+    await expect(plans.getByText("Converter", { exact: true })).toHaveCount(3);
   });
 });

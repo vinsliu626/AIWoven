@@ -27,15 +27,15 @@ export function RedeemModal({
 
   return (
     <div className="fixed inset-0 z-[220] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="relative w-[94vw] max-w-[520px] rounded-3xl border border-white/10 bg-slate-950/85 shadow-2xl shadow-black/50 backdrop-blur-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative w-[94vw] max-w-[520px] rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 backdrop-blur-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <div>
-            <div className="text-sm font-semibold text-slate-50">{isZh ? "兑换礼包码" : "Redeem code"}</div>
-            <div className="mt-1 text-[11px] text-slate-400">{isZh ? "输入兑换码激活 Gift 权益" : "Enter a code to activate Gift entitlements"}</div>
+            <div className="text-sm font-semibold text-slate-900">{isZh ? "兑换礼包码" : "Redeem code"}</div>
+            <div className="mt-1 text-[11px] text-slate-500">{isZh ? "输入兑换码激活 Gift 权益" : "Enter a code to activate Gift entitlements"}</div>
           </div>
           <button
-            className="h-9 w-9 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-slate-200 transition"
+            className="h-9 w-9 rounded-full border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 transition"
             onClick={onClose}
           >
             ✕
@@ -43,16 +43,16 @@ export function RedeemModal({
         </div>
 
         <div className="p-5">
-          <label className="text-[11px] text-slate-400">{isZh ? "礼包码" : "Code"}</label>
+          <label className="text-[11px] text-slate-500">{isZh ? "礼包码" : "Code"}</label>
           <input
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder={isZh ? "例如：GIFT-XXXX-XXXX" : "e.g. GIFT-XXXX-XXXX"}
-            className="mt-2 w-full h-11 rounded-2xl border border-white/10 bg-slate-950/60 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+            className="mt-2 w-full h-11 rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
 
           {error && (
-            <div className="mt-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-200">
+            <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
               {error}
             </div>
           )}
@@ -61,14 +61,14 @@ export function RedeemModal({
             <button
               onClick={() => onRedeem(code.trim())}
               disabled={loading || !code.trim()}
-              className="flex-1 h-11 rounded-2xl bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 text-white text-[12px] font-semibold shadow-md shadow-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed hover:brightness-110 transition"
+              className="flex-1 h-11 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-[12px] font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition"
             >
               {loading ? (isZh ? "兑换中…" : "Redeeming…") : isZh ? "确认兑换" : "Redeem"}
             </button>
 
             <button
               onClick={onClose}
-              className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 text-[12px] text-slate-100 transition"
+              className="h-11 px-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[12px] text-slate-900 transition"
             >
               {isZh ? "取消" : "Cancel"}
             </button>

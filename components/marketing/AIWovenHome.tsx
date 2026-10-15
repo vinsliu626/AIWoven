@@ -1,24 +1,31 @@
 "use client";
 
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useRef, useState, type PointerEvent } from "react";
+import { useState, type ReactNode } from "react";
 
 import { AIWovenLogo, AIWovenMark } from "@/components/brand/AIWovenLogo";
 import type { PublicImpactStats } from "@/lib/analytics/publicStats";
 import { hasMeaningfulPublicImpactStats } from "@/lib/analytics/publicStatsDisplay";
 
-const tools = [
-  ["Chat", "Compare ideas and draft with AIWoven Assistant."],
-  ["AI Note", "Turn recordings and text into structured, review-ready notes."],
-  ["AI Study", "Build notes, large flashcards, and explained quizzes from documents."],
-  ["Detector", "Inspect AI-like writing patterns and suspicious passages."],
-  ["Humanizer", "Improve flow and readability while preserving meaning."],
-  ["Converter", "Move between PDF, JPG, PNG, WEBP, and supported formats."],
-] as const;
+type ToolIcon = "chat" | "note" | "study" | "detect" | "humanizer" | "converter";
 
-const workflow = ["Lecture", "AI Notes", "Flashcards", "Explained Quiz", "Review"] as const;
+const tools: Array<{ title: string; description: string; href: string; icon: ToolIcon; tag: string }> = [
+  { title: "AI Detector", description: "Score drafts for AI-like writing and review highlighted passages before you submit.", href: "/ai-detector", icon: "detect", tag: "Writing" },
+  { title: "AI Humanizer", description: "Improve flow and readability while preserving your original meaning.", href: "/ai-humanizer", icon: "humanizer", tag: "Writing" },
+  { title: "AI Note", description: "Turn recordings and text into structured, review-ready notes.", href: "/ai-note", icon: "note", tag: "Study" },
+  { title: "AI Study", description: "Build notes, large flashcards, and explained quizzes from documents.", href: "/ai-study", icon: "study", tag: "Study" },
+  { title: "AI Chat", description: "Compare ideas and draft with AIWoven Assistant or a multi-step workflow.", href: "/chat", icon: "chat", tag: "Assistant" },
+  { title: "Converter", description: "Move between PDF, JPG, PNG, WEBP, and other supported formats.", href: "/converter", icon: "converter", tag: "Files" },
+];
+
+const workflow = [
+  ["Lecture", "Capture"],
+  ["AI Notes", "Organize"],
+  ["Flashcards", "Recall"],
+  ["Explained Quiz", "Understand"],
+  ["Review", "Improve"],
+] as const;
 
 const studentNeeds = [
   {
@@ -47,6 +54,21 @@ const studentNeeds = [
   },
 ] as const;
 
+const trustPillars = [
+  {
+    title: "Private by default",
+    body: "Private tools require authentication, study history is tied to your account, and public analytics only expose aggregate counts.",
+  },
+  {
+    title: "Built for reliability",
+    body: "Upload integrity checks, resumable jobs, and automatic provider fallback keep long-running work moving.",
+  },
+  {
+    title: "Transparent results",
+    body: "Detector reports show the full probability breakdown, and every quiz answer comes with an explanation.",
+  },
+] as const;
+
 const faqs = [
   ["Is AIWoven free to use?", "Yes. AIWoven has a Basic plan with usage limits, while paid plans increase limits and unlock additional capacity."],
   ["Which AI tools are included?", "AI Chat, AI Note, AI Study, Flashcards, explained Quizzes, AI Detector, Humanizer, and File Converter are available in the workspace."],
@@ -57,28 +79,46 @@ const faqs = [
   ["What powers AIWoven Assistant?", "AIWoven routes requests through supported AI systems selected for the task. The active provider and model are intentionally not exposed in the workspace."],
 ] as const;
 
-function ArrowIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4"><path d="M4 10h11m-4-4 4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const navLinks = [
+  ["Products", "#tools"],
+  ["Workflow", "#workflow"],
+  ["Why AIWoven", "#trust"],
+  ["FAQ", "#faq"],
+] as const;
+
+function ArrowIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg viewBox="0 0 20 20" aria-hidden className={className}><path d="M4 10h11m-4-4 4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function CheckIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return <svg viewBox="0 0 20 20" aria-hidden className={className}><path d="m5 10.5 3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function ToolGlyph({ name }: { name: ToolIcon }) {
+  const paths: Record<ToolIcon, ReactNode> = {
+    chat: <><path d="M5 6.5h14v9H9l-4 3v-12Z" /><path d="M8 10h8M8 13h5" /></>,
+    note: <><path d="M6.5 3.5h8l3 3v14h-11z" /><path d="M14.5 3.5v4h4M9.5 11h5M9.5 14h5M9.5 17h3" /></>,
+    detect: <><circle cx="11" cy="11" r="6" /><path d="m15.5 15.5 4 4M11 8v6M8 11h6" /></>,
+    study: <><path d="m3.5 6 8.5-3 8.5 3-8.5 3z" /><path d="M6 8.2v5.3c2.7 2 9.3 2 12 0V8.2M20.5 6v6" /></>,
+    humanizer: <><path d="M12 3.5a5 5 0 0 0-3 9v2h6v-2a5 5 0 0 0-3-9Z" /><path d="M9.5 18h5M10.5 21h3" /></>,
+    converter: <><path d="M5 7h13l-3-3M19 17H6l3 3" /></>,
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
+}
+
+function SectionHeading({ eyebrow, title, body, center = false, id }: { eyebrow: string; title: string; body?: string; center?: boolean; id?: string }) {
+  return (
+    <div className={center ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
+      <p className="text-sm font-semibold text-blue-600">{eyebrow}</p>
+      <h2 id={id} className="mt-2 text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{title}</h2>
+      {body ? <p className="mt-4 text-pretty text-base leading-7 text-slate-600">{body}</p> : null}
+    </div>
+  );
 }
 
 function Stat({ value, label }: { value: number; label: string }) {
   const display = new Intl.NumberFormat("en-US").format(value);
-  return <div className="min-w-0 border-l border-white/10 pl-4 sm:pl-6"><p className="font-mono text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">{display}</p><p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">{label}</p></div>;
-}
-
-function NeedSignalIcon({ index }: { index: number }) {
-  const paths = [
-    "M3 12h3l2-6 3 12 3-9 2 6h5",
-    "M3 7h18M3 12h14M3 17h10",
-    "M5 5v14l13-7L5 5Z",
-    "M4 12a8 8 0 1 1 4.1 7M8 12l2.5 2.5L16 9",
-  ] as const;
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5">
-      <path d={paths[index]} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <div className="min-w-0"><p className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">{display}</p><p className="mt-1 text-sm text-slate-500">{label}</p></div>;
 }
 
 function StudentNeeds({ stats }: { stats: PublicImpactStats }) {
@@ -92,45 +132,40 @@ function StudentNeeds({ stats }: { stats: PublicImpactStats }) {
   ].filter((item) => item.value > 0);
 
   return (
-    <section id="student-needs" aria-labelledby="student-needs-title" data-testid="student-needs" className="scroll-mt-24 relative border-y border-white/8 bg-white/[0.018] px-4 py-16 sm:px-6 sm:py-20">
-      <div className="aiwoven-grid pointer-events-none absolute inset-0 opacity-35 [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_82%,transparent)]" aria-hidden />
-      <div className="relative mx-auto max-w-6xl">
-        <div className="grid gap-5 lg:grid-cols-[.85fr_1.15fr] lg:items-end">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">Student needs</p>
-            <h2 id="student-needs-title" className="mt-3 max-w-xl text-3xl font-semibold tracking-[-.05em] text-white sm:text-4xl">Built around the way students actually study.</h2>
-          </div>
-          <p className="max-w-2xl text-sm leading-7 text-slate-400 lg:justify-self-end">AIWoven connects the moments students usually lose between listening, organizing, reviewing, and preparing for exams.</p>
+    <section id="student-needs" aria-labelledby="student-needs-title" data-testid="student-needs" className="scroll-mt-24 bg-slate-50 px-4 py-20 sm:px-6 lg:py-24">
+      <div className="mx-auto max-w-6xl">
+        <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
+          <SectionHeading eyebrow="Student needs" title="Built around the way students actually study." id="student-needs-title" />
+          <p className="max-w-xl text-base leading-7 text-slate-600 lg:justify-self-end">AIWoven connects the moments students usually lose between listening, organizing, reviewing, and preparing for exams.</p>
         </div>
 
-        <div className="relative mt-10">
-          <div className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-6 hidden h-px bg-gradient-to-r from-cyan-300/45 via-blue-400/25 to-violet-400/45 lg:block" aria-hidden />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {studentNeeds.map((need, index) => (
-              <article key={need.title} className="group relative flex h-full min-h-64 flex-col border border-white/10 bg-[#080c13]/92 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/25 motion-reduce:transform-none motion-reduce:transition-none sm:p-6">
-                <div className="relative z-10 flex items-center justify-between">
-                  <span className="grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-[#0a111b] text-cyan-300 transition-colors duration-300 group-hover:border-cyan-300/30 group-hover:text-cyan-200 motion-reduce:transition-none"><NeedSignalIcon index={index} /></span>
-                  <span className="font-mono text-[9px] uppercase tracking-[.2em] text-slate-600">0{index + 1}</span>
-                </div>
-                <p className="mt-5 font-mono text-[9px] uppercase tracking-[.22em] text-violet-300/80">{need.stage}</p>
-                <h3 className="mt-2 text-lg font-medium tracking-[-.025em] text-white">{need.title}</h3>
-                <p className="mt-3 flex-1 text-[15px] leading-6 text-slate-400">{need.body}</p>
-                <div className="mt-6"><span className="inline-flex rounded-full border border-cyan-300/15 bg-cyan-300/[0.055] px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.14em] text-cyan-200">{need.capability}</span></div>
-              </article>
-            ))}
-          </div>
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {studentNeeds.map((need, index) => (
+            <article key={need.title} className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none">
+              <div className="flex items-center justify-between">
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-50 text-sm font-semibold text-blue-700">{index + 1}</span>
+                <span className="text-xs font-semibold uppercase tracking-[.06em] text-slate-400">{need.stage}</span>
+              </div>
+              <h3 className="mt-5 text-lg font-semibold tracking-tight text-slate-900">{need.title}</h3>
+              <p className="mt-2 flex-1 text-[15px] leading-6 text-slate-600">“{need.body}”</p>
+              <span className="mt-6 inline-flex w-fit items-center gap-1.5 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                <CheckIcon className="h-3.5 w-3.5 text-emerald-600" />
+                {need.capability}
+              </span>
+            </article>
+          ))}
         </div>
 
-        <div className="mt-8 flex flex-col gap-3 border-t border-white/8 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium text-slate-200">One workspace for the full path from lecture to mastery.</p>
-          <a href="#workflow" data-testid="student-needs-workflow-link" className="group inline-flex items-center gap-2 text-sm font-medium text-cyan-300 transition-colors hover:text-cyan-200">See how it works <span className="transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"><ArrowIcon /></span></a>
+        <div className="mt-10 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-slate-700">One workspace for the full path from lecture to mastery.</p>
+          <a href="#workflow" data-testid="student-needs-workflow-link" className="group inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">See how it works <span className="transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"><ArrowIcon /></span></a>
         </div>
 
         {showPublicStats ? (
-          <div data-testid="public-impact-stats" className="mt-10 border-t border-white/8 pt-8">
-            <p className="font-mono text-[9px] uppercase tracking-[.22em] text-emerald-300">Live aggregate activity</p>
+          <div data-testid="public-impact-stats" className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+            <p className="flex items-center gap-2 text-sm font-semibold text-slate-900"><span className="aiwoven-status-pulse h-2 w-2 rounded-full bg-emerald-500" />Live aggregate activity</p>
             <div className="mt-6 grid grid-cols-2 gap-y-7 sm:grid-cols-3 lg:grid-cols-5">{visibleStats.map((item) => <Stat key={item.label} value={item.value} label={item.label} />)}</div>
-            <p className="mt-6 text-xs text-slate-600">Counts come from successful registered-user tool events and saved study sessions. Anonymous visits are excluded.</p>
+            <p className="mt-6 text-xs text-slate-400">Counts come from successful registered-user tool events and saved study sessions. Anonymous visits are excluded.</p>
           </div>
         ) : null}
       </div>
@@ -140,50 +175,88 @@ function StudentNeeds({ stats }: { stats: PublicImpactStats }) {
 
 function ProductStage() {
   return (
-    <div className="aiwoven-product-stage relative mx-auto w-full" aria-label="AIWoven multi-agent workspace preview" data-testid="hero-product-stage">
-      <div className="absolute -inset-6 rounded-[3rem] bg-[radial-gradient(circle_at_28%_25%,rgba(34,211,238,0.14),transparent_42%),radial-gradient(circle_at_82%_72%,rgba(139,92,246,0.15),transparent_42%)] blur-2xl" aria-hidden />
-      <div className="relative overflow-hidden rounded-[1.55rem] border border-white/10 bg-[#080b12]/95 shadow-[0_40px_120px_rgba(0,0,0,0.7)]">
-        <div className="flex h-11 items-center justify-between border-b border-white/8 px-4">
-          <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-rose-400/45"/><span className="h-2 w-2 rounded-full bg-amber-300/45"/><span className="h-2 w-2 rounded-full bg-emerald-300/45"/></div>
-          <div className="flex items-center gap-2 font-mono text-[8px] uppercase tracking-[0.2em] text-emerald-300"><span className="aiwoven-status-pulse h-1.5 w-1.5 rounded-full bg-emerald-300"/>System online</div>
-          <div className="font-mono text-[8px] uppercase tracking-[0.18em] text-slate-600">42 ms</div>
+    <div className="relative mx-auto w-full" aria-label="AIWoven multi-agent workspace preview" data-testid="hero-product-stage">
+      <div className="absolute -inset-4 -z-10 rounded-[2rem] bg-gradient-to-br from-blue-100/70 via-indigo-50 to-violet-100/60 blur-2xl" aria-hidden />
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_30px_80px_-30px_rgba(15,23,42,0.35)]">
+        <div className="flex h-10 items-center justify-between border-b border-slate-200 bg-slate-50 px-4">
+          <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-slate-300" /><span className="h-2.5 w-2.5 rounded-full bg-slate-300" /><span className="h-2.5 w-2.5 rounded-full bg-slate-300" /></div>
+          <div className="hidden items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-0.5 text-[11px] text-slate-400 sm:flex">aiwoven.app/workspace</div>
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600"><span className="aiwoven-status-pulse h-1.5 w-1.5 rounded-full bg-emerald-500" />Online</div>
         </div>
 
-        <div className="grid min-h-[410px] md:grid-cols-[1.1fr_.9fr]">
-          <div className="border-b border-white/8 p-3.5 sm:p-4 md:border-b-0 md:border-r">
+        <div className="grid md:grid-cols-[1.1fr_.9fr]">
+          <div className="border-b border-slate-200 p-4 md:border-b-0 md:border-r">
             <div className="flex items-center justify-between">
-              <div><p className="font-mono text-[8px] uppercase tracking-[0.22em] text-cyan-400">Multi-step workflow</p><h3 className="mt-1.5 text-sm font-medium text-white sm:text-base">Lecture synthesis</h3></div>
-              <span className="rounded-full border border-white/10 bg-white/[0.025] px-2.5 py-1 font-mono text-[8px] uppercase tracking-wider text-slate-400">Running</span>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[.06em] text-blue-600">Multi-step workflow</p>
+                <h3 className="mt-1 text-sm font-semibold text-slate-900">Lecture synthesis</h3>
+              </div>
+              <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">Running</span>
             </div>
 
-            <div className="relative mt-4 space-y-2.5 before:absolute before:bottom-5 before:left-[13px] before:top-4 before:w-px before:bg-gradient-to-b before:from-cyan-300/50 before:via-violet-400/40 before:to-emerald-300/50">
-              <div className="relative grid grid-cols-[28px_1fr] gap-3">
-                <span className="relative z-10 grid h-7 w-7 place-items-center rounded-full border border-cyan-300/25 bg-[#0b1420] font-mono text-[8px] text-cyan-300">01</span>
-                <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3"><div className="flex items-center justify-between"><p className="font-mono text-[8px] uppercase tracking-[.18em] text-cyan-300">Planner</p><span className="text-[8px] text-slate-600">Complete</span></div><p className="mt-2 text-[11px] leading-4 text-slate-300">Map the recording into notes, recall prompts, and an explained assessment.</p></div>
-              </div>
-              <div className="relative grid grid-cols-[28px_1fr] gap-3">
-                <span className="relative z-10 grid h-7 w-7 place-items-center rounded-full border border-violet-300/25 bg-[#121020] font-mono text-[8px] text-violet-300">02</span>
-                <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3"><div className="flex items-center justify-between"><p className="font-mono text-[8px] uppercase tracking-[.18em] text-violet-300">Reviewer</p><span className="text-[8px] text-slate-600">Checking sources</span></div><div className="mt-2 space-y-1.5"><span className="block h-1 w-[92%] rounded bg-white/10"/><span className="block h-1 w-[68%] rounded bg-white/8"/></div></div>
-              </div>
-              <div className="relative grid grid-cols-[28px_1fr] gap-3">
-                <span className="relative z-10 grid h-7 w-7 place-items-center rounded-full border border-emerald-300/25 bg-[#0b1718] font-mono text-[8px] text-emerald-300">03</span>
-                <div className="rounded-xl border border-emerald-300/15 bg-emerald-300/[0.045] p-3"><div className="flex items-center justify-between"><p className="font-mono text-[8px] uppercase tracking-[.18em] text-emerald-300">Final output</p><span className="text-[8px] text-emerald-300">Ready</span></div><p className="mt-2 text-xs font-medium text-white">Photosynthesis study set</p><div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[8px]"><span className="rounded bg-cyan-300/10 px-2 py-1 text-cyan-300">Notes</span><span className="rounded bg-violet-300/10 px-2 py-1 text-violet-300">12 cards</span><span className="rounded bg-emerald-300/10 px-2 py-1 text-emerald-300">8 questions</span></div></div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between border-t border-white/8 pt-3 font-mono text-[8px] uppercase tracking-[.16em] text-slate-600"><span>Context woven · 3 tools</span><span className="text-cyan-400">View output →</span></div>
+            <ol className="relative mt-4 space-y-2.5 before:absolute before:bottom-5 before:left-[13px] before:top-4 before:w-px before:bg-slate-200">
+              <li className="relative grid grid-cols-[28px_1fr] gap-3">
+                <span className="relative z-10 grid h-7 w-7 place-items-center rounded-full bg-emerald-500 text-white"><CheckIcon className="h-3.5 w-3.5" /></span>
+                <div className="rounded-lg border border-slate-200 p-3"><div className="flex items-center justify-between"><p className="text-[12px] font-semibold text-slate-900">Planner</p><span className="text-[11px] text-emerald-600">Complete</span></div><p className="mt-1 text-[12px] leading-5 text-slate-500">Map the recording into notes, recall prompts, and an explained assessment.</p></div>
+              </li>
+              <li className="relative grid grid-cols-[28px_1fr] gap-3">
+                <span className="relative z-10 grid h-7 w-7 place-items-center rounded-full border-2 border-blue-600 bg-white"><span className="h-2 w-2 animate-pulse rounded-full bg-blue-600" /></span>
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3"><div className="flex items-center justify-between"><p className="text-[12px] font-semibold text-slate-900">Reviewer</p><span className="text-[11px] text-blue-600">Checking sources</span></div><div className="mt-2 space-y-1.5"><span className="block h-1.5 w-[92%] rounded bg-blue-100" /><span className="block h-1.5 w-[68%] rounded bg-blue-100" /></div></div>
+              </li>
+              <li className="relative grid grid-cols-[28px_1fr] gap-3">
+                <span className="relative z-10 grid h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-[11px] font-semibold text-slate-400">3</span>
+                <div className="rounded-lg border border-slate-200 p-3"><div className="flex items-center justify-between"><p className="text-[12px] font-semibold text-slate-900">Final output</p><span className="text-[11px] text-slate-400">Queued</span></div><p className="mt-1 text-[12px] font-medium text-slate-700">Photosynthesis study set</p><div className="mt-2 flex flex-wrap gap-1.5 text-[11px]"><span className="rounded bg-slate-100 px-2 py-0.5 text-slate-600">Notes</span><span className="rounded bg-slate-100 px-2 py-0.5 text-slate-600">12 cards</span><span className="rounded bg-slate-100 px-2 py-0.5 text-slate-600">8 questions</span></div></div>
+              </li>
+            </ol>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 p-3 md:grid-cols-1">
-            <div className="col-span-2 rounded-xl border border-white/8 bg-black/20 p-3 sm:p-4 md:col-span-1"><div className="flex items-center justify-between"><p className="font-mono text-[8px] uppercase tracking-[.18em] text-cyan-400">Record → AI Notes</p><span className="text-[8px] text-slate-600">06:42</span></div><p className="mt-2.5 text-xs font-medium text-white">Light-dependent reactions</p><p className="mt-1.5 text-[10px] leading-4 text-slate-400">ATP and NADPH carry captured light energy into the Calvin cycle.</p></div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3"><div className="flex items-center justify-between"><p className="font-mono text-[8px] uppercase tracking-[.18em] text-violet-300">AI Detect</p><span className="h-1.5 w-1.5 rounded-full bg-violet-300"/></div><p className="mt-4 text-xl font-semibold tracking-[-.04em] text-white">12%</p><p className="mt-1 text-[9px] leading-4 text-slate-500">AI-like signal in selected passage</p></div>
-            <div className="rounded-xl border border-cyan-300/15 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.1),transparent_58%),#0a1019] p-3"><div className="flex items-center justify-between"><p className="font-mono text-[8px] uppercase tracking-[.18em] text-cyan-300">Flashcard</p><span className="text-[8px] text-slate-600">4 / 12</span></div><p className="mt-4 text-[11px] font-medium leading-4 text-white">Where do light reactions occur?</p><p className="mt-3 text-[8px] text-slate-600">Flip to reveal</p></div>
-            <div className="col-span-2 rounded-xl border border-white/8 bg-white/[0.025] p-3 md:col-span-1"><div className="flex items-center justify-between"><p className="text-[10px] font-medium text-white">Explained quiz</p><span className="text-[8px] text-emerald-300">Answer reviewed</span></div><div className="mt-2.5 h-1 rounded-full bg-white/8"><div className="h-full w-[62%] rounded-full bg-gradient-to-r from-violet-400 to-cyan-300"/></div><p className="mt-2 text-[9px] leading-4 text-slate-500">Correct answer and explanation stay linked.</p></div>
+          <div className="grid grid-cols-2 gap-2.5 bg-slate-50/60 p-3 md:grid-cols-1">
+            <div className="col-span-2 rounded-lg border border-slate-200 bg-white p-3 md:col-span-1"><div className="flex items-center justify-between"><p className="text-[11px] font-semibold text-blue-600">Record → AI Notes</p><span className="text-[11px] tabular-nums text-slate-400">06:42</span></div><p className="mt-1.5 text-[12px] font-semibold text-slate-900">Light-dependent reactions</p><p className="mt-0.5 text-[11px] leading-4 text-slate-500">ATP and NADPH carry captured light energy into the Calvin cycle.</p></div>
+            <div className="rounded-lg border border-slate-200 bg-white p-3"><p className="text-[11px] font-semibold text-slate-500">AI Detect</p><p className="mt-2 text-xl font-semibold tabular-nums tracking-tight text-slate-900">12%</p><div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-slate-100"><span className="w-[12%] bg-amber-400" /><span className="w-[88%] bg-emerald-400" /></div><p className="mt-1.5 text-[10px] leading-4 text-slate-500">Likely human-written</p></div>
+            <div className="rounded-lg border border-slate-200 bg-white p-3"><div className="flex items-center justify-between"><p className="text-[11px] font-semibold text-slate-500">Flashcard</p><span className="text-[10px] tabular-nums text-slate-400">4 / 12</span></div><p className="mt-2 text-[12px] font-medium leading-4 text-slate-900">Where do light reactions occur?</p><p className="mt-2 text-[10px] text-blue-600">Flip to reveal</p></div>
+            <div className="col-span-2 rounded-lg border border-slate-200 bg-white p-3 md:col-span-1"><div className="flex items-center justify-between"><p className="text-[12px] font-semibold text-slate-900">Explained quiz</p><span className="text-[11px] text-emerald-600">Answer reviewed</span></div><div className="mt-2 h-1.5 rounded-full bg-slate-100"><div className="h-full w-[62%] rounded-full bg-blue-600" /></div><p className="mt-1.5 text-[11px] leading-4 text-slate-500">Correct answer and explanation stay linked.</p></div>
           </div>
         </div>
       </div>
-      <div className="aiwoven-float-card absolute -left-5 bottom-10 hidden rounded-xl border border-cyan-300/15 bg-[#0b1019]/92 px-3 py-2.5 shadow-2xl backdrop-blur-xl xl:block"><p className="font-mono text-[8px] uppercase tracking-widest text-slate-500">Workspace</p><p className="mt-1 text-[11px] text-white">6 tools · one context</p></div>
-      <div className="aiwoven-float-card-delayed absolute -right-5 top-24 hidden rounded-xl border border-emerald-300/15 bg-[#0b1019]/92 px-3 py-2.5 shadow-2xl backdrop-blur-xl xl:block"><p className="text-[10px] text-emerald-300">Review complete</p><p className="mt-1 text-[8px] text-slate-500">Explanation attached</p></div>
+    </div>
+  );
+}
+
+function DetectorShowcase() {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.3)]">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-[.06em] text-slate-400">Detection report</p>
+        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">Likely AI-generated</span>
+      </div>
+      <p className="mt-4 text-[15px] font-semibold text-slate-900">We are highly confident this text was AI-generated.</p>
+      <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-slate-100"><span className="w-[78%] bg-amber-400" /><span className="w-[14%] bg-violet-400" /><span className="w-[8%] bg-emerald-400" /></div>
+      <dl className="mt-4 grid grid-cols-3 gap-3 text-center">
+        {[["78%", "AI", "bg-amber-400"], ["14%", "Mixed", "bg-violet-400"], ["8%", "Human", "bg-emerald-400"]].map(([value, label, color]) => (
+          <div key={label} className="rounded-lg bg-slate-50 py-3"><dd className="text-lg font-semibold tabular-nums text-slate-900">{value}</dd><dt className="mt-0.5 flex items-center justify-center gap-1.5 text-xs text-slate-500"><span className={`h-2 w-2 rounded-sm ${color}`} />{label}</dt></div>
+        ))}
+      </dl>
+      <p className="mt-5 rounded-lg border border-slate-200 p-3 text-[13px] leading-6 text-slate-600">
+        <mark className="rounded-sm bg-amber-200/80 px-0.5 text-slate-900">Furthermore, it is essential to recognize that effective communication plays a crucial role.</mark> I rewrote the intro after talking with my lab partner about our results.
+      </p>
+    </div>
+  );
+}
+
+function StudyShowcase() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-[1.1fr_.9fr]">
+      <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-[0_24px_60px_-30px_rgba(15,23,42,0.3)]">
+        <span className="text-xs font-semibold uppercase tracking-[.06em] text-blue-600">Flashcard</span>
+        <p className="mt-5 max-w-sm text-xl font-semibold leading-8 text-slate-900">How do ATP and NADPH support the Calvin cycle?</p>
+        <p className="mt-6 text-xs text-slate-400">Click or press Space to flip</p>
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.3)]">
+        <div className="flex items-center justify-between"><span className="text-xs text-slate-500">Question 3 of 8</span><span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Correct</span></div>
+        <div className="mt-3 h-1.5 rounded-full bg-slate-100"><div className="h-full w-[38%] rounded-full bg-blue-600" /></div>
+        <p className="mt-6 text-sm font-semibold text-slate-900">Why is this correct?</p>
+        <p className="mt-2 text-[13px] leading-6 text-slate-600">ATP supplies energy while NADPH provides reducing power for carbon fixation and carbohydrate synthesis.</p>
+      </div>
     </div>
   );
 }
@@ -191,64 +264,198 @@ function ProductStage() {
 export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
-  const reduceMotion = useReducedMotion();
-  const heroRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const stageY = useTransform(scrollYProgress, [0, 1], [0, reduceMotion ? 0 : 72]);
-  const glowY = useTransform(scrollYProgress, [0, 1], [0, reduceMotion ? 0 : 120]);
-
-  function updateGlow(event: PointerEvent<HTMLElement>) {
-    if (reduceMotion) return;
-    const bounds = event.currentTarget.getBoundingClientRect();
-    event.currentTarget.style.setProperty("--pointer-x", `${event.clientX - bounds.left}px`);
-    event.currentTarget.style.setProperty("--pointer-y", `${event.clientY - bounds.top}px`);
-  }
-
-  const entrance = reduceMotion ? {} : { initial: { opacity: 0, y: 22 }, animate: { opacity: 1, y: 0 } };
 
   return (
-    <main className="aiwoven-site min-h-screen overflow-x-clip bg-[#05070c] text-slate-100" onPointerMove={updateGlow}>
-      <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6 sm:pt-5">
-        <nav className="mx-auto flex max-w-5xl items-center justify-between rounded-full border border-white/10 bg-[#080b12]/78 px-4 py-2.5 shadow-[0_14px_50px_rgba(0,0,0,.35)] backdrop-blur-xl" aria-label="Main navigation">
-          <Link href="/" aria-label="AIWoven home"><AIWovenLogo /></Link>
-          <div className="hidden items-center gap-7 text-xs text-slate-400 md:flex">{[["Features","#features"],["Workflow","#workflow"],["AI Tools","#tools"],["FAQ","#faq"]].map(([label,href])=><a key={href} href={href} className="transition hover:text-white">{label}</a>)}</div>
-          <div className="hidden items-center gap-2 sm:flex"><Link href="/chat" className="rounded-full px-4 py-2 text-xs text-slate-300 transition hover:text-white">{session ? "Open workspace" : "Log in"}</Link><Link href="/chat" className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-200">Try for free <ArrowIcon /></Link></div>
-          <button type="button" className="grid h-9 w-9 place-items-center rounded-full border border-white/10 sm:hidden" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={()=>setMenuOpen(value=>!value)}><span className="text-lg" aria-hidden>{menuOpen?"×":"≡"}</span></button>
+    <main className="aiwoven-site min-h-screen overflow-x-clip bg-white text-slate-900">
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+        <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6" aria-label="Main navigation">
+          <div className="flex items-center gap-10">
+            <Link href="/" aria-label="AIWoven home"><AIWovenLogo /></Link>
+            <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">{navLinks.map(([label, href]) => <a key={href} href={href} className="transition hover:text-slate-900">{label}</a>)}</div>
+          </div>
+          <div className="hidden items-center gap-2 sm:flex">
+            <Link href="/chat" className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">{session ? "Open workspace" : "Log in"}</Link>
+            <Link href="/chat" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">Try for free <ArrowIcon /></Link>
+          </div>
+          <button type="button" className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-700 sm:hidden" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}>
+            <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4"><path d={menuOpen ? "m5 5 10 10M15 5 5 15" : "M3.5 6h13M3.5 10h13M3.5 14h13"} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+          </button>
         </nav>
-        {menuOpen?<div className="mx-auto mt-2 max-w-5xl rounded-3xl border border-white/10 bg-[#080b12]/96 p-4 shadow-2xl backdrop-blur-xl sm:hidden"><div className="grid gap-1">{[["Features","#features"],["Workflow","#workflow"],["AI Tools","#tools"],["FAQ","#faq"]].map(([label,href])=><a key={href} href={href} onClick={()=>setMenuOpen(false)} className="rounded-xl px-3 py-3 text-sm text-slate-300 hover:bg-white/5">{label}</a>)}<Link href="/chat" className="mt-2 rounded-xl bg-cyan-300 px-4 py-3 text-center text-sm font-semibold text-slate-950">Try for free</Link></div></div>:null}
+        {menuOpen ? (
+          <div className="border-t border-slate-200 bg-white px-4 pb-4 pt-2 sm:hidden">
+            <div className="grid gap-1">
+              {navLinks.map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">{label}</a>)}
+              <Link href="/chat" className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">{session ? "Open workspace" : "Log in"}</Link>
+              <Link href="/chat" className="mt-2 rounded-lg bg-blue-600 px-4 py-2.5 text-center text-sm font-semibold text-white">Try for free</Link>
+            </div>
+          </div>
+        ) : null}
       </header>
 
-      <section ref={heroRef} className="relative isolate overflow-hidden px-4 pb-16 pt-24 sm:px-6 sm:pt-28 lg:pb-20 lg:pt-24" aria-labelledby="hero-title">
-        <div className="aiwoven-grid pointer-events-none absolute inset-0 -z-30" aria-hidden />
-        <motion.div style={{ y: glowY }} className="aiwoven-aurora pointer-events-none absolute inset-x-0 top-[-18rem] -z-20 mx-auto h-[60rem] max-w-[90rem]" aria-hidden />
-        <div className="aiwoven-pointer-glow pointer-events-none absolute inset-0 -z-10" aria-hidden />
-        <div className="aiwoven-particles pointer-events-none absolute inset-0 -z-10" aria-hidden>{Array.from({length:8},(_,index)=><span key={index}/>)}</div>
-        <div className="mx-auto grid max-w-[92rem] items-center gap-12 lg:min-h-[540px] lg:grid-cols-[minmax(0,47fr)_minmax(0,53fr)] lg:gap-10 xl:gap-14">
+      <section className="aiwoven-hero-bg relative isolate overflow-hidden px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:pb-24 lg:pt-16" aria-labelledby="hero-title">
+        <div className="aiwoven-grid pointer-events-none absolute inset-0 -z-10" aria-hidden />
+        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14">
           <div className="text-center lg:text-left">
-            <motion.div {...entrance} transition={{duration:.65,ease:[.22,1,.36,1]}} className="inline-flex items-center gap-2 rounded-full border border-cyan-300/15 bg-cyan-300/[0.06] px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-cyan-200"><span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,.8)]"/>Every study tool, woven into one workspace.</motion.div>
-            <motion.h1 id="hero-title" {...entrance} transition={{duration:.75,delay:.08,ease:[.22,1,.36,1]}} className="mx-auto mt-5 max-w-2xl text-balance text-[clamp(3.25rem,13vw,5.2rem)] font-semibold leading-[0.9] tracking-[-0.07em] text-white lg:mx-0 lg:text-[clamp(4rem,5.2vw,6.35rem)]">From <span className="aiwoven-highlight font-serif font-normal italic">Lecture</span><br/>to <span className="aiwoven-highlight font-serif font-normal italic">Mastery.</span><br/><span className="text-[.48em] tracking-[-0.05em] text-slate-300">All in One AI Workspace.</span></motion.h1>
-            <motion.p {...entrance} transition={{duration:.75,delay:.16,ease:[.22,1,.36,1]}} className="mx-auto mt-5 max-w-xl text-pretty text-sm leading-6 text-slate-400 sm:text-base sm:leading-7 lg:mx-0">Record lectures, organize notes, create flashcards and explained quizzes, improve writing, convert files, and work with AIWoven Assistant—without switching tabs.</motion.p>
-            <motion.div {...entrance} transition={{duration:.75,delay:.24,ease:[.22,1,.36,1]}} className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start"><Link href="/chat" data-testid="hero-primary-cta" className="group inline-flex min-h-13 items-center justify-center gap-3 rounded-full bg-cyan-300 px-7 py-3.5 text-sm font-semibold text-slate-950 shadow-[0_0_45px_rgba(34,211,238,.18)] transition hover:-translate-y-0.5 hover:bg-cyan-200">Try for free <span className="transition-transform group-hover:translate-x-0.5"><ArrowIcon/></span></Link><a href="#workflow" className="inline-flex min-h-13 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-7 py-3.5 text-sm text-slate-300 transition hover:border-white/20 hover:text-white">See workflow</a></motion.div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm">
+              <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] text-white">New</span>
+              Every study tool, woven into one workspace.
+            </span>
+            <h1 id="hero-title" className="mx-auto mt-5 max-w-2xl text-balance text-[2.6rem] font-semibold leading-[1.05] tracking-tight text-slate-900 sm:text-6xl lg:mx-0 lg:text-[4rem]">
+              From <span className="aiwoven-highlight">Lecture</span> to <span className="aiwoven-highlight">Mastery.</span>
+              <span className="mt-2 block text-[0.55em] font-medium leading-tight text-slate-500">All in One AI Workspace.</span>
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-7 text-slate-600 sm:text-lg sm:leading-8 lg:mx-0">Record lectures, organize notes, create flashcards and explained quizzes, check writing for AI, convert files, and work with AIWoven Assistant—without switching tabs.</p>
+            <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+              <Link href="/chat" data-testid="hero-primary-cta" className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-[15px] font-semibold text-white shadow-[0_8px_20px_-6px_rgba(37,99,235,0.55)] transition hover:bg-blue-700 sm:w-auto">Try for free <span className="transition-transform group-hover:translate-x-0.5"><ArrowIcon /></span></Link>
+              <Link href="/ai-detector" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 text-[15px] font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-auto">Check text for AI</Link>
+            </div>
+            <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-slate-500 lg:justify-start">
+              {["No credit card required", "Free plan", "Private by default"].map((item) => <li key={item} className="flex items-center gap-1.5"><CheckIcon className="h-4 w-4 text-emerald-600" />{item}</li>)}
+            </ul>
           </div>
-          <motion.div style={{ y: stageY }} className="min-w-0 lg:ml-auto lg:w-full lg:max-w-[760px]"><ProductStage /></motion.div>
+          <div className="min-w-0 lg:ml-auto lg:w-full lg:max-w-[720px]"><ProductStage /></div>
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200 bg-white px-4 py-8 sm:px-6" aria-label="Who uses AIWoven">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 sm:flex-row sm:justify-between">
+          <p className="text-sm font-medium text-slate-500">Designed for every part of academic work</p>
+          <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[15px] font-semibold text-slate-400">
+            {["Students", "Educators", "Researchers", "Writers", "Study groups"].map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </div>
+      </section>
+
+      <section id="tools" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-24" aria-labelledby="tools-title">
+        <div id="features" className="mx-auto max-w-6xl scroll-mt-20">
+          <SectionHeading eyebrow="The connected toolkit" title="Do the whole assignment without rebuilding context." body="Six focused tools share one account, one history, and one workflow—so the output of one step becomes the input of the next." center id="tools-title" />
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {tools.map((tool) => (
+              <Link key={tool.title} href={tool.href} className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md motion-reduce:transform-none">
+                <div className="flex items-center justify-between">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white"><ToolGlyph name={tool.icon} /></span>
+                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">{tool.tag}</span>
+                </div>
+                <h3 className="mt-5 text-lg font-semibold text-slate-900">{tool.title}</h3>
+                <p className="mt-2 flex-1 text-[15px] leading-6 text-slate-600">{tool.description}</p>
+                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600">Open {tool.title} <span className="transition-transform group-hover:translate-x-0.5"><ArrowIcon /></span></span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
       <StudentNeeds stats={stats} />
 
-      <section id="workflow" className="scroll-mt-28 border-y border-white/8 bg-white/[0.018] px-4 py-24 sm:px-6 lg:py-32"><div className="mx-auto max-w-6xl"><div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-center"><div><p className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">Student workflow</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-white sm:text-5xl">One continuous path from class to recall.</h2><p className="mt-5 max-w-md text-sm leading-7 text-slate-400">Each step keeps the context from the step before it, so studying feels like one workflow instead of five disconnected tools.</p></div><div className="relative"><div className="absolute left-[1.15rem] top-6 bottom-6 w-px bg-gradient-to-b from-cyan-300 via-violet-400 to-emerald-300 sm:left-0 sm:right-0 sm:top-1/2 sm:h-px sm:w-auto" aria-hidden/><ol className="relative grid gap-4 sm:grid-cols-5 sm:gap-3">{workflow.map((item,index)=><li key={item} className="group flex items-center gap-4 sm:block"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#090d14] font-mono text-xs text-cyan-300 transition group-hover:scale-110 group-hover:border-cyan-300/40">0{index+1}</span><div className="sm:mt-5"><p className="text-sm font-medium text-white">{item}</p><p className="mt-1 text-xs text-slate-500">{index===0?"Capture":index===1?"Organize":index===2?"Recall":index===3?"Understand":"Improve"}</p></div></li>)}</ol></div></div></div></section>
+      <section id="workflow" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-24" aria-labelledby="workflow-title">
+        <div className="mx-auto max-w-6xl">
+          <SectionHeading eyebrow="Student workflow" title="One continuous path from class to recall." body="Each step keeps the context from the step before it, so studying feels like one workflow instead of five disconnected tools." center id="workflow-title" />
+          <ol className="relative mt-14 grid gap-6 sm:grid-cols-5 sm:gap-4">
+            <li className="absolute left-5 top-5 bottom-5 w-px bg-slate-200 sm:left-[10%] sm:right-[10%] sm:top-5 sm:bottom-auto sm:h-px sm:w-auto" aria-hidden role="presentation" />
+            {workflow.map(([item, detail], index) => (
+              <li key={item} className="relative flex items-center gap-4 sm:flex-col sm:text-center">
+                <span className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-blue-200 bg-white text-sm font-semibold text-blue-700 shadow-sm">{index + 1}</span>
+                <div className="sm:mt-2"><p className="text-[15px] font-semibold text-slate-900">{item}</p><p className="mt-0.5 text-sm text-slate-500">{detail}</p></div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
 
-      <section id="features" className="scroll-mt-28 px-4 py-24 sm:px-6 lg:py-32"><div className="mx-auto max-w-6xl"><div className="max-w-2xl"><p className="font-mono text-[10px] uppercase tracking-[.24em] text-violet-400">The connected toolkit</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-white sm:text-5xl">Do the whole assignment without rebuilding context.</h2></div><div className="mt-16 grid border-t border-white/10 md:grid-cols-2">{tools.map(([title,description],index)=><Link key={title} href={title==="Chat"?"/chat":title==="AI Note"?"/ai-note":title==="AI Study"?"/ai-study":title==="Detector"?"/ai-detector":title==="Humanizer"?"/ai-humanizer":"/converter"} className={`group relative border-b border-white/10 py-7 transition hover:bg-white/[0.025] md:px-7 ${index%2===0?"md:border-r":""}`}><span className="font-mono text-[10px] text-slate-600">0{index+1}</span><div className="mt-6 flex items-start justify-between gap-8"><div><h3 className="text-xl font-medium text-white">{title}</h3><p className="mt-2 max-w-md text-sm leading-6 text-slate-400">{description}</p></div><span className="mt-1 text-slate-600 transition group-hover:translate-x-1 group-hover:text-cyan-300"><ArrowIcon/></span></div></Link>)}</div></div></section>
+      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:py-24" aria-label="Product highlights">
+        <div className="mx-auto grid max-w-6xl gap-20">
+          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+            <div>
+              <SectionHeading eyebrow="AI Detector" title="A detection report you can actually act on." body="Paste a draft and get an overall probability, a three-way breakdown, and the exact passages that look AI-written—so you know what to revise." />
+              <ul className="mt-6 space-y-3 text-[15px] text-slate-700">
+                {["Sentence-level highlighting", "AI · Mixed · Human probability breakdown", "Clear verdicts with responsible-use guidance"].map((item) => <li key={item} className="flex items-center gap-2.5"><CheckIcon className="h-4 w-4 text-blue-600" />{item}</li>)}
+              </ul>
+              <Link href="/ai-detector" className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">Try the AI Detector <ArrowIcon /></Link>
+            </div>
+            <DetectorShowcase />
+          </div>
+          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+            <div className="lg:order-2">
+              <SectionHeading eyebrow="AI Study" title="Study the explanation, not just the score." body="Upload a lecture document, then move through notes, large 3D flashcards, and a focused quiz route that explains every answer." />
+              <Link href="/ai-study" className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">Open AI Study <ArrowIcon /></Link>
+            </div>
+            <div className="lg:order-1"><StudyShowcase /></div>
+          </div>
+        </div>
+      </section>
 
-      <section id="tools" className="scroll-mt-28 px-4 pb-24 sm:px-6 lg:pb-32"><div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(34,211,238,.06),transparent_35%,rgba(139,92,246,.08)),#080b12] p-6 sm:p-10 lg:p-14"><div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-center"><div><p className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">AIWoven workspace</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-white">The right workflow for the moment.</h2><p className="mt-5 text-sm leading-7 text-slate-400">Use direct chat or a structured multi-step workflow while AIWoven handles routing behind the scenes.</p><Link href="/chat" className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-cyan-300">Open AI Chat <ArrowIcon/></Link></div><div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/8 bg-white/8">{[["AIWoven Assistant","Direct, focused answers"],["Multi-step workflow","Plan, draft, and review"],["Study intelligence","Notes, cards, and quizzes"],["Automatic routing","Reliable task handling"]].map(([name,detail])=><div key={name} className="bg-[#0b0f17] p-5"><span className="block h-2 w-2 rounded-full bg-cyan-300"/><p className="mt-8 text-sm font-medium text-white">{name}</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div>)}</div></div></div></section>
+      <section id="trust" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-24" aria-labelledby="trust-title">
+        <div className="mx-auto max-w-6xl">
+          <SectionHeading eyebrow="Why AIWoven" title="Serious tools for serious work." body="Built with the safeguards you expect from professional software—so you can rely on it the night before a deadline." center id="trust-title" />
+          <div className="mt-14 grid gap-5 md:grid-cols-3">
+            {trustPillars.map((pillar, index) => (
+              <div key={pillar.title} className="rounded-2xl border border-slate-200 p-6">
+                <span className="grid h-10 w-10 place-items-center rounded-lg bg-slate-900 text-white">
+                  {index === 0 ? <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 10V7a4 4 0 0 1 8 0v3" strokeLinecap="round" /><rect x="5" y="10" width="14" height="10" rx="2.5" /></svg>
+                    : index === 1 ? <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></svg>
+                    : <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M5 20V10M12 20V4M19 20v-7M3 20h18" /></svg>}
+                </span>
+                <h3 className="mt-5 text-lg font-semibold text-slate-900">{pillar.title}</h3>
+                <p className="mt-2 text-[15px] leading-6 text-slate-600">{pillar.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      <section className="px-4 pb-24 sm:px-6 lg:pb-32"><div className="mx-auto grid max-w-6xl gap-10 border-y border-white/10 py-14 lg:grid-cols-[.8fr_1.2fr] lg:items-center"><div><p className="font-mono text-[10px] uppercase tracking-[.24em] text-violet-400">AI Study showcase</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-white">Study the explanation, not just the score.</h2><p className="mt-5 max-w-md text-sm leading-7 text-slate-400">Upload a lecture document, then move through notes, large 3D flashcards, and a focused quiz route that explains every answer.</p><Link href="/ai-study" className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-cyan-300">Open AI Study <ArrowIcon/></Link></div><div className="grid gap-4 sm:grid-cols-[1.1fr_.9fr]"><div className="flex min-h-72 flex-col items-center justify-center rounded-[1.8rem] border border-cyan-300/20 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.12),transparent_52%),#090e16] p-8 text-center"><span className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">Flashcard</span><p className="mt-7 max-w-sm text-2xl font-medium leading-9 text-white">How do ATP and NADPH support the Calvin cycle?</p><p className="mt-7 text-xs text-slate-500">Click or press Space to flip</p></div><div className="rounded-[1.8rem] border border-white/10 bg-white/[0.025] p-6"><div className="flex items-center justify-between"><span className="text-xs text-slate-500">Question 3 of 8</span><span className="text-xs text-emerald-300">Correct</span></div><div className="mt-4 h-1 rounded-full bg-white/8"><div className="h-full w-[38%] rounded-full bg-violet-400"/></div><p className="mt-8 text-sm font-medium text-white">Why is this correct?</p><p className="mt-3 text-xs leading-6 text-slate-400">ATP supplies energy while NADPH provides reducing power for carbon fixation and carbohydrate synthesis.</p></div></div></div></section>
+      <section id="faq" className="scroll-mt-20 border-t border-slate-200 px-4 py-20 sm:px-6 lg:py-24" aria-labelledby="faq-title">
+        <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[.8fr_1.2fr]">
+          <SectionHeading eyebrow="FAQ" title="Frequently asked questions" body="Everything you need to know before weaving AIWoven into your study routine." id="faq-title" />
+          <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200">
+            {faqs.map(([question, answer]) => (
+              <details key={question} className="group px-5 py-4 open:bg-slate-50/60">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-[15px] font-semibold text-slate-900">
+                  <span>{question}</span>
+                  <svg viewBox="0 0 20 20" aria-hidden className="h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-180"><path d="m6 8 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </summary>
+                <p className="max-w-2xl pt-3 text-[15px] leading-7 text-slate-600">{answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      <section id="faq" className="scroll-mt-28 px-4 py-24 sm:px-6 lg:py-32"><div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[.65fr_1.35fr]"><div><p className="font-mono text-[10px] uppercase tracking-[.24em] text-cyan-400">FAQ</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-white">Before you weave it into your study routine.</h2></div><div className="divide-y divide-white/10 border-t border-white/10">{faqs.map(([question,answer])=><details key={question} className="group py-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-sm font-medium text-white focus-visible:outline-none"><span>{question}</span><span className="text-xl font-light text-slate-500 transition group-open:rotate-45" aria-hidden>+</span></summary><p className="max-w-2xl pt-4 text-sm leading-7 text-slate-400">{answer}</p></details>)}</div></div></section>
+      <section className="px-4 pb-20 sm:px-6">
+        <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 px-6 py-14 text-center sm:px-12 sm:py-20">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.18),transparent_45%)]" aria-hidden />
+          <h2 className="relative mx-auto max-w-3xl text-balance text-3xl font-semibold tracking-tight text-white sm:text-5xl">Turn your next lecture into something you’ll actually remember.</h2>
+          <p className="relative mx-auto mt-4 max-w-xl text-base text-blue-100">Start free in seconds. No credit card required.</p>
+          <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link href="/chat" className="inline-flex h-12 items-center gap-2 rounded-lg bg-white px-6 text-[15px] font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50">Try for free <ArrowIcon /></Link>
+            <Link href="/ai-detector" className="inline-flex h-12 items-center rounded-lg border border-white/30 px-6 text-[15px] font-semibold text-white transition hover:bg-white/10">Check text for AI</Link>
+          </div>
+        </div>
+      </section>
 
-      <section className="px-4 pb-16 sm:px-6"><div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.3rem] border border-white/10 bg-[#090d15] px-6 py-16 text-center sm:px-12 sm:py-24"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(34,211,238,.2),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(139,92,246,.14),transparent_35%)]" aria-hidden/><AIWovenMark className="relative mx-auto h-12 w-16" title="AIWoven"/><h2 className="relative mx-auto mt-6 max-w-3xl text-4xl font-semibold tracking-[-.055em] text-white sm:text-6xl">Turn your next lecture into something you’ll actually remember.</h2><Link href="/chat" className="relative mt-8 inline-flex items-center gap-3 rounded-full bg-cyan-300 px-7 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">Try for free <ArrowIcon/></Link></div></section>
-
-      <footer className="border-t border-white/8 px-4 py-8 sm:px-6"><div className="mx-auto flex max-w-6xl flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><AIWovenLogo/><p className="text-xs text-slate-600">Every study tool, woven into one AI workspace.</p><div className="flex gap-5 text-xs text-slate-500"><Link href="/privacy" className="hover:text-white">Privacy</Link><Link href="/blog" className="hover:text-white">Blog</Link><Link href="/chat" className="hover:text-white">{session ? "Workspace" : "Log in"}</Link></div></div></footer>
+      <footer className="border-t border-slate-200 bg-slate-50 px-4 py-12 sm:px-6">
+        <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+          <div>
+            <AIWovenLogo />
+            <p className="mt-3 max-w-xs text-sm leading-6 text-slate-500">Every study tool, woven into one AI workspace.</p>
+          </div>
+          {[
+            ["Writing", [["AI Detector", "/ai-detector"], ["AI Humanizer", "/ai-humanizer"], ["AI Chat", "/chat"]]],
+            ["Study", [["AI Note", "/ai-note"], ["AI Study", "/ai-study"], ["Flashcards", "/flashcards"], ["Quiz Me", "/quiz-me"]]],
+            ["Company", [["Blog", "/blog"], ["Privacy", "/privacy"], ["Converter", "/converter"], [session ? "Workspace" : "Log in", "/chat"]]],
+          ].map(([title, links]) => (
+            <div key={title as string}>
+              <p className="text-sm font-semibold text-slate-900">{title as string}</p>
+              <ul className="mt-3 space-y-2">
+                {(links as string[][]).map(([label, href]) => <li key={label}><Link href={href} className="text-sm text-slate-500 transition hover:text-slate-900">{label}</Link></li>)}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-2 border-t border-slate-200 pt-6 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} AIWoven. All rights reserved.</p>
+          <div className="flex items-center gap-2"><AIWovenMark className="h-4 w-5" title="" /> Built for learners.</div>
+        </div>
+      </footer>
     </main>
   );
 }

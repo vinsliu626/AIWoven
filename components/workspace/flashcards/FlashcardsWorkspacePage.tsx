@@ -4,5 +4,5 @@ import { PublicWorkspaceShell } from "@/components/workspace/public/PublicWorksp
 import { FlashcardsWorkspace } from "./FlashcardsWorkspace";
 
 export function FlashcardsWorkspacePage() {
-  return <PublicWorkspaceShell mode="study">{({ locked }) => <FlashcardsWorkspace locked={locked}/>}</PublicWorkspaceShell>;
+  return <PublicWorkspaceShell mode="study" title="Flashcards">{({ locked }) => <FlashcardsWorkspace locked={locked}/>}</PublicWorkspaceShell>;
 }

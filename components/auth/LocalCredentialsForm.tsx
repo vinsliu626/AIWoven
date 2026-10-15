@@ -36,9 +36,9 @@ export function LocalCredentialsForm({ isZh = false }: { isZh?: boolean }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-2 rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.035] p-3" data-testid="local-credentials-form">
+    <form onSubmit={submit} className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3" data-testid="local-credentials-form">
       <div>
-        <p className="text-xs font-medium text-cyan-100">{isZh ? "本地测试账号" : "Local test account"}</p>
+        <p className="text-xs font-medium text-blue-700">{isZh ? "本地测试账号" : "Local test account"}</p>
         <p className="mt-1 text-[10px] leading-4 text-slate-500">{isZh ? "仅在非生产环境可用" : "Available only outside production"}</p>
       </div>
       <label className="block">
@@ -51,7 +51,7 @@ export function LocalCredentialsForm({ isZh = false }: { isZh?: boolean }) {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder={isZh ? "邮箱" : "Email"}
-          className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/35"
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
         />
       </label>
       <label className="block">
@@ -64,11 +64,11 @@ export function LocalCredentialsForm({ isZh = false }: { isZh?: boolean }) {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           placeholder={isZh ? "密码" : "Password"}
-          className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/35"
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
         />
       </label>
-      {error ? <p role="alert" className="text-[10px] leading-4 text-rose-300">{error}</p> : null}
-      <button type="submit" disabled={submitting} className="w-full rounded-xl bg-cyan-300 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-60">
+      {error ? <p role="alert" className="text-[10px] leading-4 text-rose-700">{error}</p> : null}
+      <button type="submit" disabled={submitting} className="w-full rounded-lg bg-blue-600 px-3 py-2 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
         {submitting ? (isZh ? "登录中…" : "Signing in…") : (isZh ? "登录" : "Sign in")}
       </button>
     </form>

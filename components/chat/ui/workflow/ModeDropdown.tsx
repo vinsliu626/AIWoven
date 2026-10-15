@@ -114,10 +114,10 @@ export function ModeDropdown({
     ? createPortal(
         <div
           ref={menuRef}
-          className="fixed z-[60] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur-xl"
+          className="fixed z-[60] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_16px_40px_-12px_rgba(15,23,42,0.22)]"
           style={{ top: menuPosition.top, left: menuPosition.left, width: menuPosition.width }}
         >
-          <div className="border-b border-white/5 px-3 py-2 text-[11px] text-slate-400">
+          <div className="border-b border-slate-100 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[.06em] text-slate-400">
             {isZh ? "选择工作区" : "Choose a workspace"}
           </div>
 
@@ -128,17 +128,19 @@ export function ModeDropdown({
                 <button
                   key={item.value}
                   type="button"
+                  aria-label={item.title}
+                  title={item.desc}
                   onClick={() => {
                     onChange(item.value);
                     setOpen(false);
                   }}
-                  className={["w-full rounded-xl px-3 py-2 text-left transition", active ? "bg-white/10" : "hover:bg-white/10"].join(" ")}
+                  className={["w-full rounded-lg px-3 py-2 text-left transition", active ? "bg-blue-50" : "hover:bg-slate-50"].join(" ")}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-medium text-slate-100">{item.title}</div>
-                    {active ? <div className="text-xs text-emerald-300">✓</div> : null}
+                    <div className={["text-[13px] font-medium", active ? "text-blue-700" : "text-slate-900"].join(" ")}>{item.title}</div>
+                    {active ? <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4 text-blue-600"><path d="m5 10.5 3 3 7-7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg> : null}
                   </div>
-                  <div className="mt-0.5 text-[11px] text-slate-400">{item.desc}</div>
+                  <div className="mt-0.5 text-[11px] text-slate-500">{item.desc}</div>
                 </button>
               );
             })}
@@ -156,13 +158,13 @@ export function ModeDropdown({
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         className={[
-          "flex h-9 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 text-xs text-slate-100 transition hover:bg-white/10",
+          "flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50",
           disabled ? "cursor-not-allowed opacity-60" : "",
         ].join(" ")}
         title={isZh ? "切换工作区" : "Switch workspace"}
       >
-        <span className="text-slate-200">{labelFor(value, lang)}</span>
-        <span className="text-slate-400">▼</span>
+        <span>{labelFor(value, lang)}</span>
+        <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4 text-slate-400"><path d="m6 8 4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
 
       {menu}

@@ -227,9 +227,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
-      <h3 className="text-sm font-semibold text-slate-50">{title}</h3>
-      {description ? <p className="mt-1 text-[11px] leading-5 text-slate-400">{description}</p> : null}
+    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.14)]">
+      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      {description ? <p className="mt-1 text-[11px] leading-5 text-slate-500">{description}</p> : null}
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -237,9 +237,9 @@ function Section({
 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-black/20 px-3 py-2.5">
-      <span className="text-[11px] text-slate-400">{label}</span>
-      <span className="text-[11px] font-medium text-slate-100">{value}</span>
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+      <span className="text-[11px] text-slate-500">{label}</span>
+      <span className="text-[11px] font-medium text-slate-900">{value}</span>
     </div>
   );
 }
@@ -278,21 +278,21 @@ export function SettingsModal({
   const copy = copyByLang[isZh ? "zh" : "en"];
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-3xl overflow-hidden rounded-[28px] border border-white/10 bg-[#060606]/95 shadow-2xl shadow-black/50">
-        <div className="border-b border-white/10 bg-gradient-to-r from-white/[0.04] via-blue-500/[0.06] to-emerald-400/[0.06] px-5 py-4">
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]">
+      <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white/90 shadow-2xl shadow-slate-900/10">
+        <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 via-blue-50 to-emerald-50 px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">{copy.badge}</p>
-              <h2 className="mt-2 text-lg font-semibold text-slate-50">{copy.title}</h2>
-              <p className="mt-1 text-[12px] text-slate-400">{copy.intro}</p>
+              <p className="text-[11px] uppercase tracking-[.06em] text-slate-500">{copy.badge}</p>
+              <h2 className="mt-2 text-lg font-semibold text-slate-900">{copy.title}</h2>
+              <p className="mt-1 text-[12px] text-slate-500">{copy.intro}</p>
             </div>
             <button
               onClick={onClose}
-              className="h-10 w-10 rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10"
+              className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               aria-label={copy.close}
             >
-              ×
+              <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
             </button>
           </div>
         </div>
@@ -310,14 +310,14 @@ export function SettingsModal({
                   {onSignOut ? (
                     <button
                       onClick={onSignOut}
-                      className="h-10 rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-100 transition hover:bg-white/10"
+                      className="h-10 rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-900 transition hover:bg-slate-100"
                     >
                       {copy.signOut}
                     </button>
                   ) : null}
                   <a
                     href="/account"
-                    className="inline-flex h-10 items-center rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-100 transition hover:bg-white/10"
+                    className="inline-flex h-10 items-center rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-900 transition hover:bg-slate-100"
                   >
                     {copy.openAccount}
                   </a>
@@ -325,7 +325,7 @@ export function SettingsModal({
               </Section>
 
               <Section title={copy.plan} description={copy.planDesc}>
-                <div className="rounded-[22px] border border-blue-500/15 bg-gradient-to-br from-blue-500/10 via-transparent to-emerald-400/10 p-4">
+                <div className="rounded-[22px] border border-blue-200 bg-gradient-to-br from-blue-50 via-transparent to-emerald-50 p-4">
                   <StatRow label={copy.currentPlan} value={planLabel(ent?.plan ?? "basic", isZh)} />
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <StatRow label={copy.chat} value={formatQuota(ent?.usedChatCountToday ?? 0, ent?.chatPerDay, copy)} />
@@ -338,13 +338,13 @@ export function SettingsModal({
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       onClick={onOpenPlan}
-                      className="h-10 rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 px-4 text-[12px] font-semibold text-white shadow-md shadow-blue-500/30 transition hover:brightness-110"
+                      className="h-10 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 text-[12px] font-semibold text-white shadow-sm transition"
                     >
                       {copy.viewPlans}
                     </button>
                     <button
                       onClick={onOpenRedeem}
-                      className="h-10 rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-100 transition hover:bg-white/10"
+                      className="h-10 rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-900 transition hover:bg-slate-100"
                     >
                       {copy.redeemCode}
                     </button>
@@ -353,13 +353,13 @@ export function SettingsModal({
               </Section>
 
               <Section title={copy.language} description={copy.languageDesc}>
-                <label className="text-[11px] text-slate-400">{copy.interfaceLanguage}</label>
+                <label className="text-[11px] text-slate-500">{copy.interfaceLanguage}</label>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <button
                     onClick={() => setLang("en")}
                     className={[
                       "h-10 rounded-2xl border text-[12px] font-medium transition",
-                      lang === "en" ? "border-white/15 bg-white/10 text-slate-50" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10",
+                      lang === "en" ? "border-slate-300 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100",
                     ].join(" ")}
                   >
                     {copy.english}
@@ -368,13 +368,13 @@ export function SettingsModal({
                     onClick={() => setLang("zh")}
                     className={[
                       "h-10 rounded-2xl border text-[12px] font-medium transition",
-                      lang === "zh" ? "border-white/15 bg-white/10 text-slate-50" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10",
+                      lang === "zh" ? "border-slate-300 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100",
                     ].join(" ")}
                   >
                     {copy.chinese}
                   </button>
                 </div>
-                <p className="mt-3 text-[11px] text-slate-400">{copy.languageHint}</p>
+                <p className="mt-3 text-[11px] text-slate-500">{copy.languageHint}</p>
               </Section>
             </div>
 
@@ -384,25 +384,25 @@ export function SettingsModal({
                   <div className="flex flex-wrap gap-2">
                     <a
                       href="/privacy"
-                      className="inline-flex h-10 items-center rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-100 transition hover:bg-white/10"
+                      className="inline-flex h-10 items-center rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-900 transition hover:bg-slate-100"
                     >
                       {copy.privacyPolicy}
                     </a>
                     <button
                       type="button"
                       disabled
-                      className="inline-flex h-10 items-center rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-500"
+                      className="inline-flex h-10 items-center rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-500"
                     >
                       {copy.terms}
                     </button>
                   </div>
-                  <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-3">
-                    <p className="text-[11px] font-medium text-slate-100">{copy.localData}</p>
-                    <p className="mt-1 text-[11px] leading-5 text-slate-400">{copy.localDataDesc}</p>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-[11px] font-medium text-slate-900">{copy.localData}</p>
+                    <p className="mt-1 text-[11px] leading-5 text-slate-500">{copy.localDataDesc}</p>
                     <button
                       type="button"
                       onClick={onClearLocalData}
-                      className="mt-3 inline-flex h-10 items-center rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-100 transition hover:bg-white/10"
+                      className="mt-3 inline-flex h-10 items-center rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-900 transition hover:bg-slate-100"
                     >
                       {copy.clearLocalData}
                     </button>
@@ -411,11 +411,11 @@ export function SettingsModal({
                     <button
                       type="button"
                       disabled
-                      className="inline-flex h-10 items-center rounded-full border border-red-400/20 bg-red-500/10 px-4 text-[12px] font-medium text-red-100/60"
+                      className="inline-flex h-10 items-center rounded-full border border-red-200 bg-red-50 px-4 text-[12px] font-medium text-red-700"
                     >
                       {copy.deleteAccount}
                     </button>
-                    <span className="inline-flex h-10 items-center rounded-full border border-white/10 bg-black/20 px-3 text-[11px] text-slate-400">
+                    <span className="inline-flex h-10 items-center rounded-full border border-slate-200 bg-slate-50 px-3 text-[11px] text-slate-500">
                       {copy.deleteAccountHint}
                     </span>
                   </div>
@@ -423,7 +423,7 @@ export function SettingsModal({
               </Section>
 
               <Section title={copy.aiSafety}>
-                <p className="text-[12px] leading-6 text-slate-300">{copy.aiSafetyText}</p>
+                <p className="text-[12px] leading-6 text-slate-600">{copy.aiSafetyText}</p>
               </Section>
 
               <Section title={copy.help} description={copy.helpDesc}>
@@ -432,13 +432,13 @@ export function SettingsModal({
                   <div className="flex flex-wrap gap-2">
                     <a
                       href="/account"
-                      className="inline-flex h-10 items-center rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-100 transition hover:bg-white/10"
+                      className="inline-flex h-10 items-center rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-900 transition hover:bg-slate-100"
                     >
                       {copy.helpPlans}
                     </a>
                     <button
                       onClick={onOpenRedeem}
-                      className="h-10 rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-100 transition hover:bg-white/10"
+                      className="h-10 rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-900 transition hover:bg-slate-100"
                     >
                       {copy.redeemCode}
                     </button>
@@ -449,10 +449,10 @@ export function SettingsModal({
           </div>
         </div>
 
-        <div className="flex justify-end border-t border-white/10 px-5 py-4">
+        <div className="flex justify-end border-t border-slate-200 px-5 py-4">
           <button
             onClick={onClose}
-            className="h-10 rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-100 transition hover:bg-white/10"
+            className="h-10 rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-900 transition hover:bg-slate-100"
           >
             {copy.done}
           </button>

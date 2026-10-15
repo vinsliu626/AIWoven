@@ -4,5 +4,5 @@ import { PublicWorkspaceShell } from "@/components/workspace/public/PublicWorksp
 import { QuizMeWorkspace } from "./QuizMeWorkspace";
 
 export function QuizMeWorkspacePage() {
-  return <PublicWorkspaceShell mode="study">{({ locked }) => <QuizMeWorkspace locked={locked}/>}</PublicWorkspaceShell>;
+  return <PublicWorkspaceShell mode="study" title="Quiz Me">{({ locked }) => <QuizMeWorkspace locked={locked}/>}</PublicWorkspaceShell>;
 }

@@ -27,11 +27,12 @@ export function NoteTabs({
       <button
         type="button"
         onClick={() => onSwitch(k)}
+        aria-pressed={active}
         className={[
-          "h-10 px-5 rounded-full text-sm font-semibold transition",
+          "h-8 rounded-md px-4 text-[13px] font-semibold transition",
           active
-            ? "bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-400 text-white shadow-md shadow-blue-500/30"
-            : "bg-white/5 text-slate-200 border border-white/10 hover:bg-white/10",
+            ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
+            : "text-slate-500 hover:text-slate-800",
         ].join(" ")}
       >
         {label}
@@ -39,9 +40,8 @@ export function NoteTabs({
     );
   };
 
-  // ❗️不加 wrapper，直接返回原来那段按钮组
   return (
-    <div className="flex items-center gap-2">
+    <div className="inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1">
       {tabBtn("upload", isZh ? "上传" : "Upload")}
       {tabBtn("record", isZh ? "录音" : "Record")}
       {tabBtn("text", isZh ? "文本" : "Text")}

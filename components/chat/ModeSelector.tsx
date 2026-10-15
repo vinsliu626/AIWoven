@@ -16,12 +16,12 @@ export function ModeSelector({
 }) {
   return (
     <div className="rounded-2xl border bg-white p-4 shadow-sm">
-      <div className="text-sm text-gray-500">Chat Mode</div>
+      <div className="text-sm text-slate-500">Chat Mode</div>
 
       <div className="mt-2 flex gap-2">
         <button
           className={`rounded-xl px-3 py-2 text-sm font-medium ${
-            mode === "single" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"
+            mode === "single" ? "bg-white text-slate-900" : "bg-gray-100 text-slate-400"
           }`}
           onClick={() => setMode("single")}
         >
@@ -29,7 +29,7 @@ export function ModeSelector({
         </button>
         <button
           className={`rounded-xl px-3 py-2 text-sm font-medium ${
-            mode === "team" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"
+            mode === "team" ? "bg-white text-slate-900" : "bg-gray-100 text-slate-400"
           }`}
           onClick={() => setMode("team")}
         >
@@ -39,7 +39,7 @@ export function ModeSelector({
 
       {mode === "single" ? (
         <div className="mt-3">
-          <div className="text-xs text-gray-500">Direct chat uses the standard workspace quota.</div>
+          <div className="text-xs text-slate-500">Direct chat uses the standard workspace quota.</div>
           <select
             className="mt-2 w-full rounded-xl border px-3 py-2 text-sm"
             value={singleModelKey}
@@ -52,7 +52,7 @@ export function ModeSelector({
           </div>
         </div>
       ) : (
-        <div className="mt-3 text-xs text-gray-600">
+        <div className="mt-3 text-xs text-slate-400">
           Multi-step mode plans, drafts, and reviews before answering. This mode consumes chat quota.
         </div>
       )}

@@ -95,8 +95,8 @@ export function ChatHistoryRow({
       className={[
         "w-full flex items-center gap-1 px-2 py-1 rounded-2xl text-xs transition-all duration-150",
         isActive
-          ? "bg-blue-500/20 border border-blue-400/70 text-slate-50 shadow-[0_0_0_1px_rgba(59,130,246,0.4)]"
-          : "bg-slate-900/60 border border-white/5 text-slate-300 hover:border-blue-400/60 hover:bg-slate-900",
+          ? "bg-blue-50 border border-blue-400 text-slate-900 shadow-[0_0_0_1px_rgba(59,130,246,0.4)]"
+          : "bg-white border border-slate-200 text-slate-600 hover:border-blue-400 hover:bg-white",
       ].join(" ")}
     >
       {/* 左侧点击区 */}
@@ -107,7 +107,7 @@ export function ChatHistoryRow({
       >
         <div className="flex items-center gap-2 min-w-0">
           {s.pinned && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-200 border border-amber-400/20">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
               {isZh ? "置顶" : "Pinned"}
             </span>
           )}
@@ -128,13 +128,13 @@ export function ChatHistoryRow({
           setMenuOpen((v) => !v);
         }}
         className={[
-          "h-8 w-8 shrink-0 rounded-full border border-white/10 bg-white/5",
-          "hover:bg-white/10 transition flex items-center justify-center",
+          "h-8 w-8 shrink-0 rounded-full border border-slate-200 bg-slate-50",
+          "hover:bg-slate-100 transition flex items-center justify-center",
           "disabled:opacity-60",
         ].join(" ")}
         title={isZh ? "更多" : "More"}
       >
-        <span className="text-slate-200 text-lg leading-none">⋯</span>
+        <span className="text-slate-800 text-lg leading-none">⋯</span>
       </button>
 
       {/* ✅ Portal 菜单：再也不会被 sidebar 滚动裁切 */}

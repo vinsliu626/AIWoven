@@ -125,10 +125,10 @@ function buildUsageRows(ent: EntitlementLike, isZh: boolean): UsageRow[] {
 
 function UsageStat({ row }: { row: UsageRow }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-      <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{row.label}</p>
-      <p className="mt-2 text-sm font-semibold text-slate-100">{row.used}</p>
-      <p className="mt-1 text-[11px] text-slate-400">{row.limit}</p>
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 ">
+      <p className="text-[10px] uppercase tracking-[.06em] text-slate-500">{row.label}</p>
+      <p className="mt-2 text-sm font-semibold text-slate-900">{row.used}</p>
+      <p className="mt-1 text-[11px] text-slate-500">{row.limit}</p>
     </div>
   );
 }
@@ -158,39 +158,38 @@ function Card({
 }) {
   const isPro = plan === "pro";
   const ctaClass = active
-    ? "cursor-default border border-white/10 bg-white/[0.06] text-slate-400"
+    ? "cursor-default border border-slate-200 bg-slate-50 text-slate-500"
     : isPro
-      ? "bg-cyan-300 text-slate-950 hover:bg-cyan-200"
-      : "border border-white/12 bg-white/[0.045] text-slate-100 hover:border-white/20 hover:bg-white/[0.075]";
+      ? "bg-blue-600 text-white hover:bg-blue-700"
+      : "border border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-300 hover:bg-slate-100";
 
   return (
-    <article className={["relative flex h-full flex-col rounded-[24px] border p-5 transition-colors md:p-6", isPro ? "border-cyan-300/55 bg-cyan-300/[0.055]" : active ? "border-white/20 bg-white/[0.045]" : "border-white/10 bg-white/[0.018] hover:border-white/16"].join(" ")}>
-      {isPro ? <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200 to-transparent" /> : null}
+    <article className={["relative flex h-full flex-col rounded-2xl border p-5 transition-colors md:p-6", isPro ? "border-blue-400 bg-blue-50" : active ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-slate-50 hover:border-slate-300"].join(" ")}>
       <div className="flex min-h-7 flex-wrap items-center gap-2">
-        <h3 className="text-base font-semibold text-white">{title}</h3>
-        {badge ? <span className={["rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[.14em]", isPro ? "bg-cyan-300 text-slate-950" : "border border-white/10 bg-white/[0.05] text-slate-400"].join(" ")}>{badge}</span> : null}
-        {active ? <span className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[9px] uppercase tracking-[.14em] text-slate-300">Current</span> : null}
+        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        {badge ? <span className={["rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[.06em]", isPro ? "bg-blue-600 text-white" : "border border-slate-200 bg-slate-50 text-slate-500"].join(" ")}>{badge}</span> : null}
+        {active ? <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] uppercase tracking-[.06em] text-slate-600">Current</span> : null}
       </div>
 
-      <div className="mt-6 flex min-h-[54px] items-end gap-2 border-b border-white/10 pb-5">
-        <span className="text-3xl font-semibold tracking-tight text-white">{price}</span>
+      <div className="mt-6 flex min-h-[54px] items-end gap-2 border-b border-slate-200 pb-5">
+        <span className="text-3xl font-semibold tracking-tight text-slate-900">{price}</span>
         {priceSuffix ? <span className="pb-1 text-xs text-slate-500">{priceSuffix}</span> : null}
-        {oldPrice ? <span className="mb-1 ml-auto text-[11px] text-slate-600 line-through">{oldPrice}</span> : null}
+        {oldPrice ? <span className="mb-1 ml-auto text-[11px] text-slate-400 line-through">{oldPrice}</span> : null}
       </div>
 
       <ul className="mt-5 flex-1 space-y-4">
         {features.map((feature) => (
           <li key={feature.label} className="grid grid-cols-[24px_1fr] gap-3">
-            <span aria-hidden className={["mt-0.5 grid h-5 w-5 place-items-center rounded-full text-[11px] font-bold", isPro ? "bg-cyan-300/18 text-cyan-200" : "bg-white/[0.07] text-slate-300"].join(" ")}>✓</span>
+            <span aria-hidden className={["mt-0.5 grid h-5 w-5 place-items-center rounded-full text-[11px] font-bold", isPro ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"].join(" ")}>✓</span>
             <div>
-              <p className="text-[10px] uppercase tracking-[.16em] text-slate-500">{feature.label}</p>
-              <p className="mt-1 text-[12px] leading-5 text-slate-200">{feature.value}</p>
+              <p className="text-[10px] uppercase tracking-[.06em] text-slate-500">{feature.label}</p>
+              <p className="mt-1 text-[12px] leading-5 text-slate-800">{feature.value}</p>
             </div>
           </li>
         ))}
       </ul>
 
-      <button onClick={onClick} disabled={active} className={["mt-6 h-11 w-full rounded-xl text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60", ctaClass].join(" ")}>
+      <button onClick={onClick} disabled={active} className={["mt-6 h-11 w-full rounded-xl text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40", ctaClass].join(" ")}>
         {cta}
       </button>
     </article>
@@ -249,42 +248,42 @@ export function PlanModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/72 p-3 backdrop-blur-sm sm:p-5">
-      <div className="w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/10 bg-[#080b12] shadow-[0_32px_100px_rgba(0,0,0,.6)]">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-3 backdrop-blur-sm sm:p-5">
+      <div role="dialog" aria-modal="true" aria-labelledby="plan-modal-title" className="w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)]">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
-            <p className="text-sm font-semibold text-slate-50">{copy.title}</p>
-            <p className="mt-1 text-[12px] text-slate-400">{copy.subtitle}</p>
+            <h2 id="plan-modal-title" className="text-base font-semibold text-slate-900">{copy.title}</h2>
+            <p className="mt-1 text-[12px] text-slate-500">{copy.subtitle}</p>
           </div>
           <button
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             aria-label={copy.close}
           >
-            X
+            <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
           </button>
         </div>
 
         <div className="custom-scrollbar max-h-[82vh] overflow-y-auto px-4 py-5 sm:px-6">
           {sessionExists && ent ? (
-            <div className="mb-5 rounded-[26px] border border-white/10 bg-gradient-to-br from-white/[0.05] via-blue-500/[0.04] to-emerald-400/[0.05] p-4 shadow-[0_18px_70px_rgba(2,6,23,0.3)]">
+            <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="max-w-2xl">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-slate-300">
+                    <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[10px] uppercase tracking-[.06em] text-slate-600">
                       {copy.currentPlan}
                     </span>
-                    <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[12px] font-semibold text-slate-50">
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-semibold text-slate-900">
                       {planLabel(ent.plan as PlanId, isZh)}
                     </span>
                     {ent.unlimited ? (
-                      <span className="rounded-full border border-emerald-400/20 bg-emerald-400/12 px-3 py-1 text-[11px] text-emerald-200">
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] text-emerald-700">
                         {copy.unlimited}
                       </span>
                     ) : null}
                   </div>
 
-                  <p className="mt-3 text-[12px] leading-6 text-slate-400">
+                  <p className="mt-3 text-[12px] leading-6 text-slate-500">
                     {ent.studyMaxFileSizeBytes != null
                       ? `Study files up to ${formatMb(ent.studyMaxFileSizeBytes)}. Quiz generation uses a fixed standard exam-review level.`
                       : "Real-time usage shown below is pulled from your current billing status."}
@@ -296,13 +295,13 @@ export function PlanModal({
                     onClick={async () => {
                       await refreshEnt();
                     }}
-                    className="h-10 rounded-2xl border border-white/10 bg-white/5 px-4 text-[12px] font-semibold text-slate-100 transition hover:bg-white/10"
+                    className="h-10 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[12px] font-semibold text-slate-900 transition hover:bg-slate-100"
                   >
                     {copy.refresh}
                   </button>
                   <button
                     onClick={onOpenRedeem}
-                    className="h-10 rounded-2xl border border-white/10 bg-white/5 px-4 text-[12px] font-semibold text-slate-100 transition hover:bg-white/10"
+                    className="h-10 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[12px] font-semibold text-slate-900 transition hover:bg-slate-100"
                   >
                     {copy.redeem}
                   </button>
@@ -318,8 +317,8 @@ export function PlanModal({
           ) : null}
 
           {!sessionExists ? (
-            <div className="mb-5 flex items-center gap-3 rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.055] px-4 py-3 text-[12px] text-cyan-100">
-              <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-cyan-300/15 text-[11px]">✓</span>
+            <div className="mb-5 flex items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-[12px] text-blue-700">
+              <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-50 text-[11px]">✓</span>
               {copy.notSignedIn}
             </div>
           ) : null}
@@ -374,7 +373,7 @@ export function PlanModal({
             />
           </div>
 
-          <div className="mt-5 border-t border-white/8 pt-4 text-center text-[11px] leading-5 text-slate-500">{copy.liveUsage}</div>
+          <div className="mt-5 border-t border-slate-200 pt-4 text-center text-[11px] leading-5 text-slate-500">{copy.liveUsage}</div>
         </div>
       </div>
     </div>

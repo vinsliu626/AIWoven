@@ -68,9 +68,9 @@ export function TopControls({
 
   return (
     <div className="flex items-center gap-4">
-      <div className="hidden sm:flex items-center gap-3 px-3 py-2 rounded-2xl bg-slate-900/80 border border-white/10 shadow-sm">
+      <div className="hidden sm:flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border border-slate-200 shadow-sm">
         <div className="flex flex-col gap-1 text-[11px] min-w-[160px]">
-          <span className="text-slate-400">{isZh ? "运行模式" : "Mode"}</span>
+          <span className="text-slate-500">{isZh ? "运行模式" : "Mode"}</span>
           <PillSelect
             value={mode}
             options={modeOptions}
@@ -79,10 +79,10 @@ export function TopControls({
           />
         </div>
 
-        <div className="h-8 w-px bg-gradient-to-b from-white/10 via-white/5 to-transparent" />
+        <div className="h-8 w-px bg-gradient-to-b from-slate-50 via-slate-50 to-transparent" />
 
         <div className="flex flex-col gap-1 text-[11px] min-w-[180px]">
-          <span className="text-slate-400">
+          <span className="text-slate-500">
             {mode === "single"
               ? isZh
                 ? "单模型选择"
@@ -105,11 +105,11 @@ export function TopControls({
           ) : mode === "team" ? (
             <PillSelect value={modelKind} options={teamQualityOptions} onChange={(v: string) => setModelKind(v as ModelKind)} disabled={isLoading} />
           ) : mode === "detector" ? (
-            <div className="w-full rounded-full border border-white/15 bg-slate-900/90 px-3 py-1 text-[11px] text-slate-100 shadow-inner shadow-slate-900/50">
+            <div className="w-full rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] text-slate-900 shadow-inner shadow-slate-900/10">
               English only
             </div>
           ) : (
-            <div className="w-full rounded-full border border-white/15 bg-slate-900/90 px-3 py-1 text-[11px] text-slate-100 shadow-inner shadow-slate-900/50">
+            <div className="w-full rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] text-slate-900 shadow-inner shadow-slate-900/10">
               {isZh ? "音频 / 录音 / 文本" : "Audio / Record / Text"}
             </div>
           )}
@@ -118,22 +118,22 @@ export function TopControls({
 
       <button
         onClick={onOpenPlan}
-        className="md:hidden px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-slate-100 hover:bg-white/10 transition"
+        className="md:hidden px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] text-slate-900 hover:bg-slate-100 transition"
       >
         {isZh ? "套餐" : "Plan"}
       </button>
 
       <div className="flex items-center gap-2">
         {status === "loading" ? (
-          <div className="h-8 w-8 rounded-full bg-slate-800 animate-pulse" />
+          <div className="h-8 w-8 rounded-full bg-slate-200 animate-pulse" />
         ) : status === "authenticated" ? (
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-emerald-400 flex items-center justify-center text-xs font-semibold text-white shadow-md shadow-blue-500/40">
+            <div className="h-8 w-8 rounded-lg bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-xs font-semibold text-white shadow-sm">
               {userInitial}
             </div>
             <div className="hidden sm:flex flex-col text-[11px] leading-tight">
-              <span className="text-slate-100 truncate max-w-[120px]">{userLabel}</span>
-              <button onClick={onSignOut} className="text-xs text-slate-400 hover:text-slate-200 underline-offset-2 hover:underline">
+              <span className="text-slate-900 truncate max-w-[120px]">{userLabel}</span>
+              <button onClick={onSignOut} className="text-xs text-slate-500 hover:text-slate-800 underline-offset-2 hover:underline">
                 {isZh ? "退出登录" : "Sign out"}
               </button>
             </div>
@@ -141,7 +141,7 @@ export function TopControls({
         ) : (
           <button
             onClick={onSignIn}
-            className="px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 text-xs font-medium text-white shadow-md shadow-blue-500/40 hover:brightness-110 transition-all"
+            className="px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-xs font-medium text-white shadow-sm transition-all"
           >
             {isZh ? "登录 / 注册" : "Sign in / Sign up"}
           </button>

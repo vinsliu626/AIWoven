@@ -44,7 +44,7 @@ function renderHighlightedText(text: string, highlights: DetectorHighlight[]) {
     nodes.push(
       <mark
         key={`mark-${index}`}
-        className="rounded px-0.5 py-[1px] bg-amber-300/85 text-slate-950 selection:bg-blue-500/35 selection:text-white"
+        className="rounded-sm bg-amber-200/80 px-0.5 py-[1px] text-slate-900 underline decoration-amber-500/60 decoration-2 underline-offset-[3px]"
         title={highlight.label || "AI-like"}
       >
         {text.slice(highlight.start, highlight.end)}
@@ -88,10 +88,10 @@ export function HighlightEditor({
   }, [isEditing]);
 
   const sharedTextStyle =
-    "h-full w-full px-4 py-3 text-[14px] leading-6 font-sans whitespace-pre-wrap break-words";
+    "h-full w-full px-5 py-4 text-[15px] leading-7 font-sans whitespace-pre-wrap break-words";
 
   return (
-    <div className="relative h-full w-full rounded-2xl border border-white/10 bg-slate-950/30 overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden bg-white">
       {hasHighlights && !isEditing ? (
         <div
           role="textbox"
@@ -102,12 +102,22 @@ export function HighlightEditor({
           className={[
             sharedTextStyle,
             "overflow-auto purple-scrollbar scroll-stable",
-            "text-slate-100 selection:bg-blue-500/35 selection:text-white",
+            "text-slate-900 selection:bg-blue-100 selection:text-slate-900",
             "cursor-text",
           ].join(" ")}
         >
           {renderHighlightedText(value, highlights)}
         </div>
+      ) : null}
+      {hasHighlights && !isEditing ? (
+        <button
+          type="button"
+          onClick={() => setIsEditing(true)}
+          className="absolute right-4 top-3 inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white/95 px-2.5 py-1 text-[12px] font-medium text-slate-600 shadow-sm backdrop-blur transition hover:bg-slate-50 hover:text-slate-900"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m12.5 4.5 3 3L7 16H4v-3z" /></svg>
+          Edit text
+        </button>
       ) : (
         <textarea
           ref={textareaRef}
@@ -118,9 +128,9 @@ export function HighlightEditor({
           className={[
             "h-full w-full resize-none overflow-auto purple-scrollbar scroll-stable",
             sharedTextStyle,
-            "bg-transparent text-slate-100 caret-white",
-            "placeholder:text-slate-500",
-            "selection:bg-blue-500/35",
+            "bg-transparent text-slate-900 caret-slate-900",
+            "placeholder:text-slate-400",
+            "selection:bg-blue-100",
             "focus:outline-none",
           ].join(" ")}
           spellCheck={false}

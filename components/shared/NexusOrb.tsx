@@ -15,7 +15,7 @@ export function NexusOrb({
 }) {
   return (
     <span className={["relative inline-grid place-items-center", sizeClass, className].join(" ")}>
-      <span className="absolute -inset-1 rounded-2xl bg-cyan-300/10 blur-md" aria-hidden />
+      <span className="absolute -inset-1 rounded-2xl bg-blue-50 blur-md" aria-hidden />
       <AIWovenMark className="relative h-full w-full" title="AIWoven logo" />
     </span>
   );

@@ -33,28 +33,26 @@ export function SeoLandingPage({
   faq,
 }: SeoLandingPageProps) {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#030303] px-4 py-10 text-slate-100 sm:px-6">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff04_1px,transparent_1px),linear-gradient(to_bottom,#ffffff04_1px,transparent_1px)] bg-[size:34px_34px] opacity-50" />
-      <div className="pointer-events-none absolute -top-32 left-1/4 h-[32rem] w-[32rem] rounded-full bg-blue-600/10 blur-[100px]" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-[36rem] w-[36rem] rounded-full bg-emerald-500/10 blur-[120px]" />
+    <main className="relative min-h-screen overflow-hidden bg-white px-4 py-10 text-slate-900 sm:px-6">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a08_1px,transparent_1px),linear-gradient(to_bottom,#0f172a08_1px,transparent_1px)] bg-[size:34px_34px] opacity-50" />
 
       <div className="relative mx-auto max-w-6xl space-y-8">
-        <section className="overflow-hidden rounded-[32px] border border-white/10 bg-[#060606]/95 shadow-[0_24px_90px_rgba(0,0,0,0.45)]">
-          <div className="border-b border-white/10 bg-gradient-to-r from-white/[0.04] via-blue-500/[0.06] to-emerald-400/[0.06] px-6 py-6 sm:px-8">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">{eyebrow}</p>
-            <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">{title}</h1>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-slate-300">{intro}</p>
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white/90 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)]">
+          <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 via-blue-50 to-emerald-50 px-6 py-6 sm:px-8">
+            <p className="text-[11px] uppercase tracking-[.06em] text-slate-500">{eyebrow}</p>
+            <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{title}</h1>
+            <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">{intro}</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href={ctaHref}
-                className="inline-flex items-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:scale-[1.02]"
+                className="inline-flex items-center rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition"
               >
                 {ctaLabel}
               </Link>
               {secondaryHref && secondaryLabel ? (
                 <Link
                   href={secondaryHref}
-                  className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-100 transition hover:bg-white/10"
+                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-medium text-slate-900 transition hover:bg-slate-100"
                 >
                   {secondaryLabel}
                 </Link>
@@ -65,18 +63,18 @@ export function SeoLandingPage({
           <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[1.3fr_0.7fr]">
             <div className="space-y-4">
               {paragraphs.map((paragraph) => (
-                <p key={paragraph} className="text-sm leading-7 text-slate-300 sm:text-[15px]">
+                <p key={paragraph} className="text-sm leading-7 text-slate-600 sm:text-[15px]">
                   {paragraph}
                 </p>
               ))}
             </div>
 
-            <aside className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Why people use it</h2>
-              <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
+            <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Why people use it</h2>
+              <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
                 {highlights.map((item) => (
                   <li key={item} className="flex gap-3">
-                    <span className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                    <span className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
                     <span>{item}</span>
                   </li>
                 ))}
@@ -86,26 +84,26 @@ export function SeoLandingPage({
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
-            <h2 className="text-xl font-semibold text-slate-50">Frequently asked</h2>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+            <h2 className="text-xl font-semibold text-slate-900">Frequently asked</h2>
             <div className="mt-5 space-y-4">
               {faq.map((item) => (
-                <div key={item.question} className="rounded-[20px] border border-white/8 bg-black/20 p-4">
-                  <h3 className="text-sm font-semibold text-slate-100">{item.question}</h3>
-                  <p className="mt-2 text-sm leading-7 text-slate-300">{item.answer}</p>
+                <div key={item.question} className="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-slate-900">{item.question}</h3>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">{item.answer}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
-            <h2 className="text-xl font-semibold text-slate-50">Explore more AIWoven tools</h2>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+            <h2 className="text-xl font-semibold text-slate-900">Explore more AIWoven tools</h2>
             <div className="mt-5 grid gap-3">
               {relatedLinks.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-[18px] border border-white/8 bg-black/20 px-4 py-4 text-sm text-slate-200 transition hover:border-blue-400/30 hover:bg-white/[0.05]"
+                  className="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-800 transition hover:border-blue-200 hover:bg-slate-50"
                 >
                   {item.label}
                 </Link>

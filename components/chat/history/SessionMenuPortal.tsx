@@ -81,7 +81,7 @@ export function SessionMenuPortal({
   return createPortal(
     <div
       id="__session_menu__"
-      className="fixed z-[9999] w-[170px] rounded-2xl border border-white/10 bg-slate-950/95 backdrop-blur-xl shadow-2xl overflow-hidden"
+      className="fixed z-[9999] w-[170px] rounded-2xl border border-slate-200 bg-white backdrop-blur-xl shadow-2xl overflow-hidden"
       style={{ top: pos.top, left: pos.left }}
     >
       <button
@@ -89,7 +89,7 @@ export function SessionMenuPortal({
           onClose();
           onRename();
         }}
-        className="w-full text-left px-4 py-3 text-sm text-slate-100 hover:bg-white/5 transition"
+        className="w-full text-left px-4 py-3 text-sm text-slate-900 hover:bg-slate-50 transition"
       >
         Rename
       </button>
@@ -99,19 +99,19 @@ export function SessionMenuPortal({
           onClose();
           onTogglePin();
         }}
-        className="w-full text-left px-4 py-3 text-sm text-slate-100 hover:bg-white/5 transition"
+        className="w-full text-left px-4 py-3 text-sm text-slate-900 hover:bg-slate-50 transition"
       >
         {isPinned ? "Unpin" : "Pin"}
       </button>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-slate-100" />
 
       <button
         onClick={() => {
           onClose();
           onDelete();
         }}
-        className="w-full text-left px-4 py-3 text-sm text-red-300 hover:bg-red-500/10 transition"
+        className="w-full text-left px-4 py-3 text-sm text-red-700 hover:bg-red-50 transition"
       >
         Delete
       </button>

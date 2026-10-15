@@ -13,5 +13,5 @@ export default async function StudyQuizPage({ params }: { params: Promise<{ quiz
   const { quizId } = await params;
   const studySession = await getStudySessionById(userId, quizId);
   if (!studySession?.resultJson?.quiz?.length) notFound();
-  return <div className="min-h-screen bg-[#050505] text-slate-100"><QuizRunner quizId={quizId} title={studySession.title} items={studySession.resultJson.quiz} /></div>;
+  return <div className="min-h-screen bg-white text-slate-900"><QuizRunner quizId={quizId} title={studySession.title} items={studySession.resultJson.quiz} /></div>;
 }

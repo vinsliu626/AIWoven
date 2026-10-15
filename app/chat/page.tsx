@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 // Existing components
 import { ProTrialWheelModal, ProTrialWheelReminderPrompt } from "@/components/billing/ProTrialWheelModal";
-import { PlanPillStyles, PlanPillButton } from "@/components/chat/billing/PlanPill";
+import { PlanPillButton } from "@/components/chat/billing/PlanPill";
 import { PlanModal } from "@/components/chat/billing/PlanModal";
 import { RedeemModal } from "@/components/chat/billing/RedeemModal";
 import { SettingsModal } from "@/components/chat/settings/SettingsModal";
@@ -19,8 +19,8 @@ import { ConverterUI } from "@/components/workspace/converter/ConverterUI";
 import { AiFormattedText } from "@/components/shared/AiFormattedText";
 import { NexusOrb } from "@/components/shared/NexusOrb";
 import { AIWovenAppNav } from "@/components/app/AIWovenAppNav";
+import { HeaderAuthMenu, WorkspaceBreadcrumb, workspaceModeTitle } from "@/components/app/WorkspaceHeader";
 import { CopyButton } from "@/components/ui/copy-button";
-import { LocalCredentialsForm } from "@/components/auth/LocalCredentialsForm";
 import { WorkspaceSignInPrompt } from "@/components/auth/WorkspaceSignInPrompt";
 import { useAppLanguage } from "@/components/app/AppLanguageProvider";
 import { useProTrialWheel } from "@/lib/hooks/useProTrialWheel";
@@ -251,27 +251,6 @@ function formatGiftPlan(plan: string, isZh: boolean) {
   return plan;
 }
 
-function modeTitle(mode: ChatMode, isZh: boolean) {
-  switch (mode) {
-    case "normal":
-      return isZh ? "💬 普通对话" : "💬 Chat / Normal";
-    case "workflow":
-      return isZh ? "⚙️ 工作流对话" : "⚙️ Chat / Workflow";
-    case "detector":
-      return isZh ? "🛡️ AI 检测器" : "🛡️ AI Detector";
-    case "note":
-      return isZh ? "📝 AI 笔记" : "📝 AI Note";
-    case "study":
-      return isZh ? "📚 AI 学习" : "📚 AI Study";
-    case "humanizer":
-      return isZh ? "✨ AI Humanizer" : "✨ AI Humanizer";
-    case "converter":
-      return isZh ? "🔄 转换器" : "🔄 Converter";
-    default:
-      return isZh ? "💬 普通对话" : "💬 Chat / Normal";
-  }
-}
-
 function getRequestedMode(value: string | null): ChatMode | null {
   switch (value) {
     case "workflow":
@@ -285,177 +264,6 @@ function getRequestedMode(value: string | null): ChatMode | null {
     default:
       return null;
   }
-}
-
-function HeaderAuthMenu({
-  isZh,
-  sessionExists,
-  userInitial,
-  userLabel,
-  userEmail,
-  visibleAuthProviders,
-  onOpenAccount,
-  onOpenBilling,
-  onOpenSettings,
-  onSignOut,
-}: {
-  isZh: boolean;
-  sessionExists: boolean;
-  userInitial: string;
-  userLabel: string;
-  userEmail: string;
-  visibleAuthProviders: ClientSafeProvider[];
-  onOpenAccount: () => void;
-  onOpenBilling: () => void;
-  onOpenSettings: () => void;
-  onSignOut: () => void;
-}) {
-  const [menuOpen, setMenuOpen] = useState<"signin" | "account" | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const copy = {
-    signIn: isZh ? "登录" : "Sign in",
-    continueWithGoogle: isZh ? "使用 Google 继续" : "Continue with Google",
-    continueWithGitHub: isZh ? "使用 GitHub 继续" : "Continue with GitHub",
-    noProviders: isZh ? "当前没有可用的登录方式。" : "No sign-in providers are currently available.",
-    account: isZh ? "账户" : "Account",
-    billing: isZh ? "套餐与额度" : "Billing",
-    settings: isZh ? "设置" : "Settings",
-    signOut: isZh ? "退出登录" : "Sign out",
-  };
-
-  useEffect(() => {
-    const onPointerDown = (event: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(null);
-      }
-    };
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(null);
-      }
-    };
-
-    document.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, []);
-
-  return (
-    <div ref={menuRef} className="relative">
-      {sessionExists ? (
-        <button
-          data-testid="header-auth-account"
-          onClick={() => setMenuOpen((current) => (current === "account" ? null : "account"))}
-          className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1.5 shadow-[0_10px_30px_rgba(2,6,23,0.2)] backdrop-blur-xl transition hover:bg-white/[0.07]"
-        >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400/90 via-blue-500/85 to-emerald-400/70 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_6px_20px_rgba(2,6,23,0.22)]">
-            {String(userInitial).toUpperCase()}
-          </div>
-          <div className="hidden min-w-0 sm:flex flex-col text-left leading-tight">
-            <span className="max-w-[124px] truncate text-[12px] font-medium text-slate-100">{userLabel}</span>
-            <span className="max-w-[124px] truncate text-[10px] text-slate-500">{userEmail}</span>
-          </div>
-          <span className="text-slate-500">▼</span>
-        </button>
-      ) : (
-        <button
-          data-testid="header-auth-signin"
-          onClick={() => setMenuOpen((current) => (current === "signin" ? null : "signin"))}
-          className="rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 px-3 py-1.5 text-xs font-medium text-white shadow-md shadow-blue-500/40 transition-all hover:brightness-110"
-        >
-          {copy.signIn}
-        </button>
-      )}
-
-      {menuOpen === "signin" && !sessionExists && (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-56 rounded-3xl border border-white/10 bg-[#080808]/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
-          <div className="border-b border-white/8 px-3 py-2">
-            <p className="text-sm font-semibold text-slate-50">{copy.signIn}</p>
-          </div>
-          <div className="space-y-1 px-1 py-2">
-            {visibleAuthProviders.map((provider) => provider.id === "e2e-credentials" ? (
-              <LocalCredentialsForm key={provider.id} isZh={isZh} />
-            ) : (
-              <button
-                key={provider.id}
-                onClick={() => {
-                  setMenuOpen(null);
-                  signIn(provider.id);
-                }}
-                className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-sm text-slate-100 transition hover:bg-white/10"
-              >
-                <span>
-                  {provider.id === "google"
-                    ? copy.continueWithGoogle
-                    : provider.id === "github"
-                    ? copy.continueWithGitHub
-                    : provider.name}
-                </span>
-                <span className="text-slate-500">↗</span>
-              </button>
-            ))}
-            {visibleAuthProviders.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] text-slate-400">
-                {copy.noProviders}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {menuOpen === "account" && sessionExists && (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-56 rounded-3xl border border-white/10 bg-[#080808]/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
-          <div className="border-b border-white/8 px-3 py-2">
-            <p className="truncate text-sm font-semibold text-slate-50">AIWoven</p>
-            <p className="truncate text-[11px] text-slate-500">{userEmail}</p>
-          </div>
-          <div className="space-y-1 px-1 py-2">
-            <button
-              onClick={() => {
-                setMenuOpen(null);
-                onOpenAccount();
-              }}
-              className="flex w-full items-center rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10"
-            >
-              {copy.account}
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(null);
-                onOpenBilling();
-              }}
-              className="flex w-full items-center rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10"
-            >
-              {copy.billing}
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(null);
-                onOpenSettings();
-              }}
-              className="flex w-full items-center rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10"
-            >
-              {copy.settings}
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(null);
-                onSignOut();
-              }}
-              className="flex w-full items-center rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-100 transition hover:bg-red-500/15"
-            >
-              {copy.signOut}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 /** ===================== Main ===================== */
@@ -1101,13 +909,8 @@ function ChatPageInner() {
     setMode(next);
   }
 
-  // Keep the workspace locked to the existing dark premium shell.
   return (
-    <main className="aiwoven-workspace h-screen w-screen overflow-hidden text-slate-200 bg-[#05070b] font-sans selection:bg-cyan-400/25 selection:text-cyan-50 relative">
-      <PlanPillStyles />
-
-      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none base-grid" />
-
+    <main className="aiwoven-workspace relative h-screen w-screen overflow-hidden bg-[var(--app-canvas)] font-sans text-slate-800">
       <div className="relative z-10 h-full w-full flex">
         <AIWovenAppNav
           isOwner={effectiveSession?.user?.role === "OWNER"}
@@ -1121,7 +924,7 @@ function ChatPageInner() {
         {/* Global overlay shown only while the sidebar is open. */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/60 transition-opacity"
+            className="fixed inset-0 z-40 bg-slate-900/40 transition-opacity"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -1130,7 +933,7 @@ function ChatPageInner() {
         <aside
           className={[
             "fixed z-50 left-0 top-0 h-full w-[280px]",
-            "border-r border-white/5 bg-[#080808]",
+            "border-r border-slate-200 bg-white",
             "transform transition-transform duration-300 ease-out flex flex-col",
             sidebarOpen ? "translate-x-0" : "-translate-x-full",
           ].join(" ")}
@@ -1140,26 +943,26 @@ function ChatPageInner() {
           <div className="px-5 pt-5 pb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative h-6 w-6 flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-sm" />
-                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.8)]" />
+                <div className="absolute inset-0 rounded-full bg-blue-50 blur-sm" />
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse " />
               </div>
               <div className="leading-tight">
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-mono">Terminal</p>
-                <p className="text-sm font-bold text-slate-200">{isZh ? "AI 工作台" : "Workspace"}</p>
+                <p className="text-[10px] uppercase tracking-[.06em] text-slate-500">Terminal</p>
+                <p className="text-sm font-bold text-slate-800">{isZh ? "AI 工作台" : "Workspace"}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={handleNewChat}
-                className="h-7 w-7 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors flex items-center justify-center text-slate-300 shadow-sm"
+                className="h-7 w-7 rounded-full bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 transition-colors flex items-center justify-center text-slate-600 shadow-sm"
                 title={isZh ? "新对话" : "New Chat"}
               >
                 +
               </button>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="h-7 w-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white/10 transition-colors"
+                className="h-7 w-7 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors"
                 title={isZh ? "关闭侧边栏" : "Close sidebar"}
               >
                 ×
@@ -1168,20 +971,20 @@ function ChatPageInner() {
           </div>
 
           <div className="px-5 pb-2">
-            <div className="h-px w-full bg-gradient-to-r from-white/10 to-transparent" />
+            <div className="h-px w-full bg-gradient-to-r from-slate-50 to-transparent" />
           </div>
 
           {/* Sidebar Content */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3 space-y-0.5 custom-scrollbar">
             {!sessionExists && (
-              <div className="px-3 py-4 text-xs text-slate-500 bg-white/[0.02] rounded-xl border border-white/5">
+              <div className="px-3 py-4 text-xs text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
                 {isZh ? "未登录：不会保存历史会话。" : "Not signed in: sessions are not saved."}
               </div>
             )}
 
             {sessionExists && sessionsLoading && (
               <div className="px-3 py-4 text-xs text-slate-500 font-mono flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-ping" />
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-ping" />
                 {isZh ? "加载缓存中..." : "Loading cache..."}
               </div>
             )}
@@ -1216,11 +1019,11 @@ function ChatPageInner() {
           </div>
 
           {/* Sidebar Footer (Settings & User) */}
-          <div className="p-4 mt-auto border-t border-white/5 bg-[#050505]">
+          <div className="p-4 mt-auto border-t border-slate-200 bg-white">
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setSettingsOpen(true)}
-                className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-800 transition-colors"
               >
                 {isZh ? "设置" : "Settings"}
               </button>
@@ -1228,15 +1031,15 @@ function ChatPageInner() {
               {sessionExists ? (
                 <button
                   onClick={() => signOut()}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-colors hover:bg-white/10"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 transition-colors hover:bg-slate-100"
                   title={effectiveSession?.user?.email || ""}
                 >
-                  <span className="text-[11px] font-semibold text-slate-200">{String(userInitial).toUpperCase()}</span>
+                  <span className="text-[11px] font-semibold text-slate-800">{String(userInitial).toUpperCase()}</span>
                 </button>
               ) : (
                 <button
                   onClick={() => signIn()}
-                  className="px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs font-medium"
+                  className="px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors text-xs font-medium"
                 >
                   {isZh ? "登录" : "Sign in"}
                 </button>
@@ -1246,12 +1049,13 @@ function ChatPageInner() {
         </aside>
 
         {/* Main Content */}
-        <div data-testid="chat-main-content" className="flex-1 flex flex-col relative min-w-0 bg-[#030303]">
+        <div data-testid="chat-main-content" className="flex-1 flex flex-col relative min-w-0 bg-white">
           {/* Header */}
-          <header className="h-16 border-b border-white/5 px-2.5 md:px-6 flex items-center justify-between gap-2 md:gap-4 bg-[#080808]/80 backdrop-blur-md z-20 shrink-0">
-            {/* Left */}
-            <div className="flex items-center gap-1.5 sm:gap-3">
-              <button onClick={() => setWorkspaceNavOpen(true)} className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-slate-300 lg:hidden" aria-label="Open workspace navigation">⌘</button>
+          <header className="z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white/95 px-3 backdrop-blur md:gap-4 md:px-6">
+            <div className="flex min-w-0 items-center gap-2">
+              <button onClick={() => setWorkspaceNavOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 lg:hidden" aria-label="Open workspace navigation">
+                <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4"><path d="M3.5 6h13M3.5 10h13M3.5 14h13" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+              </button>
               <button
                 onClick={() => {
                   if (mode === "study") {
@@ -1260,18 +1064,18 @@ function ChatPageInner() {
                   }
                   setSidebarOpen(true);
                 }}
-                className="h-8 w-8 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center text-slate-300 hover:bg-white/10 transition-colors"
-                title={mode === "study" ? "Open Study History" : isZh ? "打开侧边栏" : "Open sidebar"}
+                className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+                title={mode === "study" ? "Open Study History" : isZh ? "对话记录" : "Conversation history"}
+                aria-label={mode === "study" ? "Open Study History" : isZh ? "对话记录" : "Conversation history"}
               >
-                ☰
+                <svg viewBox="0 0 24 24" aria-hidden className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 8V4m0 0h4M4.7 4.3A8.5 8.5 0 1 1 3.8 15"/><path d="M12 7.5V12l3 2"/></svg>
               </button>
-
-              <p className="ml-1 hidden max-w-44 truncate font-mono text-[10px] font-medium uppercase tracking-[.16em] text-slate-500 sm:block">{modeTitle(mode, isZh)}</p>
+              <WorkspaceBreadcrumb title={workspaceModeTitle(mode, isZh)} isZh={isZh} />
             </div>
 
-            {/* Center (Billing) */}
-            <div className="hidden md:flex items-center justify-center flex-1">
-              <div className="bg-[#050505] rounded-full p-0.5 border border-white/5 shadow-inner">
+            <div className="flex items-center gap-1.5 md:gap-3">
+              <ModeDropdown value={mode} onChange={setModeSafely} lang={lang} disabled={isLoading} />
+              <div className="hidden md:block">
                 <PlanPillButton
                   isZh={isZh}
                   plan={ent?.plan ?? "basic"}
@@ -1282,11 +1086,7 @@ function ChatPageInner() {
                   }}
                 />
               </div>
-            </div>
-
-            {/* Right */}
-            <div className="flex items-center gap-1.5 md:mr-2 md:gap-3">
-              <ModeDropdown value={mode} onChange={setModeSafely} lang={lang} disabled={isLoading} />
+              <span className="hidden h-6 w-px bg-slate-200 md:block" aria-hidden />
               <HeaderAuthMenu
                 isZh={isZh}
                 sessionExists={sessionExists}
@@ -1300,91 +1100,36 @@ function ChatPageInner() {
                   setPlanOpen(true);
                 }}
                 onOpenSettings={() => setSettingsOpen(true)}
+                isOwner={effectiveSession?.user?.role === "OWNER"}
                 onSignOut={() => signOut()}
               />
-              <div className="hidden">
-              {sessionExists ? (
-                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 shadow-[0_10px_30px_rgba(2,6,23,0.2)] backdrop-blur-xl">
-                  <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400/90 via-blue-500/85 to-emerald-400/70 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_6px_20px_rgba(2,6,23,0.22)]"
-                    title={effectiveSession?.user?.email || ""}
-                  >
-                    {String(userInitial).toUpperCase()}
-                  </div>
-                  <div className="hidden min-w-0 sm:flex flex-col text-[11px] leading-tight">
-                    <span className="max-w-[132px] truncate text-slate-100">
-                      {effectiveSession?.user?.name || effectiveSession?.user?.email || "User"}
-                    </span>
-                    <button
-                      onClick={() => signOut()}
-                      className="text-left text-xs text-slate-400 transition hover:text-slate-200 hover:underline underline-offset-2"
-                    >
-                      {isZh ? "退出登录" : "Sign out"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  {visibleAuthProviders.map((provider) => (
-                    <button
-                      key={provider.id}
-                      onClick={() => signIn(provider.id)}
-                      className={[
-                        "rounded-full px-3 py-1.5 text-xs font-medium transition-all",
-                        provider.id === "google"
-                          ? "bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 text-white shadow-md shadow-blue-500/40 hover:brightness-110"
-                          : "border border-white/10 bg-white/5 text-slate-100 hover:bg-white/10",
-                      ].join(" ")}
-                    >
-                      {provider.id === "google"
-                        ? isZh
-                          ? "Google 登录"
-                          : "Google"
-                        : provider.id === "github"
-                        ? isZh
-                          ? "GitHub 登录"
-                          : "GitHub"
-                        : provider.name}
-                    </button>
-                  ))}
-                  {visibleAuthProviders.length === 0 && (
-                    <button
-                      onClick={() => signIn()}
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-100 transition-all hover:bg-white/10"
-                    >
-                      {isZh ? "登录" : "Sign in"}
-                    </button>
-                  )}
-                </div>
-              )}
-              </div>
             </div>
           </header>
 
           {redeemSuccess && (
             <div className="px-4 pt-4 md:px-8">
-              <div className="rounded-[28px] border border-white/10 bg-gradient-to-r from-white/[0.04] via-blue-500/[0.08] to-emerald-400/[0.08] px-4 py-4 shadow-[0_18px_70px_rgba(2,6,23,0.35)] backdrop-blur-xl">
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-blue-50 to-emerald-50 px-4 py-4 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)] backdrop-blur-xl">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-300/20 bg-white/10 shadow-[0_0_24px_rgba(16,185,129,0.2)]">
-                      <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-r from-blue-300 via-white to-emerald-300 shadow-[0_0_16px_rgba(96,165,250,0.7)]" />
+                    <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-slate-100 ">
+                      <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-r from-blue-300 via-white to-emerald-300 " />
                     </div>
                     <div>
                       <p className="bg-gradient-to-r from-blue-200 via-white to-emerald-200 bg-clip-text text-lg font-semibold tracking-tight text-transparent">
                         {isZh ? "恭喜，礼包已生效" : "Congratulations, your gift is live"}
                       </p>
-                      <p className="mt-1 text-sm text-slate-200">
+                      <p className="mt-1 text-sm text-slate-800">
                         {formatGiftPlan(redeemSuccess.plan, isZh)} {isZh ? "已解锁，有效期至" : "unlocked, active until"}{" "}
-                        <span className="font-semibold text-white">{formatGiftGrantEndAt(redeemSuccess.grantEndAt, isZh)}</span>
+                        <span className="font-semibold text-slate-900">{formatGiftGrantEndAt(redeemSuccess.grantEndAt, isZh)}</span>
                       </p>
-                      <p className="mt-1 text-[12px] text-slate-400">
+                      <p className="mt-1 text-[12px] text-slate-500">
                         {isZh ? "现在可以使用已解锁的高级功能。" : "Your upgraded features are ready to use now."}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setRedeemSuccess(null)}
-                    className="h-10 rounded-2xl border border-white/10 bg-white/5 px-4 text-[12px] font-semibold text-slate-100 transition hover:bg-white/10"
+                    className="h-10 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-[12px] font-semibold text-slate-900 transition hover:bg-slate-100"
                   >
                     {isZh ? "知道了" : "Dismiss"}
                   </button>
@@ -1403,13 +1148,21 @@ function ChatPageInner() {
 
           {/* Body */}
           {mode === "detector" ? (
-            <DetectorUI isLoadingGlobal={isLoading} isZh={isZh} locked={detectorLocked} canSeeSuspicious={!!ent?.canSeeSuspiciousSentences} />
+            <div className="custom-scrollbar flex-1 overflow-y-auto px-4 py-6 md:px-8">
+              <DetectorUI isLoadingGlobal={isLoading} isZh={isZh} locked={detectorLocked} canSeeSuspicious={!!ent?.canSeeSuspiciousSentences} />
+            </div>
           ) : mode === "humanizer" ? (
-            <HumanizerUI isZh={isZh} locked={humanizerLocked} entitlement={ent} onUsageRefresh={refreshEnt} />
+            <div className="custom-scrollbar flex-1 overflow-y-auto px-4 py-6 md:px-8">
+              <HumanizerUI isZh={isZh} locked={humanizerLocked} entitlement={ent} onUsageRefresh={refreshEnt} />
+            </div>
           ) : mode === "converter" ? (
-            <ConverterUI isZh={isZh} locked={converterLocked} entitlement={ent} />
+            <div className="custom-scrollbar flex-1 overflow-y-auto px-4 py-6 md:px-8">
+              <ConverterUI isZh={isZh} locked={converterLocked} entitlement={ent} />
+            </div>
           ) : mode === "note" ? (
-            <NoteUI isLoadingGlobal={isLoading} isZh={isZh} locked={noteLocked} entitlement={ent} onUsageRefresh={refreshEnt} />
+            <div className="custom-scrollbar flex-1 overflow-y-auto px-4 py-6 md:px-8">
+              <NoteUI isLoadingGlobal={isLoading} isZh={isZh} locked={noteLocked} entitlement={ent} onUsageRefresh={refreshEnt} />
+            </div>
           ) : mode === "study" ? (
             <StudyUI isZh={isZh} locked={studyLocked} entitlement={ent} onUsageRefresh={refreshEnt} />
           ) : (
@@ -1417,9 +1170,53 @@ function ChatPageInner() {
               {/* Chat Message Area */}
               <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6 custom-scrollbar scroll-smooth">
                 {messages.length === 0 && !isLoading && (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-60">
-                    <NexusOrb sizeClass="h-8 w-8" className="mb-4" />
-                    <p className="text-sm font-medium">{isZh ? "系统已就绪，等待输入" : "System ready. Awaiting input."}</p>
+                  <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center py-8 text-center">
+                    <NexusOrb sizeClass="h-10 w-10" className="mb-5" />
+                    <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+                      {mode === "workflow"
+                        ? isZh ? "规划、撰写、审阅，一步到位" : "Plan, draft, and review in one run"
+                        : isZh ? "今天想完成什么？" : "What can I help you with today?"}
+                    </h2>
+                    <p className="mt-2 max-w-lg text-sm leading-6 text-slate-500">
+                      {mode === "workflow"
+                        ? isZh ? "工作流模式会依次调用规划、撰写和审阅代理，给出更完整的结果。" : "Workflow mode routes your request through a planner, writer, and reviewer for more complete answers."
+                        : isZh ? "提问、起草、总结或学习——AIWoven 助手会在同一个工作区中帮你完成。" : "Ask questions, draft, summarize, or study — AIWoven Assistant works alongside your other tools."}
+                    </p>
+                    <div className="mt-8 grid w-full gap-3 text-left sm:grid-cols-2">
+                      {(isZh
+                        ? [
+                            { title: "总结讲座内容", body: "把一段讲座笔记整理成要点和关键术语", prompt: "请把以下讲座内容总结成要点，并列出关键术语：\n\n" },
+                            { title: "通俗解释概念", body: "用简单的例子解释一个复杂的概念", prompt: "请用简单的例子向大学新生解释这个概念：" },
+                            { title: "检测 AI 写作", body: "打开 AI 检测器检查你的文稿", href: "/ai-detector" },
+                            { title: "从文档生成闪卡", body: "上传 PDF、DOCX 或 PPTX 开始学习", href: "/ai-study" },
+                          ]
+                        : [
+                            { title: "Summarize a lecture", body: "Turn lecture notes into key points and terms", prompt: "Summarize the following lecture into key points and list the important terms:\n\n" },
+                            { title: "Explain a concept simply", body: "Get a clear explanation with an everyday example", prompt: "Explain this concept to a first-year student using a simple example: " },
+                            { title: "Check writing for AI", body: "Open the AI Detector to review a draft", href: "/ai-detector" },
+                            { title: "Make flashcards from a file", body: "Upload a PDF, DOCX, or PPTX in AI Study", href: "/ai-study" },
+                          ]
+                      ).map((item) => (
+                        <button
+                          key={item.title}
+                          type="button"
+                          onClick={() => {
+                            if ("href" in item && item.href) {
+                              router.push(item.href);
+                              return;
+                            }
+                            if ("prompt" in item && item.prompt) setInput(item.prompt);
+                          }}
+                          className="group rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md"
+                        >
+                          <span className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                            {item.title}
+                            <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-600"><path d="M4 10h11m-4-4 4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </span>
+                          <span className="mt-1 block text-[13px] leading-5 text-slate-500">{item.body}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -1441,16 +1238,16 @@ function ChatPageInner() {
                         className={[
                           "px-4 py-3 rounded-2xl text-[14px] leading-relaxed max-w-[85%] md:max-w-[75%] whitespace-pre-wrap transition-all",
                           m.stage === "user"
-                            ? "bg-blue-600/15 text-blue-50 border border-blue-500/20 rounded-br-sm shadow-[0_0_15px_rgba(59,130,246,0.05)]"
+                            ? "bg-blue-600 text-white rounded-br-md"
                             : copiedMessageId === m.id
-                            ? "bg-[#0f0f0f] text-slate-200 border border-emerald-400/30 rounded-bl-sm shadow-[0_0_0_1px_rgba(52,211,153,0.18)]"
-                            : "bg-[#0f0f0f] text-slate-200 border border-white/5 rounded-bl-sm shadow-sm",
+                            ? "bg-white text-slate-800 border border-emerald-200 rounded-bl-sm shadow-[0_0_0_1px_rgba(52,211,153,0.18)]"
+                            : "bg-white text-slate-800 border border-slate-200 rounded-bl-sm shadow-sm",
                         ].join(" ")}
                       >
                         {m.stage === "assistant" ? <AiFormattedText text={m.content} className="text-[14px] leading-relaxed" /> : m.content}
                         {m.stage === "assistant" ? (
                           <div className="mt-3 flex items-center justify-end pt-1">
-                            <CopyButton text={m.content} onCopied={() => setCopiedMessageId(m.id)} className="bg-slate-950/80 hover:bg-slate-900" />
+                            <CopyButton text={m.content} onCopied={() => setCopiedMessageId(m.id)} className="bg-white hover:bg-white" />
                           </div>
                         ) : null}
                       </div>
@@ -1459,9 +1256,13 @@ function ChatPageInner() {
                 )}
 
                 {isLoading && (
-                  <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-mono tracking-widest uppercase mt-4 opacity-80 pl-2">
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                    {isZh ? "数据处理中..." : "Processing..."}
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 shadow-sm" role="status">
+                    <span className="flex gap-1" aria-hidden>
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" />
+                    </span>
+                    <span className="text-[13px] text-slate-500">{isZh ? "正在思考…" : "Thinking…"}</span>
                   </div>
                 )}
 
@@ -1469,16 +1270,16 @@ function ChatPageInner() {
               </div>
 
               {/* Input Area (Console Style) */}
-              <div className="p-4 md:px-8 md:pb-6 pt-2 bg-gradient-to-t from-[#030303] via-[#030303] to-transparent shrink-0">
+              <div className="shrink-0 bg-gradient-to-t from-[var(--app-canvas)] via-[var(--app-canvas)] to-transparent p-4 pt-2 md:px-8 md:pb-6">
                 <div
                   id="chat-composer"
                   data-testid="chat-composer"
                   className={`mx-auto flex w-full flex-col gap-2 transition-[max-width] duration-200 ease-out motion-reduce:transition-none ${workspaceNavCollapsed ? "max-w-6xl" : "max-w-5xl"}`}
                 >
-                  <div className="relative flex items-end bg-[#0a0a0a] rounded-3xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all focus-within:border-blue-500/40 focus-within:shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+                  <div className="relative flex items-end rounded-2xl border border-slate-300 bg-white shadow-sm transition-all focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10">
                     <textarea
-                      className="flex-1 max-h-40 min-h-[52px] w-full bg-transparent text-slate-100 placeholder:text-slate-600 px-5 py-4 text-sm resize-none focus:outline-none focus:ring-0 custom-scrollbar"
-                      placeholder={isZh ? "输入指令，Enter 执行，Shift+Enter 换行" : "Enter command, press Enter to execute"}
+                      className="custom-scrollbar max-h-40 min-h-[56px] w-full flex-1 resize-none bg-transparent px-4 py-4 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                      placeholder={isZh ? "给 AIWoven 助手发送消息…" : "Message AIWoven Assistant…"}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -1496,7 +1297,7 @@ function ChatPageInner() {
                       <button
                         onClick={handleSend}
                         disabled={isLoading || !input.trim()}
-                        className="h-10 w-10 md:w-auto md:px-5 rounded-2xl bg-white text-black text-sm font-bold flex items-center justify-center gap-2 disabled:bg-white/10 disabled:text-slate-500 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95"
+                        className="flex h-10 w-10 items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none md:w-auto md:px-4"
                       >
                         <span className="hidden md:inline">{isZh ? "发送" : "Send"}</span>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1506,19 +1307,22 @@ function ChatPageInner() {
                     </div>
                   </div>
 
+                  <div className="flex items-center justify-between gap-3 px-2 text-[12px] text-slate-400">
+                    <span className="hidden sm:inline">{isZh ? "Enter 发送 · Shift + Enter 换行 · AI 可能出错，请核实重要信息。" : "Enter to send · Shift + Enter for a new line · AI can make mistakes; verify important information."}</span>
                   {sessionExists && ent && !ent.unlimited && ent.plan === "basic" && (
-                    <div className="px-4 flex items-center justify-between text-[10px] text-slate-500 font-mono uppercase tracking-wide">
+                    <div className="flex shrink-0 items-center gap-3 text-[12px] text-slate-500">
                       <span>
-                        {isZh ? "今日聊天额度:" : "Daily limit:"}{" "}
-                        <span className="text-slate-300">
+                        {isZh ? "今日额度" : "Today"}{" "}
+                        <span className="font-medium tabular-nums text-slate-700">
                           {ent.usedChatCountToday}/{ent.chatPerDay}
                         </span>
                       </span>
-                      <button onClick={() => setPlanOpen(true)} className="text-blue-400 hover:text-blue-300 hover:underline underline-offset-2">
-                        {isZh ? "升级权限" : "Upgrade Access"}
+                      <button onClick={() => setPlanOpen(true)} className="font-medium text-blue-600 underline-offset-2 hover:text-blue-700 hover:underline">
+                        {isZh ? "升级" : "Upgrade"}
                       </button>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
             </>
@@ -1526,14 +1330,14 @@ function ChatPageInner() {
         </div>
       </div>
 
-      {workspaceNavOpen ? <div className="fixed inset-0 z-[80] lg:hidden"><button type="button" className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setWorkspaceNavOpen(false)} aria-label="Close workspace navigation"/><div className="absolute inset-y-0 left-0"><AIWovenAppNav mobile isOwner={effectiveSession?.user?.role === "OWNER"} onClose={() => setWorkspaceNavOpen(false)} onBilling={() => { void refreshEnt(); setPlanOpen(true); }} onSettings={() => setSettingsOpen(true)} /></div></div> : null}
+      {workspaceNavOpen ? <div className="fixed inset-0 z-[80] lg:hidden"><button type="button" className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setWorkspaceNavOpen(false)} aria-label="Close workspace navigation"/><div className="absolute inset-y-0 left-0"><AIWovenAppNav mobile isOwner={effectiveSession?.user?.role === "OWNER"} onClose={() => setWorkspaceNavOpen(false)} onBilling={() => { void refreshEnt(); setPlanOpen(true); }} onSettings={() => setSettingsOpen(true)} /></div></div> : null}
 
       {/* Modals */}
       {signInPromptMode ? (
         <WorkspaceSignInPrompt
           modal
           isZh={isZh}
-          toolName={modeTitle(signInPromptMode, isZh).replace(/^\S+\s*/, "")}
+          toolName={workspaceModeTitle(signInPromptMode, isZh)}
           callbackUrl={routeForMode(signInPromptMode)}
           providers={visibleAuthProviders}
           onClose={() => setSignInPromptMode(null)}
@@ -1614,7 +1418,7 @@ function ChatPageInner() {
 
       <style jsx global>{`
         .base-grid {
-          background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+          background-image: radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px);
           background-size: 24px 24px;
         }
 
@@ -1626,15 +1430,15 @@ function ChatPageInner() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(100, 116, 139, 0.28);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
+          background: rgba(100, 116, 139, 0.45);
         }
         .custom-scrollbar {
           scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+          scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
         }
 
         textarea {
@@ -1649,7 +1453,7 @@ export default function ChatPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-screen w-screen bg-[#030303] flex items-center justify-center text-slate-500 font-mono text-sm">
+        <div className="h-screen w-screen bg-white flex items-center justify-center text-slate-500 font-mono text-sm">
           <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse mr-3" />
           INITIALIZING...
         </div>

@@ -53,15 +53,15 @@ export function SettingsModal({
 
   return (
     <div className="fixed inset-0 z-[240] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="relative w-[94vw] max-w-[520px] overflow-hidden rounded-3xl border border-white/10 bg-slate-950/85 shadow-2xl shadow-black/50 backdrop-blur-xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative w-[94vw] max-w-[520px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 backdrop-blur-xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
-            <div className="text-sm font-semibold text-slate-50">{copy.title}</div>
-            <div className="mt-1 text-[11px] text-slate-400">{copy.subtitle}</div>
+            <div className="text-sm font-semibold text-slate-900">{copy.title}</div>
+            <div className="mt-1 text-[11px] text-slate-500">{copy.subtitle}</div>
           </div>
           <button
-            className="h-9 w-9 rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10"
+            className="h-9 w-9 rounded-full border border-slate-200 bg-slate-50 text-slate-800 transition hover:bg-slate-100"
             onClick={onClose}
             aria-label={copy.done}
           >
@@ -70,14 +70,14 @@ export function SettingsModal({
         </div>
 
         <div className="space-y-4 p-5">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-[12px] font-semibold text-slate-50">{copy.language}</div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div className="text-[12px] font-semibold text-slate-900">{copy.language}</div>
             <div className="mt-3 flex gap-2">
               <button
                 onClick={() => setLang("en")}
                 className={[
-                  "flex-1 h-10 rounded-2xl border border-white/10 transition text-[12px]",
-                  lang === "en" ? "bg-white/10 text-slate-50" : "bg-transparent hover:bg-white/5 text-slate-300",
+                  "flex-1 h-10 rounded-2xl border border-slate-200 transition text-[12px]",
+                  lang === "en" ? "bg-slate-100 text-slate-900" : "bg-transparent hover:bg-slate-50 text-slate-600",
                 ].join(" ")}
               >
                 {copy.english}
@@ -85,8 +85,8 @@ export function SettingsModal({
               <button
                 onClick={() => setLang("zh")}
                 className={[
-                  "flex-1 h-10 rounded-2xl border border-white/10 transition text-[12px]",
-                  lang === "zh" ? "bg-white/10 text-slate-50" : "bg-transparent hover:bg-white/5 text-slate-300",
+                  "flex-1 h-10 rounded-2xl border border-slate-200 transition text-[12px]",
+                  lang === "zh" ? "bg-slate-100 text-slate-900" : "bg-transparent hover:bg-slate-50 text-slate-600",
                 ].join(" ")}
               >
                 {copy.chinese}
@@ -94,14 +94,14 @@ export function SettingsModal({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-[12px] font-semibold text-slate-50">{copy.theme}</div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div className="text-[12px] font-semibold text-slate-900">{copy.theme}</div>
             <div className="mt-3 flex gap-2">
               <button
                 onClick={() => setTheme("dark")}
                 className={[
-                  "flex-1 h-10 rounded-2xl border border-white/10 transition text-[12px]",
-                  theme === "dark" ? "bg-white/10 text-slate-50" : "bg-transparent hover:bg-white/5 text-slate-300",
+                  "flex-1 h-10 rounded-2xl border border-slate-200 transition text-[12px]",
+                  theme === "dark" ? "bg-slate-100 text-slate-900" : "bg-transparent hover:bg-slate-50 text-slate-600",
                 ].join(" ")}
               >
                 {copy.dark}
@@ -109,8 +109,8 @@ export function SettingsModal({
               <button
                 onClick={() => setTheme("light")}
                 className={[
-                  "flex-1 h-10 rounded-2xl border border-white/10 transition text-[12px]",
-                  theme === "light" ? "bg-white/10 text-slate-50" : "bg-transparent hover:bg-white/5 text-slate-300",
+                  "flex-1 h-10 rounded-2xl border border-slate-200 transition text-[12px]",
+                  theme === "light" ? "bg-slate-100 text-slate-900" : "bg-transparent hover:bg-slate-50 text-slate-600",
                 ].join(" ")}
               >
                 {copy.light}
@@ -118,21 +118,21 @@ export function SettingsModal({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-[12px] font-semibold text-slate-50">{copy.privacy}</div>
-            <p className="mt-2 text-[11px] leading-5 text-slate-400">{copy.privacyDesc}</p>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div className="text-[12px] font-semibold text-slate-900">{copy.privacy}</div>
+            <p className="mt-2 text-[11px] leading-5 text-slate-500">{copy.privacyDesc}</p>
             <a
               href="/privacy"
-              className="mt-3 inline-flex h-10 items-center rounded-full border border-white/10 bg-white/5 px-4 text-[12px] text-slate-100 transition hover:bg-white/10"
+              className="mt-3 inline-flex h-10 items-center rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] text-slate-900 transition hover:bg-slate-100"
             >
               {copy.privacyPolicy}
             </a>
           </div>
         </div>
 
-        <div className="flex justify-end border-t border-white/10 px-5 py-4">
+        <div className="flex justify-end border-t border-slate-200 px-5 py-4">
           <button
-            className="h-10 rounded-full border border-white/10 bg-white/5 px-4 text-[12px] text-slate-100 transition hover:bg-white/10"
+            className="h-10 rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] text-slate-900 transition hover:bg-slate-100"
             onClick={onClose}
           >
             {copy.done}

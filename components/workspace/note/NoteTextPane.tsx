@@ -28,10 +28,10 @@ export function NoteTextPane({
           onChangeText(event.target.value);
         }}
         placeholder={isZh ? "Paste transcript, lecture notes, or meeting text..." : "Paste transcript, lecture notes, or meeting text..."}
-        className="h-56 w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-4 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+        className="h-56 w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
         disabled={loading || isLoadingGlobal || locked}
       />
-      <div className="flex items-center justify-between gap-3 text-[11px] text-slate-400">
+      <div className="flex items-center justify-between gap-3 text-[11px] text-slate-500">
         <span>{text.trim().length.toLocaleString()} chars</span>
         <button
           type="button"
@@ -40,7 +40,7 @@ export function NoteTextPane({
             onChangeText("");
           }}
           disabled={!text || loading || isLoadingGlobal || locked}
-          className="rounded-full border border-white/10 px-3 py-1.5 text-slate-300 transition hover:bg-white/5 disabled:opacity-40"
+          className="rounded-full border border-slate-200 px-3 py-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
         >
           Clear
         </button>

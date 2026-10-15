@@ -21,7 +21,7 @@ export default function ChatLayout({ children }: { children: ReactNode }) {
         }}
       />
       <style>{`
-        html[data-aiwoven-chat-nav="collapsed"] .chat-workspace-nav { width: 80px !important; }
+        html[data-aiwoven-chat-nav="collapsed"] .chat-workspace-nav { width: 72px !important; }
         html[data-aiwoven-chat-nav="collapsed"] .chat-workspace-nav .chat-nav-brand-full { display: none !important; }
         html[data-aiwoven-chat-nav="collapsed"] .chat-workspace-nav .chat-nav-brand-compact { display: block !important; }
         html[data-aiwoven-chat-nav="collapsed"] .chat-workspace-nav .chat-nav-copy {

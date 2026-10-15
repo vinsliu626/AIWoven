@@ -22,28 +22,28 @@ function HistoryItem({ item, highlighted, canRetry, deleting, onRetry, onDelete 
     data-testid="study-history-item"
     data-status={item.status.toLowerCase()}
     data-new={highlighted ? "true" : "false"}
-    className={`study-history-item border-y border-white/[0.08] px-1 py-4 ${highlighted ? "study-history-complete-pulse" : ""}`}
+    className={`study-history-item border-y border-slate-200 px-1 py-4 ${highlighted ? "study-history-complete-pulse" : ""}`}
   >
     <div className="flex items-start justify-between gap-4">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-sm font-medium text-slate-100">{item.title}</p>
-          <span className={`text-[10px] font-semibold uppercase tracking-[.16em] ${completed ? "text-emerald-300" : processing ? "text-cyan-300" : "text-red-300"}`}>
+          <p className="truncate text-sm font-medium text-slate-900">{item.title}</p>
+          <span className={`text-[10px] font-semibold uppercase tracking-[.06em] ${completed ? "text-emerald-700" : processing ? "text-blue-700" : "text-red-700"}`}>
             {item.status.toLocaleLowerCase()}
           </span>
         </div>
         <p className="mt-1 truncate text-xs text-slate-500">{item.fileName || "Source document unavailable"}</p>
-        <p className="mt-2 text-[11px] text-slate-600">
+        <p className="mt-2 text-[11px] text-slate-400">
           {output === "flashcards" ? "Flashcards" : output === "quiz" ? "Quiz" : "Notes"} · {formatCreatedAt(item.createdAt)}
           {completed && item.itemCount > 0 ? ` · ${item.itemCount} ${item.itemCount === 1 ? "item" : "items"}` : ""}
         </p>
-        {processing ? <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/[0.06]"><span className="study-processing-bar block h-full w-1/3 rounded-full bg-cyan-300/70"/></div> : null}
-        {item.status === "FAILED" ? <p role="status" className="mt-2 text-xs text-red-200">{item.errorSummary || "Generation could not be completed."}</p> : null}
+        {processing ? <div className="mt-3 h-1 overflow-hidden rounded-full bg-slate-50"><span className="study-processing-bar block h-full w-1/3 rounded-full bg-blue-500"/></div> : null}
+        {item.status === "FAILED" ? <p role="status" className="mt-2 text-xs text-red-700">{item.errorSummary || "Generation could not be completed."}</p> : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {completed ? <Link href={`/study/session/${item.id}`} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-slate-100 hover:bg-white/[0.08]">Open</Link> : null}
-        {item.status === "FAILED" && canRetry ? <button type="button" onClick={onRetry} className="rounded-lg border border-red-300/20 px-3 py-2 text-xs text-red-100 hover:bg-red-300/[0.06]">Retry</button> : null}
-        <button data-testid="study-history-delete" type="button" onClick={onDelete} disabled={deleting} aria-label={`Delete ${item.title} from Study History`} title="Delete from Study History" className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-white/[0.08] px-2.5 py-2 text-xs text-slate-500 hover:border-red-300/20 hover:text-red-200 disabled:cursor-wait disabled:opacity-50">
+        {completed ? <Link href={`/study/session/${item.id}`} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-900 hover:bg-slate-100">Open</Link> : null}
+        {item.status === "FAILED" && canRetry ? <button type="button" onClick={onRetry} className="rounded-lg border border-red-200 px-3 py-2 text-xs text-red-700 hover:bg-red-50">Retry</button> : null}
+        <button data-testid="study-history-delete" type="button" onClick={onDelete} disabled={deleting} aria-label={`Delete ${item.title} from Study History`} title="Delete from Study History" className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-500 hover:border-red-200 hover:text-red-700 disabled:cursor-wait disabled:opacity-50">
           {deleting ? <span>Deleting…</span> : <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
         </button>
       </div>
@@ -66,10 +66,10 @@ export function StudyUI({
 
   return <section className="h-full overflow-y-auto px-4 py-7 md:px-8 lg:px-10 custom-scrollbar">
     <div className="mx-auto max-w-6xl">
-      <header className="border-b border-white/[0.08] pb-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[.24em] text-cyan-300">AI Workspace</p>
-        <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">AI Study</h1>
-        <p className="mt-2 max-w-xl text-sm text-slate-400">Upload a document, choose one result, and continue from Study History.</p>
+      <header className="border-b border-slate-200 pb-6">
+        <p className="text-[10px] font-semibold uppercase tracking-[.06em] text-blue-700">AI Workspace</p>
+        <h1 className="mt-2 text-2xl font-semibold text-slate-900 md:text-3xl">AI Study</h1>
+        <p className="mt-2 max-w-xl text-sm text-slate-500">Upload a document, choose one result, and continue from Study History.</p>
       </header>
 
       <div className="grid gap-10 py-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,.9fr)] lg:gap-14">
@@ -79,41 +79,41 @@ export function StudyUI({
             onDragOver={(event) => { event.preventDefault(); ctl.setDragActive(true); }}
             onDragLeave={() => ctl.setDragActive(false)}
             onDrop={(event) => { event.preventDefault(); ctl.setDragActive(false); void ctl.handleFileSelection(event.dataTransfer.files?.[0] ?? null); }}
-            className={`border-y border-dashed px-5 py-12 text-center transition-colors ${ctl.dragActive ? "border-cyan-300/60 bg-cyan-300/[0.04]" : "border-white/10 bg-white/[0.015]"}`}
+            className={`border-y border-dashed px-5 py-12 text-center transition-colors ${ctl.dragActive ? "border-blue-400 bg-blue-50" : "border-slate-200 bg-slate-50"}`}
           >
-            <svg aria-hidden viewBox="0 0 24 24" className="mx-auto h-8 w-8 text-cyan-300" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 14v5h14v-5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <p className="mt-4 text-base font-medium text-slate-100">Drop a PDF, DOCX, or PPTX here</p>
+            <svg aria-hidden viewBox="0 0 24 24" className="mx-auto h-8 w-8 text-blue-700" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 14v5h14v-5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <p className="mt-4 text-base font-medium text-slate-900">Drop a PDF, DOCX, or PPTX here</p>
             <p className="mt-1 text-xs text-slate-500">Document text is extracted before generation.</p>
-            <label className="mt-5 inline-flex cursor-pointer rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-slate-100">
+            <label className="mt-5 inline-flex cursor-pointer rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white">
               Choose document
               <input type="file" className="sr-only" accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={(event) => void ctl.handleFileSelection(event.target.files?.[0] ?? null)}/>
             </label>
           </div>
 
-          {ctl.file ? <div data-testid="study-selected-file" className="mt-5 flex items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
-            <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-100">{ctl.file.name}</p><p className="mt-1 text-xs text-slate-500">{(ctl.file.size / (1024 * 1024)).toFixed(2)} MB · {ctl.extracting ? "Extracting…" : ctl.extractedText ? "Ready" : "Needs attention"}</p></div>
-            <button type="button" onClick={() => void ctl.handleFileSelection(null)} className="text-xs text-slate-500 hover:text-slate-200">Remove</button>
+          {ctl.file ? <div data-testid="study-selected-file" className="mt-5 flex items-center justify-between gap-4 border-b border-slate-200 pb-5">
+            <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-900">{ctl.file.name}</p><p className="mt-1 text-xs text-slate-500">{(ctl.file.size / (1024 * 1024)).toFixed(2)} MB · {ctl.extracting ? "Extracting…" : ctl.extractedText ? "Ready" : "Needs attention"}</p></div>
+            <button type="button" onClick={() => void ctl.handleFileSelection(null)} className="text-xs text-slate-500 hover:text-slate-800">Remove</button>
           </div> : null}
 
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <div><label htmlFor="study-output-type" className="mb-2 block text-xs font-medium text-slate-300">Output type</label><select data-testid="study-output-type" id="study-output-type" value={ctl.outputType} onChange={(event) => ctl.setOutputType(event.target.value as StudyMode)} className="w-full rounded-xl border border-white/10 bg-[#090d14] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/40"><option value="" disabled hidden></option>{outputTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
-            <div><label htmlFor="study-title" className="mb-2 block text-xs font-medium text-slate-300">Title <span className="text-slate-600">(optional)</span></label><input id="study-title" value={ctl.detectedTitle} onChange={(event) => ctl.setDetectedTitle(event.target.value)} maxLength={160} className="w-full rounded-xl border border-white/10 px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/40"/></div>
+            <div><label htmlFor="study-output-type" className="mb-2 block text-xs font-medium text-slate-600">Output type</label><select data-testid="study-output-type" id="study-output-type" value={ctl.outputType} onChange={(event) => ctl.setOutputType(event.target.value as StudyMode)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-200"><option value="" disabled hidden></option>{outputTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
+            <div><label htmlFor="study-title" className="mb-2 block text-xs font-medium text-slate-600">Title <span className="text-slate-400">(optional)</span></label><input id="study-title" value={ctl.detectedTitle} onChange={(event) => ctl.setDetectedTitle(event.target.value)} maxLength={160} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-200"/></div>
           </div>
 
-          {ctl.status ? <p role="status" className="mt-4 text-sm text-slate-300">{ctl.status}</p> : null}
-          {ctl.localExtractionWarning ? <p className="mt-3 text-xs text-amber-200">{ctl.localExtractionWarning}</p> : null}
-          {ctl.error ? <p role="alert" className="mt-4 border-l-2 border-red-300/50 pl-3 text-sm text-red-200">{ctl.error}</p> : null}
+          {ctl.status ? <p role="status" className="mt-4 text-sm text-slate-600">{ctl.status}</p> : null}
+          {ctl.localExtractionWarning ? <p className="mt-3 text-xs text-amber-700">{ctl.localExtractionWarning}</p> : null}
+          {ctl.error ? <p role="alert" className="mt-4 border-l-2 border-red-400 pl-3 text-sm text-red-700">{ctl.error}</p> : null}
 
-          <button data-testid="study-generate" type="button" onClick={() => void ctl.generate()} disabled={!ctl.canGenerate} className="mt-6 inline-flex min-w-40 items-center justify-center rounded-xl bg-cyan-200 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500">
+          <button data-testid="study-generate" type="button" onClick={() => void ctl.generate()} disabled={!ctl.canGenerate} className="mt-6 inline-flex min-w-40 items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400">
             {ctl.generating ? "Generating…" : ctl.extracting ? "Extracting…" : "Generate"}
           </button>
         </div>
 
         <aside data-testid="study-history" aria-labelledby="study-history-heading" className="min-w-0">
-          <div className="flex items-end justify-between gap-4 border-b border-white/[0.08] pb-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.22em] text-slate-600">Saved results</p><h2 id="study-history-heading" className="mt-1 text-lg font-semibold text-slate-100">Study History</h2></div><span className="text-xs text-slate-600">{ctl.history.length}</span></div>
-          {ctl.historyActionMessage ? <p role={ctl.historyActionMessage.type === "error" ? "alert" : "status"} className={`mt-4 border-l-2 pl-3 text-xs ${ctl.historyActionMessage.type === "error" ? "border-red-300/50 text-red-200" : "border-emerald-300/40 text-emerald-200"}`}>{ctl.historyActionMessage.text}</p> : null}
+          <div className="flex items-end justify-between gap-4 border-b border-slate-200 pb-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.06em] text-slate-400">Saved results</p><h2 id="study-history-heading" className="mt-1 text-lg font-semibold text-slate-900">Study History</h2></div><span className="text-xs text-slate-400">{ctl.history.length}</span></div>
+          {ctl.historyActionMessage ? <p role={ctl.historyActionMessage.type === "error" ? "alert" : "status"} className={`mt-4 border-l-2 pl-3 text-xs ${ctl.historyActionMessage.type === "error" ? "border-red-400 text-red-700" : "border-emerald-200 text-emerald-700"}`}>{ctl.historyActionMessage.text}</p> : null}
           <div className="mt-1">
-            {ctl.historyLoading && ctl.history.length === 0 ? <p className="py-8 text-sm text-slate-500">Loading Study History…</p> : ctl.history.length === 0 ? <div className="py-10"><p className="text-sm font-medium text-slate-300">No study material yet</p><p className="mt-2 max-w-sm text-xs leading-relaxed text-slate-500">Generated Flashcards, Quiz material, and Notes will appear here.</p></div> : ctl.history.map((item) => <HistoryItem key={item.id} item={item} highlighted={ctl.newHistoryId === item.id} canRetry={ctl.canRetry(item)} deleting={ctl.deletingHistoryId === item.id} onRetry={() => void ctl.generate()} onDelete={() => void ctl.deleteHistoryItem(item)}/>) }
+            {ctl.historyLoading && ctl.history.length === 0 ? <p className="py-8 text-sm text-slate-500">Loading Study History…</p> : ctl.history.length === 0 ? <div className="py-10"><p className="text-sm font-medium text-slate-600">No study material yet</p><p className="mt-2 max-w-sm text-xs leading-relaxed text-slate-500">Generated Flashcards, Quiz material, and Notes will appear here.</p></div> : ctl.history.map((item) => <HistoryItem key={item.id} item={item} highlighted={ctl.newHistoryId === item.id} canRetry={ctl.canRetry(item)} deleting={ctl.deletingHistoryId === item.id} onRetry={() => void ctl.generate()} onDelete={() => void ctl.deleteHistoryItem(item)}/>) }
           </div>
         </aside>
       </div>

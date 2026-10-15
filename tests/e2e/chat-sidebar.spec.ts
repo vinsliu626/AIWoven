@@ -66,7 +66,7 @@ test("mobile workspace navigation remains an overlay drawer", async ({ page }) =
   await expect(drawer).toBeHidden();
 
   await openButton.click();
-  await drawer.getByRole("link", { name: "Note", exact: true }).click();
+  await drawer.getByRole("link", { name: "AI Note", exact: true }).click();
   await expect(page).toHaveURL(/\/ai-note/);
   await expect(page.getByTestId("mobile-workspace-nav")).toHaveCount(0);
 });

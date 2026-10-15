@@ -373,39 +373,39 @@ export function WorkspaceShell() {
       className={[
         "h-screen w-screen overflow-hidden",
         theme === "dark"
-          ? "bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100"
+          ? "bg-gradient-to-b from-white via-white to-white text-slate-900"
           : "bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-900",
       ].join(" ")}
     >
       <PlanPillStyles />
-      <div className="h-full w-full border border-white/10 bg-white/5 shadow-[0_18px_60px_rgba(15,23,42,0.8)] backdrop-blur-xl flex">
-        {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/55 backdrop-blur-[1px]" onClick={() => setSidebarOpen(false)} />}
+      <div className="h-full w-full border border-slate-200 bg-slate-50 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)] backdrop-blur-xl flex">
+        {sidebarOpen && <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px]" onClick={() => setSidebarOpen(false)} />}
 
         {/* Sidebar */}
         <aside
           className={[
             "fixed z-50 left-0 top-0 h-full w-[290px] md:w-72",
-            "border-r border-white/10",
-            "bg-gradient-to-b from-slate-950/90 via-slate-900/85 to-slate-950/90",
-            "shadow-2xl shadow-black/40",
+            "border-r border-slate-200",
+            "bg-gradient-to-b from-white via-white to-white",
+            "shadow-2xl shadow-slate-900/10",
             "backdrop-blur-xl",
             "transform transition-transform duration-200 ease-out",
             sidebarOpen ? "translate-x-0" : "-translate-x-full",
           ].join(" ")}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-4 pt-4 pb-3 border-b border-white/5 flex items-center justify-between relative">
+          <div className="px-4 pt-4 pb-3 border-b border-slate-200 flex items-center justify-between relative">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-2xl bg-gradient-to-br from-blue-500 via-cyan-400 to-emerald-400 animate-pulse shadow-lg shadow-blue-500/40" />
+              <div className="h-7 w-7 rounded-2xl bg-gradient-to-br from-blue-600 via-cyan-400 to-indigo-600 animate-pulse shadow-lg shadow-blue-600/20" />
               <div className="leading-tight">
-                <p className="text-xs uppercase tracking-widest text-slate-400">AIWoven</p>
-                <p className="text-sm font-semibold text-slate-50">{isZh ? "AI 工作台" : "AI Workspace"}</p>
+                <p className="text-xs uppercase tracking-[.06em] text-slate-500">AIWoven</p>
+                <p className="text-sm font-semibold text-slate-900">{isZh ? "AI 工作台" : "AI Workspace"}</p>
               </div>
             </div>
 
             <button
               onClick={() => setSettingsOpen(true)}
-              className="absolute right-3 bottom-3 w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition flex items-center justify-center"
+              className="absolute right-3 bottom-3 w-10 h-10 rounded-full bg-slate-50 border border-slate-200 hover:bg-slate-100 transition flex items-center justify-center"
               title={isZh ? "设置" : "Settings"}
             >
               ⚙️
@@ -414,14 +414,14 @@ export function WorkspaceShell() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleNewChat}
-                className="px-2.5 py-1.5 rounded-full text-xs font-medium bg-slate-900/80 text-slate-100 border border-white/10 hover:border-blue-500/60 hover:bg-slate-900 shadow-sm transition-all duration-150"
+                className="px-2.5 py-1.5 rounded-full text-xs font-medium bg-white text-slate-900 border border-slate-200 hover:border-blue-400 hover:bg-white shadow-sm transition-all duration-150"
               >
                 {isZh ? "+ 新对话" : "+ New"}
               </button>
 
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="h-8 w-8 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition flex items-center justify-center text-slate-200"
+                className="h-8 w-8 rounded-full border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex items-center justify-center text-slate-800"
                 title={isZh ? "关闭" : "Close"}
               >
                 ✕
@@ -432,13 +432,13 @@ export function WorkspaceShell() {
           {/* ✅ 你之前修过的版本（带未登录提示） */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pr-1 pb-3 space-y-1 mt-1 custom-scrollbar">
             {!sessionExists && (
-              <div className="px-3 py-3 text-xs text-slate-400">
+              <div className="px-3 py-3 text-xs text-slate-500">
                 {isZh ? "未登录：不会保存历史会话。" : "Not signed in: conversations are not saved."}
               </div>
             )}
 
             {sessionExists && sessionsLoading && (
-              <div className="px-3 py-2 text-xs text-slate-400">{isZh ? "正在加载历史会话…" : "Loading sessions…"}</div>
+              <div className="px-3 py-2 text-xs text-slate-500">{isZh ? "正在加载历史会话…" : "Loading sessions…"}</div>
             )}
 
             {sessionExists && !sessionsLoading && sessions.length === 0 && (
@@ -466,8 +466,8 @@ export function WorkspaceShell() {
                     className={[
                       "w-full flex items-center gap-1 px-2 py-1 rounded-2xl text-xs transition-all duration-150",
                       isActive
-                        ? "bg-blue-500/20 border border-blue-400/70 text-slate-50 shadow-[0_0_0_1px_rgba(59,130,246,0.4)]"
-                        : "bg-slate-900/60 border border-white/5 text-slate-300 hover:border-blue-400/60 hover:bg-slate-900",
+                        ? "bg-blue-50 border border-blue-400 text-slate-900 shadow-[0_0_0_1px_rgba(59,130,246,0.4)]"
+                        : "bg-white border border-slate-200 text-slate-600 hover:border-blue-400 hover:bg-white",
                     ].join(" ")}
                   >
                     <button onClick={() => handleSelectSession(s.id)} className="flex-1 text-left flex flex-col gap-0.5 px-1 py-1">
@@ -481,22 +481,22 @@ export function WorkspaceShell() {
         </aside>
 
         {/* Main */}
-        <div className="flex-1 flex flex-col bg-slate-950/60">
-          <header className="border-b border-white/10 px-4 py-3 flex items-center justify-between gap-4 bg-slate-950/60">
+        <div className="flex-1 flex flex-col bg-white">
+          <header className="border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-4 bg-white">
             {/* Left */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="h-9 w-9 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition flex items-center justify-center shadow-md shadow-blue-500/10"
+                className="h-9 w-9 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition flex items-center justify-center shadow-sm"
                 title={isZh ? "打开历史会话" : "Open history"}
               >
-                <span className="text-slate-200 text-sm">☰</span>
+                <span className="text-slate-800 text-sm">☰</span>
               </button>
 
-              <div className="h-8 w-8 rounded-2xl bg-gradient-to-br from-blue-500 via-sky-500 to-emerald-400 shadow-md shadow-blue-500/40" />
+              <div className="h-8 w-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-sm" />
               <div className="flex flex-col gap-0.5">
-                <h1 className="font-semibold text-sm text-slate-100">{isZh ? "AIWoven 助手 · 工作台" : "AIWoven Assistant"}</h1>
-                <p className="text-[11px] text-slate-400">Direct chat · Multi-step workflow</p>
+                <h1 className="font-semibold text-sm text-slate-900">{isZh ? "AIWoven 助手 · 工作台" : "AIWoven Assistant"}</h1>
+                <p className="text-[11px] text-slate-500">Direct chat · Multi-step workflow</p>
               </div>
             </div>
 
@@ -515,9 +515,9 @@ export function WorkspaceShell() {
 
             {/* Right */}
             <div className="flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-3 px-3 py-2 rounded-2xl bg-slate-900/80 border border-white/10 shadow-sm">
+              <div className="hidden sm:flex items-center gap-3 px-3 py-2 rounded-2xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex flex-col gap-1 text-[11px] min-w-[160px]">
-                  <span className="text-slate-400">{isZh ? "运行模式" : "Mode"}</span>
+                  <span className="text-slate-500">{isZh ? "运行模式" : "Mode"}</span>
                   <PillSelect
                     value={mode}
                     options={modeOptions}
@@ -534,10 +534,10 @@ export function WorkspaceShell() {
                   />
                 </div>
 
-                <div className="h-8 w-px bg-gradient-to-b from-white/10 via-white/5 to-transparent" />
+                <div className="h-8 w-px bg-gradient-to-b from-slate-50 via-slate-50 to-transparent" />
 
                 <div className="flex flex-col gap-1 text-[11px] min-w-[180px]">
-                  <span className="text-slate-400">
+                  <span className="text-slate-500">
                     {mode === "single"
                       ? isZh
                         ? "单模型选择"
@@ -560,11 +560,11 @@ export function WorkspaceShell() {
                   ) : mode === "team" ? (
                     <PillSelect value={modelKind} options={teamQualityOptions} onChange={(v) => setModelKind(v as ModelKind)} disabled={isLoading} />
                   ) : mode === "detector" ? (
-                    <div className="w-full rounded-full border border-white/15 bg-slate-900/90 px-3 py-1 text-[11px] text-slate-100 shadow-inner shadow-slate-900/50">
+                    <div className="w-full rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] text-slate-900 shadow-inner shadow-slate-900/10">
                       English only
                     </div>
                   ) : (
-                    <div className="w-full rounded-full border border-white/15 bg-slate-900/90 px-3 py-1 text-[11px] text-slate-100 shadow-inner shadow-slate-900/50">
+                    <div className="w-full rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] text-slate-900 shadow-inner shadow-slate-900/10">
                       {isZh ? "音频 / 录音 / 文本" : "Audio / Record / Text"}
                     </div>
                   )}
@@ -574,7 +574,7 @@ export function WorkspaceShell() {
               {/* Mobile Plan button */}
               <button
                 onClick={() => setPlanOpen(true)}
-                className="md:hidden px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-slate-100 hover:bg-white/10 transition"
+                className="md:hidden px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px] text-slate-900 hover:bg-slate-100 transition"
               >
                 {isZh ? "套餐" : "Plan"}
               </button>
@@ -582,15 +582,15 @@ export function WorkspaceShell() {
               {/* Auth */}
               <div className="flex items-center gap-2">
                 {status === "loading" ? (
-                  <div className="h-8 w-8 rounded-full bg-slate-800 animate-pulse" />
+                  <div className="h-8 w-8 rounded-full bg-slate-200 animate-pulse" />
                 ) : session ? (
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-emerald-400 flex items-center justify-center text-xs font-semibold text-white shadow-md shadow-blue-500/40">
+                    <div className="h-8 w-8 rounded-lg bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-xs font-semibold text-white shadow-sm">
                       {String(userInitial).toUpperCase()}
                     </div>
                     <div className="hidden sm:flex flex-col text-[11px] leading-tight">
-                      <span className="text-slate-100 truncate max-w-[120px]">{session.user?.name || session.user?.email}</span>
-                      <button onClick={() => signOut()} className="text-xs text-slate-400 hover:text-slate-200 underline-offset-2 hover:underline">
+                      <span className="text-slate-900 truncate max-w-[120px]">{session.user?.name || session.user?.email}</span>
+                      <button onClick={() => signOut()} className="text-xs text-slate-500 hover:text-slate-800 underline-offset-2 hover:underline">
                         {isZh ? "退出登录" : "Sign out"}
                       </button>
                     </div>
@@ -598,7 +598,7 @@ export function WorkspaceShell() {
                 ) : (
                   <button
                     onClick={() => signIn()}
-                    className="px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 text-xs font-medium text-white shadow-md shadow-blue-500/40 hover:brightness-110 transition-all"
+                    className="px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-xs font-medium text-white shadow-sm transition-all"
                   >
                     {isZh ? "登录 / 注册" : "Sign in / Sign up"}
                   </button>
@@ -620,8 +620,8 @@ export function WorkspaceShell() {
                     <div
                       className={`px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap max-w-[80%] border backdrop-blur-sm ${
                         msg.role === "user"
-                          ? "bg-blue-600 text-white border-blue-400/70 shadow-md shadow-blue-500/30"
-                          : "bg-slate-900/80 text-slate-100 border-white/10"
+                          ? "bg-blue-600 text-white border-blue-400 shadow-sm"
+                          : "bg-white text-slate-900 border-slate-200"
                       }`}
                     >
                       {msg.role === "assistant" ? <AiFormattedText text={msg.content} className="text-sm leading-relaxed" /> : msg.content}
@@ -630,17 +630,17 @@ export function WorkspaceShell() {
                 ))}
 
                 {isLoading && (
-                  <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     {mode === "team" ? (isZh ? "AIWoven 工作流正在协作处理……" : "AIWoven workflow is working…") : isZh ? "AIWoven 助手正在思考……" : "AIWoven Assistant is thinking…"}
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-white/10 px-4 py-3 bg-slate-950/80">
+              <div className="border-t border-slate-200 px-4 py-3 bg-white">
                 <div className="flex gap-2 items-end">
                   <textarea
-                    className="flex-1 border border-white/10 rounded-2xl px-3 py-2 text-sm resize-none h-20 bg-slate-950/70 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-transparent"
+                    className="flex-1 border border-slate-200 rounded-2xl px-3 py-2 text-sm resize-none h-20 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-transparent"
                     placeholder={isZh ? "输入你的问题，按 Enter 发送，Shift+Enter 换行" : "Type your question, press Enter to send, Shift+Enter for new line"}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -650,7 +650,7 @@ export function WorkspaceShell() {
                   <button
                     onClick={handleSend}
                     disabled={isLoading || !input.trim()}
-                    className="w-28 h-10 rounded-2xl bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 text-white text-sm font-medium shadow-md shadow-blue-500/40 disabled:from-slate-600 disabled:via-slate-700 disabled:to-slate-700 disabled:shadow-none disabled:cursor-not-allowed transition-all duration-150 hover:brightness-110"
+                    className="w-28 h-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm disabled:bg-slate-200 disabled:shadow-none disabled:cursor-not-allowed transition-all duration-150"
                   >
                     {isLoading ? (isZh ? "思考中..." : "Thinking...") : isZh ? "发送 →" : "Send →"}
                   </button>
@@ -659,11 +659,11 @@ export function WorkspaceShell() {
                 {sessionExists && ent && !ent.unlimited && ent.plan === "basic" && (
                   <div className="mt-2 text-[11px] text-slate-500">
                     {isZh ? "Basic 今日聊天额度：" : "Basic chat quota today: "}
-                    <span className="text-slate-300">
+                    <span className="text-slate-600">
                       {ent.usedChatCountToday}/{ent.chatPerDay}
                     </span>
                     {" · "}
-                    <button onClick={() => setPlanOpen(true)} className="underline underline-offset-4 hover:text-slate-300">
+                    <button onClick={() => setPlanOpen(true)} className="underline underline-offset-4 hover:text-slate-600">
                       {isZh ? "升级解锁更多" : "Upgrade"}
                     </button>
                   </div>

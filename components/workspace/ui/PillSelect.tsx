@@ -22,7 +22,7 @@ export function PillSelect({
   return (
     <div
       className={[
-        "w-full flex items-center gap-1 rounded-full border border-white/15 bg-slate-950/60 p-1",
+        "w-full flex items-center gap-1 rounded-full border border-slate-300 bg-white p-1",
         disabled ? "opacity-60 pointer-events-none" : "",
       ].join(" ")}
     >
@@ -38,8 +38,8 @@ export function PillSelect({
               "flex-1 h-8 rounded-full px-3 text-[11px] font-medium transition",
               "border border-transparent",
               active
-                ? "bg-white/10 text-slate-50 border-white/15 shadow-inner shadow-black/40"
-                : "bg-transparent text-slate-300 hover:bg-white/5 hover:text-slate-100",
+                ? "bg-slate-100 text-slate-900 border-slate-300 shadow-inner shadow-slate-900/10"
+                : "bg-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900",
               opt.disabled ? "opacity-50 cursor-not-allowed" : "",
             ].join(" ")}
             title={opt.label}

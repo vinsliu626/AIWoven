@@ -14,9 +14,9 @@ export function AIWovenMark({ title = "AIWoven", ...props }: BrandMarkProps) {
       {title ? <title id={titleId}>{title}</title> : null}
       <defs>
         <linearGradient id={gradientId} x1="8" y1="8" x2="56" y2="42" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#22D3EE" />
-          <stop offset="0.52" stopColor="#38BDF8" />
-          <stop offset="1" stopColor="#8B5CF6" />
+          <stop stopColor="#06B6D4" />
+          <stop offset="0.52" stopColor="#2563EB" />
+          <stop offset="1" stopColor="#7C3AED" />
         </linearGradient>
       </defs>
       <path
@@ -35,7 +35,7 @@ export function AIWovenMark({ title = "AIWoven", ...props }: BrandMarkProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="m32 3 1.45 3.55L37 8l-3.55 1.45L32 13l-1.45-3.55L27 8l3.55-1.45L32 3Z" fill="#A5F3FC" />
+      <path d="m32 3 1.45 3.55L37 8l-3.55 1.45L32 13l-1.45-3.55L27 8l3.55-1.45L32 3Z" fill="#06B6D4" />
     </svg>
   );
 }
@@ -44,7 +44,7 @@ export function AIWovenLogo({ compact = false, className = "" }: { compact?: boo
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`} aria-label="AIWoven">
       <AIWovenMark className="h-8 w-10 shrink-0" title="AIWoven logo" />
-      {compact ? null : <span className="text-[1.05rem] font-semibold tracking-[-0.035em] text-white">AIWoven</span>}
+      {compact ? null : <span className="text-[1.05rem] font-semibold tracking-[-0.03em] text-slate-900">AIWoven</span>}
     </span>
   );
 }

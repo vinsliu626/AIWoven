@@ -352,9 +352,9 @@ function mediaLabel(entitlement: ConverterEntitlement | null, copy: Copy) {
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[22px] border border-white/8 bg-black/20 px-4 py-3">
-      <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{label}</p>
-      <p className="mt-2 text-sm text-slate-200">{value}</p>
+    <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
+      <p className="text-[10px] uppercase tracking-[.06em] text-slate-500">{label}</p>
+      <p className="mt-2 text-sm text-slate-800">{value}</p>
     </div>
   );
 }
@@ -437,7 +437,7 @@ function ConverterSelect({
 
   return (
     <div ref={rootRef} className="relative block">
-      <span className="mb-2 block text-left text-[11px] uppercase tracking-[0.24em] text-slate-500">{label}</span>
+      <span className="mb-2 block text-left text-[11px] uppercase tracking-[.06em] text-slate-500">{label}</span>
       <button
         type="button"
         aria-label={ariaLabel}
@@ -450,18 +450,18 @@ function ConverterSelect({
             setOpen(true);
           }
         }}
-        className="flex h-14 w-full items-center justify-between rounded-[22px] border border-white/10 bg-white/[0.06] px-4 text-left text-sm font-medium text-slate-100 transition hover:border-white/15 hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+        className="flex h-14 w-full items-center justify-between rounded-[22px] border border-slate-200 bg-slate-50 px-4 text-left text-sm font-medium text-slate-900 transition hover:border-slate-300 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
       >
         <span className="truncate">{selected?.label ?? "--"}</span>
         <span className={["ml-3 text-xs text-slate-500 transition", open ? "rotate-180" : ""].join(" ")}>▾</span>
       </button>
 
       {open ? (
-        <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-[24px] border border-white/10 bg-[#060b14]/98 shadow-[0_28px_70px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+        <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white/90 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)] backdrop-blur-xl">
           <div role="listbox" aria-label={ariaLabel} className="max-h-80 overflow-y-auto py-2 custom-scrollbar">
             {groups.map((group, groupIndex) => (
               <div key={`${group.label}-${groupIndex}`} className="px-2">
-                <div className="px-3 py-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">{group.label}</div>
+                <div className="px-3 py-2 text-[10px] uppercase tracking-[.06em] text-slate-500">{group.label}</div>
                 <div className="space-y-1">
                   {group.items.map((item) => {
                     const flatIndex = flatItems.findIndex((flatItem) => flatItem.id === item.id);
@@ -506,22 +506,22 @@ function ConverterSelect({
                           }
                         }}
                         className={[
-                          "flex w-full items-center justify-between rounded-[18px] px-3 py-3 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-400/30",
+                          "flex w-full items-center justify-between rounded-[18px] px-3 py-3 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500/40",
                           item.disabled
                             ? "cursor-not-allowed text-slate-500"
                             : active
-                              ? "bg-blue-500/16 text-slate-50"
-                              : "text-slate-200 hover:bg-white/[0.06] hover:text-white",
+                              ? "bg-blue-50 text-slate-900"
+                              : "text-slate-800 hover:bg-slate-50 hover:text-slate-900",
                         ].join(" ")}
                       >
                         <span className="truncate">{item.label}</span>
                         {item.badge ? (
                           <span
                             className={[
-                              "ml-3 shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em]",
+                              "ml-3 shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[.06em]",
                               item.disabled
-                                ? "border-white/10 bg-white/[0.03] text-slate-500"
-                                : "border-blue-400/15 bg-blue-400/10 text-blue-200",
+                                ? "border-slate-200 bg-slate-50 text-slate-500"
+                                : "border-blue-200 bg-blue-50 text-blue-700",
                             ].join(" ")}
                           >
                             {item.badge}
@@ -752,26 +752,25 @@ export function ConverterUI({
   if (locked) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4 py-10 md:px-8">
-        <div className="w-full max-w-4xl rounded-[34px] border border-white/10 bg-white/[0.04] p-8 shadow-[0_28px_120px_rgba(2,6,23,0.45)]">
-          <p className="text-center text-[11px] uppercase tracking-[0.32em] text-slate-500">{copy.badge}</p>
-          <h2 className="mt-4 text-center text-3xl font-semibold tracking-tight text-slate-50 md:text-4xl">{copy.lockedTitle}</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-7 text-slate-300">{copy.lockedBody}</p>
+        <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-slate-50 p-8 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)]">
+          <p className="text-center text-[11px] uppercase tracking-[.06em] text-slate-500">{copy.badge}</p>
+          <h2 className="mt-4 text-center text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">{copy.lockedTitle}</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-7 text-slate-600">{copy.lockedBody}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-8 md:px-8 md:py-10" data-testid="converter-ui">
-      <div className="mx-auto max-w-6xl">
-        <section className="rounded-[38px] border border-white/10 bg-white/[0.04] px-5 py-8 shadow-[0_36px_120px_rgba(2,6,23,0.48)] md:px-8 md:py-10">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-[11px] uppercase tracking-[0.34em] text-slate-500">{copy.badge}</p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-slate-50 md:text-5xl">{copy.title}</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-[15px]">{copy.subtitle}</p>
+    <div className="w-full" data-testid="converter-ui">
+      <div className="w-full">
+        <section className="ui-card px-5 py-6 md:px-8 md:py-8">
+          <div className="max-w-3xl">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">{copy.title}</h2>
+            <p className="mt-1 max-w-2xl text-[13px] leading-6 text-slate-500">{copy.subtitle}</p>
           </div>
 
-          <div className="mx-auto mt-8 max-w-4xl rounded-[30px] border border-white/10 bg-black/20 p-4 md:p-5">
+          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 md:p-5">
             <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr_auto] md:items-end">
               <label className="block">
                 <ConverterSelect
@@ -792,7 +791,7 @@ export function ConverterUI({
               </label>
 
               <div className="flex items-center justify-center pb-1">
-                <button type="button" onClick={handleSwap} className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-slate-200" aria-label={copy.swap}>
+                <button type="button" onClick={handleSwap} className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50" aria-label={copy.swap}>
                   ⇄
                 </button>
               </div>
@@ -808,14 +807,14 @@ export function ConverterUI({
               </label>
 
               <div className="pb-1 text-left md:text-right">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{copy.pair}</p>
-                <p className="mt-2 text-sm font-medium text-slate-100">
+                <p className="text-[11px] uppercase tracking-[.06em] text-slate-500">{copy.pair}</p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
                   {formatLabel(fromFormat, copy)} → {activeToFormat ? formatLabel(activeToFormat, copy) : "--"}
                 </p>
               </div>
             </div>
 
-            <p className="mt-3 text-center text-[12px] text-slate-400">{currentPairValid ? copy.hint : copy.pairOff}</p>
+            <p className="mt-3 text-center text-[12px] text-slate-500">{currentPairValid ? copy.hint : copy.pairOff}</p>
           </div>
 
           <div
@@ -837,29 +836,29 @@ export function ConverterUI({
               handleSelectedFiles(event.dataTransfer.files);
             }}
             data-testid="converter-dropzone"
-            className={["mx-auto mt-6 max-w-4xl rounded-[32px] border border-dashed px-6 py-10 text-center md:px-8 md:py-12", dragActive ? "border-sky-300/50 bg-sky-400/5" : "border-white/12 bg-white/[0.02]"].join(" ")}
+            className={["mt-5 rounded-xl border-2 border-dashed px-6 py-10 text-center md:px-8 md:py-12", dragActive ? "border-sky-400 bg-sky-50" : "border-slate-200 bg-slate-50"].join(" ")}
           >
             <input ref={inputRef} type="file" multiple hidden accept={getConverterAccept(fromFormat)} onChange={(event) => handleSelectedFiles(event.target.files)} data-testid="converter-file-input" />
-            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">{copy.upload}</h3>
-            <p className="mt-2 text-sm text-slate-400">
+            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{copy.upload}</h3>
+            <p className="mt-2 text-sm text-slate-500">
               {copy.limit}: {formatFileSize(entitlement?.converterMaxFileSizeBytes)}
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <button type="button" onClick={() => inputRef.current?.click()} className="h-12 rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 px-5 text-sm font-semibold text-white">
+              <button type="button" onClick={() => inputRef.current?.click()} className="h-12 rounded-lg bg-blue-600 hover:bg-blue-700 px-5 text-sm font-semibold text-white">
                 {copy.pick}
               </button>
               <span className="text-[12px] text-slate-500">{copy.hint}</span>
             </div>
 
             {selectedFiles.length > 0 ? (
-              <div className="mt-6 rounded-[24px] border border-white/8 bg-black/20 p-4 text-left">
-                <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{copy.selected}</p>
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+                <p className="text-[10px] uppercase tracking-[.06em] text-slate-500">{copy.selected}</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {selectedFiles.map((file) => (
-                    <div key={`${file.name}-${file.size}`} className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
-                      <p className="truncate text-sm font-medium text-slate-100">{file.name}</p>
-                      <p className="mt-1 text-[12px] text-slate-400">{formatFileSize(file.size)}</p>
+                    <div key={`${file.name}-${file.size}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="truncate text-sm font-medium text-slate-900">{file.name}</p>
+                      <p className="mt-1 text-[12px] text-slate-500">{formatFileSize(file.size)}</p>
                     </div>
                   ))}
                 </div>
@@ -867,44 +866,44 @@ export function ConverterUI({
             ) : null}
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <button type="button" onClick={handleConvert} disabled={!currentPairValid || isConverting} className="h-12 rounded-full bg-white px-6 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-500">
+              <button type="button" onClick={handleConvert} disabled={!currentPairValid || isConverting} className="h-12 rounded-lg bg-blue-600 hover:bg-blue-700 px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
                 {isConverting ? copy.converting : copy.convert}
               </button>
             </div>
 
             {message ? (
-              <p className={["mt-5 text-sm", messageTone === "warning" ? "text-amber-300" : messageTone === "success" ? "text-emerald-300" : "text-slate-300"].join(" ")} role={messageTone === "warning" ? "alert" : "status"}>
+              <p className={["mt-5 text-sm", messageTone === "warning" ? "text-amber-700" : messageTone === "success" ? "text-emerald-700" : "text-slate-600"].join(" ")} role={messageTone === "warning" ? "alert" : "status"}>
                 {message}
               </p>
             ) : (
-              <p className="mt-5 text-sm text-slate-300">{currentPairValid ? copy.ready : copy.invalid}</p>
+              <p className="mt-5 text-sm text-slate-600">{currentPairValid ? copy.ready : copy.invalid}</p>
             )}
 
             {result ? (
-              <div className="mt-6 rounded-[24px] border border-emerald-300/20 bg-emerald-400/5 p-4 text-left" data-testid="converter-result">
+              <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left" data-testid="converter-result">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-emerald-200/80">{copy.result}</p>
-                    <h4 className="mt-2 text-lg font-semibold text-slate-50">{copy.done}</h4>
-                    <p className="mt-1 text-sm text-slate-300">{result.fileName}</p>
-                    <p className="mt-1 text-[12px] text-slate-400">{result.mimeType} / {formatFileSize(result.sizeBytes)}</p>
+                    <p className="text-[10px] uppercase tracking-[.06em] text-emerald-700">{copy.result}</p>
+                    <h4 className="mt-2 text-lg font-semibold text-slate-900">{copy.done}</h4>
+                    <p className="mt-1 text-sm text-slate-600">{result.fileName}</p>
+                    <p className="mt-1 text-[12px] text-slate-500">{result.mimeType} / {formatFileSize(result.sizeBytes)}</p>
                   </div>
-                  <a href={result.downloadUrl} download={result.fileName} className="inline-flex h-11 items-center justify-center rounded-full border border-emerald-300/20 bg-white px-5 text-sm font-semibold text-slate-950">
+                  <a href={result.downloadUrl} download={result.fileName} className="inline-flex h-11 items-center justify-center rounded-lg border border-emerald-200 bg-blue-600 hover:bg-blue-700 px-5 text-sm font-semibold text-white">
                     {copy.download}
                   </a>
                 </div>
                 {result.previewUrl ? (
                   <div className="mt-4">
-                    <p className="mb-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">{copy.preview}</p>
+                    <p className="mb-2 text-[10px] uppercase tracking-[.06em] text-slate-500">{copy.preview}</p>
                     {/* eslint-disable-next-line @next/next/no-img-element -- Blob previews are generated at runtime. */}
-                    <img src={result.previewUrl} alt={result.fileName} className="max-h-64 rounded-2xl border border-white/10 object-contain" />
+                    <img src={result.previewUrl} alt={result.fileName} className="max-h-64 rounded-2xl border border-slate-200 object-contain" />
                   </div>
                 ) : null}
               </div>
             ) : null}
           </div>
 
-          <div className="mx-auto mt-5 grid max-w-4xl gap-3 md:grid-cols-3">
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
             <Meta label={copy.formats} value={supportedFormatsValue} />
             <Meta label={copy.limit} value={`${planLabel(entitlement?.plan ?? "basic", copy)} / ${formatFileSize(entitlement?.converterMaxFileSizeBytes)}`} />
             <Meta label={copy.proc} value={copy.local} />
@@ -912,16 +911,16 @@ export function ConverterUI({
         </section>
 
         <section className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[30px] border border-white/10 bg-white/[0.04] p-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">{copy.badge}</p>
-                <h3 className="mt-2 text-lg font-semibold text-slate-50">{planLabel(entitlement?.plan ?? "basic", copy)}</h3>
-                <p className="mt-1 text-sm text-slate-400">{copy.desc}</p>
+                <p className="text-[11px] uppercase tracking-[.06em] text-slate-500">{copy.badge}</p>
+                <h3 className="mt-2 text-lg font-semibold text-slate-900">{planLabel(entitlement?.plan ?? "basic", copy)}</h3>
+                <p className="mt-1 text-sm text-slate-500">{copy.desc}</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-right">
-                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{copy.speed}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">{speedLabel(entitlement?.converterPriority, copy)}</p>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-right">
+                <p className="text-[10px] uppercase tracking-[.06em] text-slate-500">{copy.speed}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{speedLabel(entitlement?.converterPriority, copy)}</p>
               </div>
             </div>
 
@@ -933,21 +932,21 @@ export function ConverterUI({
             </div>
           </div>
 
-          <div className="rounded-[30px] border border-white/10 bg-white/[0.04] p-5">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">{copy.current}</p>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-[11px] uppercase tracking-[.06em] text-slate-500">{copy.current}</p>
             <div className="mt-4 space-y-3">
               {[
                 { id: "basic", size: 10, day: 5, batch: 1, speed: copy.std, desc: isZh ? "已接入图片与 PDF 导出" : "Live image and PDF export" },
                 { id: "pro", size: 50, day: 30, batch: 3, speed: copy.fast, desc: isZh ? "额度更高，媒体仍在分阶段接入" : "More quota, media still staged" },
                 { id: "ultra", size: 200, day: 100, batch: 10, speed: copy.prio, desc: isZh ? "限制更高，高级媒体仍在分阶段接入" : "Higher limits, advanced media still staged" },
               ].map((plan) => (
-                <div key={plan.id} className={["rounded-[24px] border px-4 py-4", plan.id === activePlan ? "border-sky-400/35 bg-sky-400/5" : "border-white/8 bg-black/20"].join(" ")}>
+                <div key={plan.id} className={["rounded-2xl border px-4 py-4", plan.id === activePlan ? "border-sky-200 bg-sky-50" : "border-slate-200 bg-slate-50"].join(" ")}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-50">{plan.id === "basic" ? copy.basic : plan.id === "pro" ? copy.pro : copy.ultra}</p>
-                      {plan.id === activePlan ? <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-2 py-0.5 text-[10px] text-sky-100">{copy.current}</span> : null}
+                      <p className="text-sm font-semibold text-slate-900">{plan.id === "basic" ? copy.basic : plan.id === "pro" ? copy.pro : copy.ultra}</p>
+                      {plan.id === activePlan ? <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] text-sky-700">{copy.current}</span> : null}
                     </div>
-                    <p className="text-[12px] text-slate-400">{plan.size} MB</p>
+                    <p className="text-[12px] text-slate-500">{plan.size} MB</p>
                   </div>
 
                   <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -956,7 +955,7 @@ export function ConverterUI({
                     <Meta label={copy.speed} value={plan.speed} />
                   </div>
 
-                  <p className="mt-3 text-sm text-slate-300">{plan.desc}</p>
+                  <p className="mt-3 text-sm text-slate-600">{plan.desc}</p>
                 </div>
               ))}
             </div>

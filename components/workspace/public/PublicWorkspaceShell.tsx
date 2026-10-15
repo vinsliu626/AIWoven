@@ -1,23 +1,21 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getProviders, signIn, signOut, useSession, type ClientSafeProvider } from "next-auth/react";
-import { LocalCredentialsForm } from "@/components/auth/LocalCredentialsForm";
 import { AIWovenAppNav } from "@/components/app/AIWovenAppNav";
+import { HeaderAuthMenu, WorkspaceBreadcrumb, workspaceModeTitle } from "@/components/app/WorkspaceHeader";
 
 import { useAppLanguage } from "@/components/app/AppLanguageProvider";
 import { ProTrialWheelModal, ProTrialWheelReminderPrompt } from "@/components/billing/ProTrialWheelModal";
 import { PlanModal } from "@/components/chat/billing/PlanModal";
-import { PlanPillButton, PlanPillStyles } from "@/components/chat/billing/PlanPill";
+import { PlanPillButton } from "@/components/chat/billing/PlanPill";
 import { RedeemModal } from "@/components/chat/billing/RedeemModal";
 import type { Entitlement } from "@/components/chat/billing/types";
 import { SettingsModal } from "@/components/chat/settings/SettingsModal";
-import { ModeDropdown } from "@/components/chat/ui/workflow/ModeDropdown";
 import type { ChatMode } from "@/components/chat/ui/workflow/types";
 import { useProTrialWheel } from "@/lib/hooks/useProTrialWheel";
-import { routeForMode } from "@/lib/productRoutes";
 
 type RenderContext = {
   entitlement: Entitlement | null;
@@ -33,27 +31,6 @@ type RedeemSuccessState = {
   grantEndAt: string | null;
 };
 
-function modeTitle(mode: ChatMode, isZh: boolean) {
-  switch (mode) {
-    case "normal":
-      return isZh ? "💬 普通对话" : "💬 Chat / Normal";
-    case "workflow":
-      return isZh ? "⚙️ 工作流对话" : "⚙️ Chat / Workflow";
-    case "detector":
-      return isZh ? "🛡️ AI 检测器" : "🛡️ AI Detector";
-    case "note":
-      return isZh ? "📝 AI 笔记" : "📝 AI Note";
-    case "study":
-      return isZh ? "📚 AI 学习" : "📚 AI Study";
-    case "humanizer":
-      return isZh ? "✨ AI Humanizer" : "✨ AI Humanizer";
-    case "converter":
-      return isZh ? "🔄 转换器" : "🔄 Converter";
-    default:
-      return "AIWoven";
-  }
-}
-
 async function safeReadJson(res: Response) {
   const text = await res.text().catch(() => "");
   let data: unknown = null;
@@ -63,178 +40,6 @@ async function safeReadJson(res: Response) {
     data = null;
   }
   return { text, data };
-}
-
-function HeaderAuthMenu({
-  isZh,
-  sessionExists,
-  userInitial,
-  userLabel,
-  userEmail,
-  visibleAuthProviders,
-  onOpenAccount,
-  onOpenBilling,
-  onOpenSettings,
-  isOwner,
-  onSignOut,
-}: {
-  isZh: boolean;
-  sessionExists: boolean;
-  userInitial: string;
-  userLabel: string;
-  userEmail: string;
-  visibleAuthProviders: ClientSafeProvider[];
-  onOpenAccount: () => void;
-  onOpenBilling: () => void;
-  onOpenSettings: () => void;
-  isOwner: boolean;
-  onSignOut: () => void;
-}) {
-  const [menuOpen, setMenuOpen] = useState<"signin" | "account" | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onPointerDown = (event: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(null);
-      }
-    };
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(null);
-    };
-
-    document.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, []);
-
-  const copy = {
-    signIn: isZh ? "登录" : "Sign in",
-    continueWithGoogle: isZh ? "使用 Google 继续" : "Continue with Google",
-    continueWithGitHub: isZh ? "使用 GitHub 继续" : "Continue with GitHub",
-    noProviders: isZh ? "当前没有可用的登录方式。" : "No sign-in providers are currently available.",
-    account: isZh ? "账户" : "Account",
-    billing: isZh ? "套餐与额度" : "Billing",
-    settings: isZh ? "设置" : "Settings",
-    signOut: isZh ? "退出登录" : "Sign out",
-  };
-
-  return (
-    <div ref={menuRef} className="relative">
-      {sessionExists ? (
-        <button
-          aria-label="Open account menu"
-          onClick={() => setMenuOpen((current) => (current === "account" ? null : "account"))}
-          className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1.5 shadow-[0_10px_30px_rgba(2,6,23,0.2)] backdrop-blur-xl transition hover:bg-white/[0.07]"
-        >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400/90 via-blue-500/85 to-emerald-400/70 text-xs font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_6px_20px_rgba(2,6,23,0.22)]">
-            {String(userInitial).toUpperCase()}
-          </div>
-          <div className="hidden min-w-0 sm:flex flex-col text-left leading-tight">
-            <span className="max-w-[124px] truncate text-[12px] font-medium text-slate-100">{userLabel}</span>
-            <span className="max-w-[124px] truncate text-[10px] text-slate-500">{userEmail}</span>
-          </div>
-          <span className="text-slate-500">▼</span>
-        </button>
-      ) : (
-        <button
-          onClick={() => setMenuOpen((current) => (current === "signin" ? null : "signin"))}
-          className="rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-400 px-3 py-1.5 text-xs font-medium text-white shadow-md shadow-blue-500/40 transition-all hover:brightness-110"
-        >
-          {copy.signIn}
-        </button>
-      )}
-
-      {menuOpen === "signin" && !sessionExists ? (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-56 rounded-3xl border border-white/10 bg-[#080808]/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
-          <div className="border-b border-white/8 px-3 py-2">
-            <p className="text-sm font-semibold text-slate-50">{copy.signIn}</p>
-          </div>
-          <div className="space-y-1 px-1 py-2">
-            {visibleAuthProviders.map((provider) => provider.id === "e2e-credentials" ? (
-              <LocalCredentialsForm key={provider.id} isZh={isZh} />
-            ) : (
-              <button
-                key={provider.id}
-                onClick={() => {
-                  setMenuOpen(null);
-                  signIn(provider.id);
-                }}
-                className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-sm text-slate-100 transition hover:bg-white/10"
-              >
-                <span>
-                  {provider.id === "google"
-                    ? copy.continueWithGoogle
-                    : provider.id === "github"
-                      ? copy.continueWithGitHub
-                      : provider.name}
-                </span>
-                <span className="text-slate-500">↗</span>
-              </button>
-            ))}
-            {visibleAuthProviders.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] text-slate-400">
-                {copy.noProviders}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {menuOpen === "account" && sessionExists ? (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-56 rounded-3xl border border-white/10 bg-[#080808]/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.55)] backdrop-blur-xl">
-          <div className="border-b border-white/8 px-3 py-2">
-            <p className="truncate text-sm font-semibold text-slate-50">AIWoven</p>
-            <p className="truncate text-[11px] text-slate-500">{userEmail}</p>
-          </div>
-          <div className="space-y-1 px-1 py-2">
-            <button
-              onClick={() => {
-                setMenuOpen(null);
-                onOpenAccount();
-              }}
-              className="flex w-full items-center rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10"
-            >
-              {copy.account}
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(null);
-                onOpenBilling();
-              }}
-              className="flex w-full items-center rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10"
-            >
-              {copy.billing}
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(null);
-                onOpenSettings();
-              }}
-              className="flex w-full items-center rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10"
-            >
-              {copy.settings}
-            </button>
-            {isOwner ? <a href="/owner/analytics" onClick={() => setMenuOpen(null)} className="flex w-full items-center rounded-2xl border border-sky-400/30 bg-sky-400/10 px-3 py-2.5 text-sm font-medium text-sky-200 transition hover:bg-sky-400/15">Owner Analytics</a> : null}
-            <button
-              onClick={() => {
-                setMenuOpen(null);
-                onSignOut();
-              }}
-              className="flex w-full items-center rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-100 transition hover:bg-red-500/15"
-            >
-              {copy.signOut}
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 export function CompactRouteIntro({
@@ -257,9 +62,11 @@ export function CompactRouteIntro({
 
 export function PublicWorkspaceShell({
   mode,
+  title,
   children,
 }: {
   mode: ChatMode;
+  title?: string;
   children: (context: RenderContext) => ReactNode;
 }) {
   const router = useRouter();
@@ -418,37 +225,32 @@ export function PublicWorkspaceShell({
     } catch {}
   }
 
-  function onModeChange(next: ChatMode) {
-    router.push(routeForMode(next));
-  }
-
   return (
-    <main className="aiwoven-workspace relative min-h-screen w-full overflow-hidden bg-[#05070b] font-sans text-slate-200 selection:bg-cyan-400/25 selection:text-cyan-50">
-      <PlanPillStyles />
-
-      <div className="pointer-events-none absolute inset-0 z-0 opacity-20 base-grid" />
-      <div className="pointer-events-none absolute -top-16 left-1/2 h-[520px] w-[760px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.14)_0%,rgba(56,189,248,0.08)_25%,rgba(16,185,129,0.05)_45%,rgba(2,6,23,0)_72%)] blur-3xl" />
-
+    <main className="aiwoven-workspace relative min-h-screen w-full overflow-x-clip bg-[var(--app-canvas)] font-sans text-slate-800">
       <div className="relative z-10 flex min-h-screen">
-        <AIWovenAppNav
-          isOwner={session?.user?.role === "OWNER"}
-          collapsible
-          collapsed={workspaceNavCollapsed}
-          transitionReady={workspaceNavTransitionReady}
-          onToggleCollapsed={toggleWorkspaceNav}
-          onBilling={() => { void refreshEntitlement(); setPlanOpen(true); }}
-          onSettings={() => setSettingsOpen(true)}
-        />
+        <div className="sticky top-0 hidden h-screen shrink-0 lg:flex">
+          <AIWovenAppNav
+            isOwner={session?.user?.role === "OWNER"}
+            collapsible
+            collapsed={workspaceNavCollapsed}
+            transitionReady={workspaceNavTransitionReady}
+            onToggleCollapsed={toggleWorkspaceNav}
+            onBilling={() => { void refreshEntitlement(); setPlanOpen(true); }}
+            onSettings={() => setSettingsOpen(true)}
+          />
+        </div>
         <div className="flex min-w-0 flex-1 flex-col">
-        <header className="relative z-50 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-white/5 bg-[#080808]/80 px-4 backdrop-blur-md md:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <button type="button" onClick={() => setMobileNavOpen(true)} className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 lg:hidden" aria-label="Open workspace navigation">☰</button>
-            <p className="truncate font-mono text-[10px] font-medium uppercase tracking-[.16em] text-slate-500">{modeTitle(mode, isZh)}</p>
+        <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <button type="button" onClick={() => setMobileNavOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 lg:hidden" aria-label="Open workspace navigation">
+              <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4"><path d="M3.5 6h13M3.5 10h13M3.5 14h13" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+            </button>
+            <WorkspaceBreadcrumb title={title ?? workspaceModeTitle(mode, isZh)} isZh={isZh} />
           </div>
 
-          <div className="hidden flex-1 items-center justify-center md:flex">
-            <div className="rounded-full border border-white/5 bg-[#050505] p-0.5 shadow-inner">
-              {entitlement?.isOwner ? <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-4 py-2 text-xs font-semibold text-sky-200">Owner · Unlimited</span> : <PlanPillButton
+          <div className="flex items-center gap-2 sm:gap-3">
+            {sessionExists ? <><div className="hidden md:block">
+              {entitlement?.isOwner ? <span className="inline-flex h-9 items-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-[13px] font-semibold text-blue-700">Owner · Unlimited</span> : <PlanPillButton
                 isZh={isZh}
                 plan={entitlement?.plan ?? "basic"}
                 unlimited={!!entitlement?.unlimited}
@@ -458,10 +260,7 @@ export function PublicWorkspaceShell({
                 }}
               />}
             </div>
-          </div>
-
-          <div className="mr-1 flex items-center gap-3 md:mr-2">
-            <ModeDropdown value={mode} onChange={onModeChange} lang={lang} disabled={false} />
+            <span className="hidden h-6 w-px bg-slate-200 md:block" aria-hidden /></> : null}
             <HeaderAuthMenu
               isZh={isZh}
               sessionExists={sessionExists}
@@ -483,10 +282,10 @@ export function PublicWorkspaceShell({
 
         {redeemSuccess ? (
           <div className="px-4 pt-4 md:px-8">
-            <div className="rounded-[24px] border border-white/10 bg-gradient-to-r from-white/[0.04] via-blue-500/[0.08] to-emerald-400/[0.08] px-4 py-3 shadow-[0_18px_70px_rgba(2,6,23,0.35)] backdrop-blur-xl">
-              <p className="text-sm text-slate-100">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <p className="text-sm font-medium text-emerald-800">
                 {isZh ? "礼包已激活。" : "Gift activated."}{" "}
-                <span className="text-slate-300">
+                <span className="text-slate-600">
                   {redeemSuccess.plan}
                   {redeemSuccess.grantEndAt ? ` · ${redeemSuccess.grantEndAt}` : ""}
                 </span>
@@ -495,13 +294,13 @@ export function PublicWorkspaceShell({
           </div>
         ) : null}
 
-        <div className="app-workspace-content relative z-10 flex-1 overflow-hidden pb-4">
+        <div className="app-workspace-content relative z-10 flex-1 pb-6">
           {children({ entitlement, locked: !sessionExists, isZh, authLoading, authProviders: visibleAuthProviders, refreshEntitlement })}
         </div>
         </div>
       </div>
 
-      {mobileNavOpen ? <div className="fixed inset-0 z-[80] lg:hidden"><button type="button" className="absolute inset-0 bg-black/70 backdrop-blur-sm" aria-label="Close workspace navigation" onClick={() => setMobileNavOpen(false)} /><div className="absolute inset-y-0 left-0 shadow-[24px_0_80px_rgba(0,0,0,.45)]"><AIWovenAppNav mobile isOwner={session?.user?.role === "OWNER"} onClose={() => setMobileNavOpen(false)} onBilling={() => { void refreshEntitlement(); setPlanOpen(true); }} onSettings={() => setSettingsOpen(true)} /></div></div> : null}
+      {mobileNavOpen ? <div className="fixed inset-0 z-[80] lg:hidden"><button type="button" className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" aria-label="Close workspace navigation" onClick={() => setMobileNavOpen(false)} /><div className="absolute inset-y-0 left-0 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)]"><AIWovenAppNav mobile isOwner={session?.user?.role === "OWNER"} onClose={() => setMobileNavOpen(false)} onBilling={() => { void refreshEntitlement(); setPlanOpen(true); }} onSettings={() => setSettingsOpen(true)} /></div></div> : null}
 
       <PlanModal
         open={planOpen}
@@ -576,12 +375,6 @@ export function PublicWorkspaceShell({
         onClearLocalData={clearLocalData}
       />
 
-      <style jsx global>{`
-        .base-grid {
-          background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-          background-size: 24px 24px;
-        }
-      `}</style>
     </main>
   );
 }

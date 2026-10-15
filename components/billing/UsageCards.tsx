@@ -5,8 +5,8 @@ import { fmtHours, fmtNumber, percent } from "@/lib/ui/format";
 
 function Progress({ p }: { p: number }) {
   return (
-    <div className="h-1 w-full rounded-full bg-white/8">
-      <div className="h-1 rounded-full bg-cyan-300" style={{ width: `${p}%` }} />
+    <div className="h-1.5 w-full rounded-full bg-slate-100">
+      <div className="h-1.5 rounded-full bg-blue-600" style={{ width: `${p}%` }} />
     </div>
   );
 }
@@ -27,38 +27,38 @@ export function UsageCards({ s }: { s: BillingStatus }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <div className="border-t border-white/8 py-5">
+      <div className="ui-card p-5">
         <div className="text-sm text-slate-500">Chat today</div>
-        <div className="mt-1 text-xl font-semibold text-white">
+        <div className="mt-1 text-xl font-semibold text-slate-900">
           {fmtNumber(chatUsed)}{" "}
           <span className="text-sm font-normal text-slate-500">
             / {chatLimit == null ? "∞" : fmtNumber(chatLimit)}
           </span>
         </div>
-        <div className="mt-3">{chatLimit == null ? <div className="text-sm text-emerald-300">Unlimited</div> : <Progress p={chatP} />}</div>
+        <div className="mt-3">{chatLimit == null ? <div className="text-sm text-emerald-700">Unlimited</div> : <Progress p={chatP} />}</div>
         <div className="mt-2 text-xs text-slate-500">Direct and multi-step chat share this allowance.</div>
       </div>
 
-      <div className="border-t border-white/8 py-5">
+      <div className="ui-card p-5">
         <div className="text-sm text-slate-500">AI Detector this week</div>
-        <div className="mt-1 text-xl font-semibold text-white">
+        <div className="mt-1 text-xl font-semibold text-slate-900">
           {fmtNumber(detUsed)}{" "}
           <span className="text-sm font-normal text-slate-500">
             / {detLimit == null ? "∞" : fmtNumber(detLimit)} words
           </span>
         </div>
-        <div className="mt-3">{detLimit == null ? <div className="text-sm text-emerald-300">Unlimited</div> : <Progress p={detP} />}</div>
+        <div className="mt-3">{detLimit == null ? <div className="text-sm text-emerald-700">Unlimited</div> : <Progress p={detP} />}</div>
       </div>
 
-      <div className="border-t border-white/8 py-5">
+      <div className="ui-card p-5">
         <div className="text-sm text-slate-500">AI Note this week</div>
-        <div className="mt-1 text-xl font-semibold text-white">
+        <div className="mt-1 text-xl font-semibold text-slate-900">
           {fmtHours(noteUsed)}{" "}
           <span className="text-sm font-normal text-slate-500">
             / {noteLimit == null ? "∞" : fmtHours(noteLimit)}
           </span>
         </div>
-        <div className="mt-3">{noteLimit == null ? <div className="text-sm text-emerald-300">Unlimited</div> : <Progress p={noteP} />}</div>
+        <div className="mt-3">{noteLimit == null ? <div className="text-sm text-emerald-700">Unlimited</div> : <Progress p={noteP} />}</div>
       </div>
     </div>
   );

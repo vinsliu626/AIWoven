@@ -6,24 +6,24 @@ import { detectAiMarker, normalizeAiText } from "@/lib/ui/aiTextFormat";
 function markerClass(kind: ReturnType<typeof detectAiMarker>["kind"]) {
   switch (kind) {
     case "important":
-      return "border-l-2 border-amber-300/60 pl-3 text-amber-100";
+      return "border-l-2 border-amber-400 pl-3 text-amber-700";
     case "concept":
-      return "border-l-2 border-sky-300/60 pl-3 text-sky-100";
+      return "border-l-2 border-sky-400 pl-3 text-sky-700";
     case "tip":
-      return "border-l-2 border-cyan-300/60 pl-3 text-cyan-100";
+      return "border-l-2 border-blue-400 pl-3 text-blue-700";
     case "example":
-      return "border-l-2 border-emerald-300/60 pl-3 text-emerald-100";
+      return "border-l-2 border-emerald-400 pl-3 text-emerald-700";
     case "warning":
-      return "border-l-2 border-red-300/60 pl-3 text-red-100";
+      return "border-l-2 border-red-400 pl-3 text-red-700";
     default:
-      return "text-slate-100";
+      return "text-slate-900";
   }
 }
 
 function headingClass(level: number) {
-  if (level === 1) return "text-2xl font-semibold tracking-tight text-white";
-  if (level === 2) return "mt-6 text-lg font-semibold text-slate-50";
-  return "mt-4 text-base font-semibold text-slate-100";
+  if (level === 1) return "text-2xl font-semibold tracking-tight text-slate-900";
+  if (level === 2) return "mt-6 text-lg font-semibold text-slate-900";
+  return "mt-4 text-base font-semibold text-slate-900";
 }
 
 function listIndent(line: string) {
@@ -72,8 +72,8 @@ export function AiFormattedText({
           const indent = listIndent(line);
           return (
             <div key={`${index}-${trimmed.slice(0, 18)}`} className={["flex gap-3", indentPadding(indent)].join(" ").trim()}>
-              <span className="mt-[0.45rem] h-1.5 w-1.5 flex-none rounded-full bg-slate-400" />
-              <div className="min-w-0 flex-1 text-slate-100">{bullet[3]}</div>
+              <span className="mt-[0.45rem] h-1.5 w-1.5 flex-none rounded-full bg-slate-300" />
+              <div className="min-w-0 flex-1 text-slate-900">{bullet[3]}</div>
             </div>
           );
         }
@@ -83,8 +83,8 @@ export function AiFormattedText({
           const indent = listIndent(line);
           return (
             <div key={`${index}-${trimmed.slice(0, 18)}`} className={["flex gap-3", indentPadding(indent)].join(" ").trim()}>
-              <span className="min-w-6 flex-none text-right text-slate-400">{numbered[2]}.</span>
-              <div className="min-w-0 flex-1 text-slate-100">{numbered[3]}</div>
+              <span className="min-w-6 flex-none text-right text-slate-500">{numbered[2]}.</span>
+              <div className="min-w-0 flex-1 text-slate-900">{numbered[3]}</div>
             </div>
           );
         }

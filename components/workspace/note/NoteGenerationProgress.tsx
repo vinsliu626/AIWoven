@@ -41,16 +41,16 @@ export function NoteGenerationProgress({
   const isWorking = effectivePhase === "transcribing" || effectivePhase === "organizing" || effectivePhase === "finalizing";
 
   return (
-    <div className={`rounded-3xl border p-5 ${error ? "border-red-500/30 bg-red-500/10" : "border-white/10 bg-white/[0.04]"}`} aria-live="polite">
-      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Status</p>
+    <div className={`rounded-2xl border p-5 ${error ? "border-red-200 bg-red-50" : "border-slate-200 bg-slate-50"}`} aria-live="polite">
+      <p className="text-[11px] uppercase tracking-[.06em] text-slate-500">Status</p>
       <div className="mt-3 flex items-start gap-3">
-        {isWorking ? <span className="mt-1 h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-cyan-300/30 border-t-cyan-200" aria-hidden="true" /> : null}
+        {isWorking ? <span className="mt-1 h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-200 border-t-blue-400" aria-hidden="true" /> : null}
         <div className="min-w-0">
-          <p className="text-lg font-semibold text-slate-50">{error ? `${failedLabel} failed` : copy.title}</p>
-          <p className={`mt-1 text-sm ${error ? "text-red-100" : "text-slate-400"}`}>{error || copy.description}</p>
-          {traceId && error ? <p className="mt-3 break-all text-[11px] text-red-200/70">Reference: {traceId}</p> : null}
+          <p className="text-lg font-semibold text-slate-900">{error ? `${failedLabel} failed` : copy.title}</p>
+          <p className={`mt-1 text-sm ${error ? "text-red-700" : "text-slate-500"}`}>{error || copy.description}</p>
+          {traceId && error ? <p className="mt-3 break-all text-[11px] text-red-700">Reference: {traceId}</p> : null}
           {retryable && error && onRetry ? (
-            <button type="button" onClick={onRetry} className="mt-4 rounded-full border border-red-200/25 bg-red-100/10 px-4 py-2 text-sm font-semibold text-red-50 transition hover:bg-red-100/15">
+            <button type="button" onClick={onRetry} className="mt-4 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50">
               Retry from {failedLabel.toLowerCase()}
             </button>
           ) : null}
@@ -59,12 +59,12 @@ export function NoteGenerationProgress({
 
       {showUploadProgress ? (
         <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between text-[11px] text-slate-400">
+          <div className="mb-2 flex items-center justify-between text-[11px] text-slate-500">
             <span>Uploaded</span>
             <span>{Math.round(uploadProgress)}%</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-label="Audio upload" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(uploadProgress)}>
-            <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-300 transition-[width] duration-150" style={{ width: `${Math.max(0, Math.min(100, uploadProgress))}%` }} />
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label="Audio upload" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(uploadProgress)}>
+            <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-emerald-300 transition-[width] duration-150" style={{ width: `${Math.max(0, Math.min(100, uploadProgress))}%` }} />
           </div>
         </div>
       ) : null}

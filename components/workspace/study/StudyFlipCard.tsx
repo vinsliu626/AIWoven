@@ -53,7 +53,7 @@ export function StudyFlipCard({ front, back, onReveal, testId = "manual-flashcar
     aria-label={flipped ? "Show question" : "Show answer"}
     aria-pressed={flipped}
     aria-disabled={animating}
-    className="manual-flashcard-perspective group block w-full cursor-pointer rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/80 focus-visible:ring-offset-4 focus-visible:ring-offset-[#080a0f]"
+    className="manual-flashcard-perspective group block w-full cursor-pointer rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-4 focus-visible:ring-offset-[#080a0f]"
   >
     <span data-testid={`${testId}-inner`} className={`manual-flashcard-inner block ${animating ? "is-animating" : ""}`} style={{ transform: `rotateX(${rotationTurns * 360}deg)` }}>
       <span className="manual-flashcard-face manual-flashcard-face-front">{content(primarySide)}</span>

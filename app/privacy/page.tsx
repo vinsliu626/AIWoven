@@ -149,20 +149,20 @@ const copyByLang: Record<
 
 function PolicyCard({ section }: { section: Section }) {
   return (
-    <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
-      <h2 className="text-base font-semibold text-slate-50">{section.title}</h2>
-      {section.body ? <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">{section.body}</p> : null}
+    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.14)]">
+      <h2 className="text-base font-semibold text-slate-900">{section.title}</h2>
+      {section.body ? <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">{section.body}</p> : null}
       {section.items ? (
-        <ul className="mt-3 space-y-2 text-sm leading-7 text-slate-300">
+        <ul className="mt-3 space-y-2 text-sm leading-7 text-slate-600">
           {section.items.map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-500" />
+              <span className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
               <span>{item}</span>
             </li>
           ))}
         </ul>
       ) : null}
-      {section.footer ? <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">{section.footer}</p> : null}
+      {section.footer ? <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">{section.footer}</p> : null}
     </section>
   );
 }
@@ -180,35 +180,35 @@ export default function PrivacyPage() {
   const copy = copyByLang[lang];
 
   return (
-    <main className="min-h-screen bg-[#030303] px-4 py-10 text-slate-200">
+    <main className="min-h-screen bg-white px-4 py-10 text-slate-800">
       <div className="mx-auto max-w-4xl">
-        <div className="overflow-hidden rounded-[32px] border border-white/10 bg-[#060606]/95 shadow-[0_24px_90px_rgba(0,0,0,0.45)]">
-          <div className="border-b border-white/10 bg-gradient-to-r from-white/[0.04] via-blue-500/[0.06] to-emerald-400/[0.06] px-6 py-6 sm:px-8">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/90 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)]">
+          <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 via-blue-50 to-emerald-50 px-6 py-6 sm:px-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="max-w-2xl">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">{copy.legal}</p>
-                <h1 className="mt-2 text-2xl font-semibold text-slate-50">{copy.title}</h1>
+                <p className="text-[11px] uppercase tracking-[.06em] text-slate-500">{copy.legal}</p>
+                <h1 className="mt-2 text-2xl font-semibold text-slate-900">{copy.title}</h1>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex rounded-full border border-white/10 bg-white/5 p-1">
+                <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
                   <button
                     type="button"
                     onClick={() => setLang("en")}
-                    className={["rounded-full px-3 py-1.5 text-[12px] transition", lang === "en" ? "bg-white/10 text-slate-50" : "text-slate-400 hover:text-slate-200"].join(" ")}
+                    className={["rounded-full px-3 py-1.5 text-[12px] transition", lang === "en" ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-800"].join(" ")}
                   >
                     EN
                   </button>
                   <button
                     type="button"
                     onClick={() => setLang("zh")}
-                    className={["rounded-full px-3 py-1.5 text-[12px] transition", lang === "zh" ? "bg-white/10 text-slate-50" : "text-slate-400 hover:text-slate-200"].join(" ")}
+                    className={["rounded-full px-3 py-1.5 text-[12px] transition", lang === "zh" ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-800"].join(" ")}
                   >
                     中文
                   </button>
                 </div>
                 <a
                   href="/chat"
-                  className="inline-flex h-10 items-center rounded-full border border-white/10 bg-white/5 px-4 text-[12px] font-medium text-slate-100 transition hover:bg-white/10"
+                  className="inline-flex h-10 items-center rounded-full border border-slate-200 bg-slate-50 px-4 text-[12px] font-medium text-slate-900 transition hover:bg-slate-100"
                 >
                   {copy.back}
                 </a>
@@ -217,21 +217,21 @@ export default function PrivacyPage() {
           </div>
 
           <div className="space-y-4 px-6 py-6 sm:px-8">
-            <section className="rounded-[24px] border border-white/10 bg-gradient-to-br from-white/[0.05] via-blue-500/[0.05] to-emerald-400/[0.05] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
+            <section className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50 p-5 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.14)]">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-50">{copy.summaryTitle}</h2>
-                  <div className="mt-3 max-w-3xl space-y-3 text-sm leading-7 text-slate-300">
+                  <h2 className="text-lg font-semibold text-slate-900">{copy.summaryTitle}</h2>
+                  <div className="mt-3 max-w-3xl space-y-3 text-sm leading-7 text-slate-600">
                     {copy.summary.map((line) => (
                       <p key={line}>{line}</p>
                     ))}
                   </div>
                 </div>
-                <div className="min-w-[160px] rounded-[20px] border border-white/10 bg-black/20 p-4">
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{copy.languageLabel}</p>
-                  <p className="mt-2 text-sm text-slate-100">{lang === "zh" ? "中文" : "English"}</p>
-                  <p className="mt-4 text-[10px] uppercase tracking-[0.24em] text-slate-500">{copy.updatedLabel}</p>
-                  <p className="mt-2 text-sm text-slate-100">{copy.updatedValue}</p>
+                <div className="min-w-[160px] rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[10px] uppercase tracking-[.06em] text-slate-500">{copy.languageLabel}</p>
+                  <p className="mt-2 text-sm text-slate-900">{lang === "zh" ? "中文" : "English"}</p>
+                  <p className="mt-4 text-[10px] uppercase tracking-[.06em] text-slate-500">{copy.updatedLabel}</p>
+                  <p className="mt-2 text-sm text-slate-900">{copy.updatedValue}</p>
                 </div>
               </div>
             </section>
