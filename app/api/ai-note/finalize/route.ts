@@ -350,6 +350,30 @@ async function transcribeWithFallback(
   }
 }
 
+/**
+ * Maps plan/quota rejections to a response. These are raised before (or instead of)
+ * expensive work, and nothing is billed for a rejected job.
+ */
+function limitErrorResponse(error: unknown, traceId: string) {
+  if (error instanceof NoteLimitError) {
+    return bad(error.code as ApiErr, error.status, error.message, { retryable: false }, traceId);
+  }
+  if (error instanceof QuotaError) {
+    const message =
+      error.code === "NOTE_QUOTA_EXCEEDED"
+        ? "This recording is longer than the AI Note time left on your plan this week."
+        : error.message;
+    return bad(error.code as ApiErr, error.status ?? 429, message, { retryable: false }, traceId);
+  }
+  return null;
+}
+
+/** Seconds of decoded audio in a 16 kHz mono 16-bit PCM WAV produced by ffmpeg. */
+function decodedWavSeconds(wavBytes: number) {
+  const pcmBytes = Math.max(0, wavBytes - 44);
+  return Math.max(1, Math.ceil(pcmBytes / (16_000 * 2)));
+}
+
 async function readBodyNoteId(req: Request) {
   let body: any = null;
   try {
@@ -520,6 +544,10 @@ export async function POST(req: Request) {
       } as any,
     });
 
+    // Bill the decoded audio duration recorded during ASR. The client/wall-clock
+    // estimate is only a fallback for jobs that predate duration verification.
+    const billableSeconds = () => job.secondsBilled ?? recordedSeconds;
+
     // ✅ 抢锁（防并发）
     const lock = await acquireJobLock(noteId);
     if (!lock.ok) {
@@ -573,6 +601,19 @@ export async function POST(req: Request) {
             }
           }
         }
+
+        // Eligibility before any decoding or transcription: daily generations, cooldown,
+        // and that the plan has note time left. The exact duration is checked against the
+        // weekly quota once the audio has been decoded (first ASR step).
+        try {
+          await assertNoteRequestAllowed(userId, 0, { allowStaged: true });
+          await assertQuotaOrThrow({ userId, action: "note", amount: 1 });
+        } catch (error) {
+          const response = limitErrorResponse(error, traceId);
+          if (response) return response;
+          throw error;
+        }
+        markNoteAttempt(userId);
 
         await prisma.aiNoteJob.update({
           where: { noteId },
@@ -727,6 +768,28 @@ export async function POST(req: Request) {
         const files = (await fs.readdir(workDir)).filter((n) => n.startsWith("seg-") && n.endsWith(".wav")).sort();
         const total = files.length;
 
+        // Verified duration from the decoded audio (not the client's clock). Checked
+        // against the weekly quota before the first segment is transcribed, and stored
+        // as the amount to bill when the note completes.
+        if (job.secondsBilled == null) {
+          const verifiedSeconds = decodedWavSeconds((await fs.stat(fullWav)).size);
+          try {
+            await assertQuotaOrThrow({ userId, action: "note", amount: verifiedSeconds });
+          } catch (error) {
+            const response = limitErrorResponse(error, traceId);
+            if (response) return response;
+            throw error;
+          }
+          await prisma.aiNoteJob.update({ where: { noteId }, data: { secondsBilled: verifiedSeconds } });
+          job.secondsBilled = verifiedSeconds;
+          console.info("[ai-note/finalize] verified audio duration", {
+            traceId,
+            noteId,
+            verifiedSeconds,
+            clientReportedSeconds: reportedDurationMs ? Math.ceil(reportedDurationMs / 1000) : null,
+          });
+        }
+
         await prisma.aiNoteJob.update({ where: { noteId }, data: { segmentsTotal: total } });
 
         const existingTranscriptRows = await prisma.aiNoteTranscript.findMany({
@@ -862,12 +925,12 @@ export async function POST(req: Request) {
           normalizedCharacterDelta: transcript.normalizedCharacterDelta,
         });
         try {
-          await assertNoteRequestAllowed(userId, transcriptAll.length, { allowStaged: true });
-          markNoteAttempt(userId);
+          // Transcript-size limit for the plan. Cooldown was already enforced (and the
+          // attempt recorded) in prep, before transcription.
+          await assertNoteRequestAllowed(userId, transcriptAll.length, { allowStaged: true, checkCooldown: false });
         } catch (error) {
-          if (error instanceof NoteLimitError) {
-            return NextResponse.json({ ok: false, error: error.code, message: error.message }, { status: error.status });
-          }
+          const response = limitErrorResponse(error, traceId);
+          if (response) return response;
           throw error;
         }
 
@@ -896,7 +959,7 @@ export async function POST(req: Request) {
               stage: "done",
               progress: 100,
               noteMarkdown: final,
-              secondsBilled: recordedSeconds,
+              secondsBilled: billableSeconds(),
               error: null,
             } as any,
           });
@@ -919,17 +982,16 @@ export async function POST(req: Request) {
             progress: 100,
             noteId,
             note: final,
-            secondsBilled: recordedSeconds,
+            secondsBilled: billableSeconds(),
             elapsedMs: Date.now() - t0,
           });
         }
 
         try {
-          await assertQuotaOrThrow({ userId, action: "note", amount: recordedSeconds });
+          await assertQuotaOrThrow({ userId, action: "note", amount: billableSeconds() });
         } catch (e) {
-          if (e instanceof QuotaError) {
-            return NextResponse.json({ ok: false, error: e.code, message: e.message }, { status: e.status ?? 429 });
-          }
+          const response = limitErrorResponse(e, traceId);
+          if (response) return response;
           throw e;
         }
 
@@ -980,7 +1042,7 @@ export async function POST(req: Request) {
             progress: 96,
             noteId,
             partialNote: buildProgressiveNote(existingSummaryParts.map((part) => String(part.text || "").trim()).filter(Boolean)),
-            secondsBilled: recordedSeconds,
+            secondsBilled: billableSeconds(),
             elapsedMs: Date.now() - t0,
           });
         }
@@ -1066,7 +1128,7 @@ export async function POST(req: Request) {
           throw error;
         });
 
-        await addUsageEvent(userId, "note_seconds", recordedSeconds).catch(() => {});
+        await addUsageEvent(userId, "note_seconds", billableSeconds()).catch(() => {});
         await recordNoteGenerateSuccess(userId).catch(() => {});
 
         await prisma.aiNoteJob.update({
@@ -1075,7 +1137,7 @@ export async function POST(req: Request) {
             stage: "done",
             progress: 100,
             noteMarkdown: String(final || ""),
-            secondsBilled: recordedSeconds,
+            secondsBilled: billableSeconds(),
             error: null,
           } as any,
         });
@@ -1098,7 +1160,7 @@ export async function POST(req: Request) {
           progress: 100,
           noteId,
           note: String(final || ""),
-          secondsBilled: recordedSeconds,
+          secondsBilled: billableSeconds(),
           elapsedMs: Date.now() - t0,
         });
       }

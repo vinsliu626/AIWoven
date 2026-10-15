@@ -38,7 +38,14 @@ export async function getNoteQuotaStatus(userId: string) {
 export async function assertNoteRequestAllowed(
   userId: string,
   inputChars: number,
-  opts?: { allowStaged?: boolean }
+  opts?: {
+    allowStaged?: boolean;
+    /**
+     * Audio notes enforce the cooldown once, before any processing starts. Later
+     * checks for the same job pass false so the job's own start does not block it.
+     */
+    checkCooldown?: boolean;
+  }
 ) {
   const { limits, usedToday, unlimited } = await getNoteQuotaStatus(userId);
   const now = Date.now();
@@ -53,7 +60,7 @@ export async function assertNoteRequestAllowed(
   }
 
   const cooldownRemainingMs = limits.cooldownMs - (now - last);
-  if (!unlimited && cooldownRemainingMs > 0) {
+  if (!unlimited && opts?.checkCooldown !== false && cooldownRemainingMs > 0) {
     throw new NoteLimitError("NOTE_COOLDOWN_ACTIVE", "Please wait a moment before sending another request.", 429);
   }
 

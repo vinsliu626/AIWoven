@@ -6,6 +6,8 @@ import { devBypassUserId } from "@/lib/auth/devBypass";
 import { getRouteSessionUser } from "@/lib/auth/routeSession";
 import type { NextRequest } from "next/server";
 import fs from "node:fs/promises";
+import { assertNoteRequestAllowed, NoteLimitError } from "@/lib/aiNote/quota";
+import { assertQuotaOrThrow, QuotaError } from "@/lib/billing/guard";
 import os from "node:os";
 import path from "node:path";
 
@@ -56,6 +58,23 @@ export async function POST(req: NextRequest) {
       if (!Number.isSafeInteger(size) || size <= 0 || size > maxBytes || !Number.isSafeInteger(totalChunks) || totalChunks <= 0 || !/^[a-f0-9]{64}$/.test(sha256)) {
         return bad(traceId, "INVALID_UPLOAD", 400, `Choose an audio file smaller than ${Math.round(maxBytes / 1024 / 1024)} MB.`);
       }
+    }
+
+    // Refuse before any audio is uploaded or stored when the plan cannot run another
+    // note (daily generations or weekly note time used up). Cooldown and the exact
+    // duration are enforced by /api/ai-note/finalize before transcription.
+    try {
+      await assertNoteRequestAllowed(userId, 0, { checkCooldown: false });
+      await assertQuotaOrThrow({ userId, action: "note", amount: 1 });
+    } catch (error) {
+      if (error instanceof NoteLimitError) {
+        return NextResponse.json({ ok: false, error: error.code, message: error.message, traceId }, { status: error.status, headers: { "x-trace-id": traceId } });
+      }
+      if (error instanceof QuotaError) {
+        const message = error.code === "NOTE_QUOTA_EXCEEDED" ? "You've used all of your AI Note time for this week." : error.message;
+        return NextResponse.json({ ok: false, error: error.code, message, traceId }, { status: error.status ?? 429, headers: { "x-trace-id": traceId } });
+      }
+      throw error;
     }
 
     const noteId = randomUUID();

@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth/routeSession", () => ({ getRouteSessionUser: mocks.getRouteSessionUser }));
 vi.mock("@/lib/auth/devBypass", () => ({ devBypassUserId: () => null }));
+vi.mock("@/lib/aiNote/quota", () => ({ assertNoteRequestAllowed: vi.fn(), NoteLimitError: class NoteLimitError extends Error {} }));
+vi.mock("@/lib/billing/guard", () => ({ assertQuotaOrThrow: vi.fn(), QuotaError: class QuotaError extends Error {} }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     aiNoteSession: {

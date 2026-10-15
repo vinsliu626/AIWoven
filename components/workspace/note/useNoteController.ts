@@ -199,7 +199,7 @@ export function useNoteController({
       const startRes = await fetch("/api/ai-note/start", { method: "POST" });
       const startJson = await startRes.json().catch(() => null);
       if (!startRes.ok || !startJson?.ok || !startJson?.noteId) {
-        throw new Error(startJson?.error || `start failed: ${startRes.status}`);
+        throw new Error(friendlyMessageFromApi(startJson, isZh ? "无法开始录音。" : "Unable to start recording."));
       }
       const nid = String(startJson.noteId);
       setNoteId(nid);

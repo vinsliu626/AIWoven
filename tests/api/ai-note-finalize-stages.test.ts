@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   assertNoteRequestAllowed: vi.fn(),
   assertQuotaOrThrow: vi.fn(),
   addUsageEvent: vi.fn(),
+  markNoteAttempt: vi.fn(),
+  recordNoteGenerateSuccess: vi.fn(),
   prisma: {
     aiNoteSession: { findUnique: vi.fn() },
     aiNoteJob: { upsert: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
@@ -34,11 +36,22 @@ vi.mock("@/lib/aiNote/pipeline", () => ({
 }));
 vi.mock("@/lib/aiNote/quota", () => ({
   assertNoteRequestAllowed: mocks.assertNoteRequestAllowed,
-  markNoteAttempt: vi.fn(),
-  NoteLimitError: class NoteLimitError extends Error {},
-  recordNoteGenerateSuccess: vi.fn(),
+  markNoteAttempt: mocks.markNoteAttempt,
+  NoteLimitError: class NoteLimitError extends Error {
+    constructor(public code: string, message: string, public status = 429) {
+      super(message);
+    }
+  },
+  recordNoteGenerateSuccess: mocks.recordNoteGenerateSuccess,
 }));
-vi.mock("@/lib/billing/guard", () => ({ assertQuotaOrThrow: mocks.assertQuotaOrThrow, QuotaError: class QuotaError extends Error {} }));
+vi.mock("@/lib/billing/guard", () => ({
+  assertQuotaOrThrow: mocks.assertQuotaOrThrow,
+  QuotaError: class QuotaError extends Error {
+    constructor(public code: string, message: string, public status = 429) {
+      super(message);
+    }
+  },
+}));
 vi.mock("@/lib/billing/usage", () => ({ addUsageEvent: mocks.addUsageEvent }));
 
 const NOTE_ID = "6a3f4a8e-2c1d-4b7e-9f10-1d2e3f4a5b6c";
@@ -59,7 +72,7 @@ async function finalize(body: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.resetModules();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   delete process.env.AI_NOTE_TEST_MODE;
   process.env.GROQ_API_KEY = "test-key";
   mocks.getServerSession.mockResolvedValue({ user: { id: "user_1" } });
@@ -69,6 +82,10 @@ beforeEach(() => {
   mocks.prisma.aiNoteTranscript.findMany.mockResolvedValue([]);
   mocks.prisma.aiNoteTranscript.upsert.mockResolvedValue({});
   mocks.prisma.aiNoteSummaryPart.findMany.mockResolvedValue([]);
+  mocks.prisma.aiNoteSummaryPart.upsert.mockResolvedValue({});
+  mocks.prisma.aiNoteChunk.deleteMany.mockResolvedValue({ count: 0 });
+  mocks.addUsageEvent.mockResolvedValue(undefined);
+  mocks.recordNoteGenerateSuccess.mockResolvedValue(undefined);
 });
 
 describe.skipIf(!hasFfmpeg)("finalize ASR stage: empty transcription results", () => {
@@ -125,5 +142,123 @@ describe("finalize LLM stage: recordings without speech", () => {
     expect(result.status).toBe(422);
     expect(result.body.error).toBe("EMPTY_TRANSCRIPT");
     expect(mocks.runAiNotePipeline).not.toHaveBeenCalled();
+  });
+});
+
+describe("finalize prep: eligibility is checked before any audio is decoded or transcribed", () => {
+  beforeEach(() => {
+    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "prep" });
+    mocks.prisma.aiNoteChunk.findMany.mockResolvedValue([{ chunkIndex: 0, size: 10 }, { chunkIndex: 1, size: 10 }]);
+  });
+
+  const advancedToAsr = () => mocks.prisma.aiNoteJob.update.mock.calls.some(([args]) => args?.data?.stage === "asr");
+
+  it("rejects a user who has used today's generations, without starting the job", async () => {
+    const { NoteLimitError } = await import("@/lib/aiNote/quota");
+    mocks.assertNoteRequestAllowed.mockRejectedValue(new NoteLimitError("NOTE_DAILY_LIMIT_REACHED", "You've used all AI Note generations for today.", 429));
+
+    const result = await finalize();
+
+    expect(result.status).toBe(429);
+    expect(result.body).toMatchObject({ ok: false, error: "NOTE_DAILY_LIMIT_REACHED", retryable: false });
+    expect(advancedToAsr()).toBe(false);
+    expect(mocks.markNoteAttempt).not.toHaveBeenCalled();
+    expect(mocks.transcribeAudioToText).not.toHaveBeenCalled();
+  });
+
+  it("rejects a user with no note time left this week, with a readable message", async () => {
+    const { QuotaError } = await import("@/lib/billing/guard");
+    mocks.assertQuotaOrThrow.mockRejectedValue(new QuotaError("NOTE_QUOTA_EXCEEDED", "Quota exceeded: note_seconds. used=7200, limit=7200, remaining=0", 429));
+
+    const result = await finalize();
+
+    expect(result.status).toBe(429);
+    expect(result.body.error).toBe("NOTE_QUOTA_EXCEEDED");
+    expect(result.body.message).not.toMatch(/used=|limit=/);
+    expect(advancedToAsr()).toBe(false);
+  });
+
+  it("starts the job and records the attempt when the user is eligible", async () => {
+    const result = await finalize();
+
+    expect(result.status).toBe(200);
+    expect(result.body.stage).toBe("asr");
+    expect(mocks.assertNoteRequestAllowed).toHaveBeenCalledWith("user_1", 0, expect.objectContaining({ allowStaged: true }));
+    expect(mocks.assertQuotaOrThrow).toHaveBeenCalledWith({ userId: "user_1", action: "note", amount: 1 });
+    expect(mocks.markNoteAttempt).toHaveBeenCalledWith("user_1");
+    expect(advancedToAsr()).toBe(true);
+  });
+});
+
+describe.skipIf(!hasFfmpeg)("finalize ASR: verified audio duration", () => {
+  beforeEach(() => {
+    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "asr", segmentTimeSec: 180, asrNextIndex: 0, secondsBilled: null });
+    mocks.prisma.aiNoteChunk.findMany.mockResolvedValue([{ chunkIndex: 0, size: fixture.length, mime: "audio/webm", data: fixture }]);
+    mocks.transcribeAudioToText.mockResolvedValue("Spoken words.");
+  });
+
+  it("checks the weekly quota with the decoded duration before transcribing, ignoring the client's claim", async () => {
+    const order: string[] = [];
+    mocks.assertQuotaOrThrow.mockImplementation(async () => void order.push("quota"));
+    mocks.transcribeAudioToText.mockImplementation(async () => (order.push("transcribe"), "Spoken words."));
+
+    // The client claims 1 second; the fixture decodes to 3.96 s.
+    await finalize({ totalDurationMs: 1_000 });
+
+    expect(mocks.assertQuotaOrThrow).toHaveBeenCalledWith({ userId: "user_1", action: "note", amount: 4 });
+    expect(order).toEqual(["quota", "transcribe"]);
+    expect(mocks.prisma.aiNoteJob.update).toHaveBeenCalledWith({ where: { noteId: NOTE_ID }, data: { secondsBilled: 4 } });
+  });
+
+  it("does not transcribe when the recording is longer than the remaining quota", async () => {
+    const { QuotaError } = await import("@/lib/billing/guard");
+    mocks.assertQuotaOrThrow.mockRejectedValue(new QuotaError("NOTE_QUOTA_EXCEEDED", "Quota exceeded", 429));
+
+    const result = await finalize();
+
+    expect(result.status).toBe(429);
+    expect(result.body.error).toBe("NOTE_QUOTA_EXCEEDED");
+    expect(mocks.transcribeAudioToText).not.toHaveBeenCalled();
+    expect(mocks.callGroqTranscribe).not.toHaveBeenCalled();
+  });
+
+  it("does not re-check or overwrite the verified duration on later ASR steps", async () => {
+    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "asr", segmentTimeSec: 180, asrNextIndex: 0, secondsBilled: 4 });
+
+    await finalize();
+
+    expect(mocks.assertQuotaOrThrow).not.toHaveBeenCalled();
+    expect(mocks.prisma.aiNoteJob.update.mock.calls.some(([args]) => "secondsBilled" in (args?.data ?? {}))).toBe(false);
+  });
+});
+
+describe("finalize LLM and merge: limits and billing", () => {
+  it("re-checks the transcript size without re-applying the cooldown the job already passed", async () => {
+    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "llm", llmNextPart: 0, llmPartsTotal: 1, secondsBilled: 4 });
+    mocks.prisma.aiNoteTranscript.findMany.mockResolvedValue([{ text: "Spoken words about entropy.", rawText: "Spoken words about entropy.", canonicalText: "Spoken words about entropy." }]);
+    mocks.runAiNotePipeline.mockResolvedValue("## Segment Topic\nEntropy");
+    process.env.AI_NOTE_LLM_PAUSE_MS = "0";
+
+    await finalize();
+
+    expect(mocks.assertNoteRequestAllowed).toHaveBeenCalledWith("user_1", expect.any(Number), { allowStaged: true, checkCooldown: false });
+    expect(mocks.assertQuotaOrThrow).toHaveBeenCalledWith({ userId: "user_1", action: "note", amount: 4 });
+    delete process.env.AI_NOTE_LLM_PAUSE_MS;
+  });
+
+  it("bills the verified audio duration, not the session's wall-clock age", async () => {
+    // Session created an hour ago (slow upload + processing); the audio is 4 s long.
+    mocks.prisma.aiNoteSession.findUnique.mockResolvedValue({ userId: "user_1", createdAt: new Date(Date.now() - 60 * 60_000) });
+    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "merge", secondsBilled: 4 });
+    mocks.prisma.aiNoteTranscript.findMany.mockResolvedValue([{ text: "Spoken words.", rawText: "Spoken words.", canonicalText: "Spoken words." }]);
+    mocks.prisma.aiNoteSummaryPart.findMany.mockResolvedValue([{ text: "## Segment Topic\nEntropy" }]);
+    mocks.prisma.aiNoteChunk.deleteMany.mockResolvedValue({ count: 1 });
+    mocks.runAiNotePipeline.mockResolvedValue("# Notes\n\n## Executive Summary\nEntropy.");
+
+    const result = await finalize({ inputType: "upload" });
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ stage: "done", secondsBilled: 4 });
+    expect(mocks.addUsageEvent).toHaveBeenCalledWith("user_1", "note_seconds", 4);
   });
 });
