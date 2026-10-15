@@ -368,7 +368,9 @@ async function transcribeWithFallback(
  */
 function limitErrorResponse(error: unknown, traceId: string) {
   if (error instanceof NoteLimitError) {
-    return bad(error.code as ApiErr, error.status, error.message, { retryable: false }, traceId);
+    // The uploaded audio is kept, so a cooldown can be retried without uploading again.
+    const retryable = error.code === "NOTE_COOLDOWN_ACTIVE";
+    return bad(error.code as ApiErr, error.status, error.message, { retryable }, traceId);
   }
   if (error instanceof QuotaError) {
     const message =

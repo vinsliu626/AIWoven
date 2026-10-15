@@ -168,6 +168,17 @@ describe("finalize prep: eligibility is checked before any audio is decoded or t
     expect(mocks.transcribeAudioToText).not.toHaveBeenCalled();
   });
 
+  it("lets a cooldown be retried without uploading again", async () => {
+    const { NoteLimitError } = await import("@/lib/aiNote/quota");
+    mocks.assertNoteRequestAllowed.mockRejectedValue(new NoteLimitError("NOTE_COOLDOWN_ACTIVE", "Please wait a moment before sending another request.", 429));
+
+    const result = await finalize();
+
+    expect(result.status).toBe(429);
+    expect(result.body).toMatchObject({ error: "NOTE_COOLDOWN_ACTIVE", retryable: true });
+    expect(advancedToAsr()).toBe(false);
+  });
+
   it("rejects a user with no note time left this week, with a readable message", async () => {
     const { QuotaError } = await import("@/lib/billing/guard");
     mocks.assertQuotaOrThrow.mockRejectedValue(new QuotaError("NOTE_QUOTA_EXCEEDED", "Quota exceeded: note_seconds. used=7200, limit=7200, remaining=0", 429));
