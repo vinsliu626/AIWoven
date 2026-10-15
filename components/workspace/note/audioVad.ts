@@ -1,9 +1,9 @@
-export type VadConfig = {
+export type RecordingBatchConfig = {
   sliceMs: number;
+  /** Flush a batch once speech is followed by this much silence. */
   silenceMs: number;
-  preSpeechPadMs: number;
-  postSpeechPadMs: number;
-  maxSegmentMs?: number;
+  /** Upper bound on one batch, so client memory and request size stay bounded. */
+  maxBatchMs: number;
 };
 
 export type RecorderSlice<T> = {
@@ -11,7 +11,7 @@ export type RecorderSlice<T> = {
   hasSpeech: boolean;
 };
 
-export type SpeechSegment<T> = {
+export type RecordingBatch<T> = {
   sequenceIndex: number;
   slices: T[];
   sliceCount: number;
@@ -29,71 +29,58 @@ export function computeRms(samples: ArrayLike<number>) {
   return Math.sqrt(sum / len);
 }
 
-export function createSpeechSegmenter<T>(config: VadConfig) {
+/**
+ * Groups MediaRecorder timeslice blobs into upload batches without ever
+ * discarding one.
+ *
+ * MediaRecorder slices are byte ranges of a single container stream (WebM or
+ * Ogg), not standalone files: the first slice carries the container header and
+ * later slices only make sense after it. The server rebuilds the recording by
+ * concatenating batches in sequence order, so every slice must be uploaded,
+ * in order, exactly once. Silence detection is used only to choose where a
+ * batch ends (at a pause after speech), never to drop audio.
+ */
+export function createRecordingChunkBatcher<T>(config: RecordingBatchConfig) {
   const sliceMs = Math.max(50, Math.round(config.sliceMs));
-  const silenceMs = Math.max(sliceMs, Math.round(config.silenceMs));
-  const preSpeechPadSlices = Math.max(0, Math.ceil(config.preSpeechPadMs / sliceMs));
-  const postSpeechPadSlices = Math.max(0, Math.ceil(config.postSpeechPadMs / sliceMs));
-  const maxSegmentSlices = config.maxSegmentMs ? Math.max(1, Math.ceil(config.maxSegmentMs / sliceMs)) : Number.POSITIVE_INFINITY;
+  const silenceSlices = Math.max(1, Math.ceil(Math.max(sliceMs, config.silenceMs) / sliceMs));
+  const maxBatchSlices = Math.max(1, Math.ceil(Math.max(sliceMs, config.maxBatchMs) / sliceMs));
 
-  let preSpeech: T[] = [];
-  let active: T[] = [];
+  let pending: T[] = [];
+  let heardSpeech = false;
   let trailingSilentSlices = 0;
   let nextSequenceIndex = 0;
 
-  const finalizeActive = (keepTrailingSilentSlices: number) => {
-    if (active.length === 0) return null;
-    const trim = Math.max(0, trailingSilentSlices - keepTrailingSilentSlices);
-    const kept = trim > 0 ? active.slice(0, Math.max(0, active.length - trim)) : active.slice();
-    active = [];
-    trailingSilentSlices = 0;
-    if (kept.length === 0) return null;
-    const segment: SpeechSegment<T> = {
+  const takeBatch = (): RecordingBatch<T> | null => {
+    if (pending.length === 0) return null;
+    const batch: RecordingBatch<T> = {
       sequenceIndex: nextSequenceIndex,
-      slices: kept,
-      sliceCount: kept.length,
+      slices: pending,
+      sliceCount: pending.length,
     };
     nextSequenceIndex += 1;
-    return segment;
+    pending = [];
+    heardSpeech = false;
+    trailingSilentSlices = 0;
+    return batch;
   };
 
   return {
     push(slice: RecorderSlice<T>) {
+      pending.push(slice.value);
       if (slice.hasSpeech) {
-        if (active.length === 0 && preSpeech.length > 0) {
-          active.push(...preSpeech);
-        }
-        preSpeech = [];
-        active.push(slice.value);
+        heardSpeech = true;
         trailingSilentSlices = 0;
-        if (active.length >= maxSegmentSlices) {
-          return finalizeActive(0);
-        }
-        return null;
-      }
-
-      if (active.length > 0) {
-        active.push(slice.value);
+      } else {
         trailingSilentSlices += 1;
-        if (active.length >= maxSegmentSlices) {
-          return finalizeActive(postSpeechPadSlices);
-        }
-        if (trailingSilentSlices * sliceMs >= silenceMs + postSpeechPadSlices * sliceMs) {
-          return finalizeActive(postSpeechPadSlices);
-        }
-        return null;
       }
 
-      preSpeech.push(slice.value);
-      if (preSpeech.length > preSpeechPadSlices) {
-        preSpeech = preSpeech.slice(preSpeech.length - preSpeechPadSlices);
-      }
+      if (pending.length >= maxBatchSlices) return takeBatch();
+      if (heardSpeech && trailingSilentSlices >= silenceSlices) return takeBatch();
       return null;
     },
 
     flush() {
-      preSpeech = [];
-      return finalizeActive(postSpeechPadSlices);
+      return takeBatch();
     },
 
     getSequenceIndex() {

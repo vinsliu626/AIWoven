@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildProgressiveNote, isSkippedTranscript, nextUnprocessedIndex } from "@/lib/aiNote/finalizeHelpers";
+import { buildProgressiveNote, hasContiguousChunkIndexes, isSkippedTranscript, nextUnprocessedIndex } from "@/lib/aiNote/finalizeHelpers";
 
 describe("ai-note finalize helpers", () => {
   it("treats skipped transcript sentinels as processed", () => {
@@ -30,5 +30,13 @@ describe("ai-note finalize helpers", () => {
       { chunkIndex: 0, text: "Canonical first segment." },
       { chunkIndex: 1, text: "Canonical second segment." },
     ], 2)).toBe(2);
+  });
+
+  it("requires recorded chunks to be contiguous from 0, because chunk 0 carries the container header", () => {
+    expect(hasContiguousChunkIndexes([0, 1, 2])).toBe(true);
+    expect(hasContiguousChunkIndexes([2, 0, 1])).toBe(true);
+    expect(hasContiguousChunkIndexes([1, 2, 3])).toBe(false);
+    expect(hasContiguousChunkIndexes([0, 2])).toBe(false);
+    expect(hasContiguousChunkIndexes([])).toBe(false);
   });
 });

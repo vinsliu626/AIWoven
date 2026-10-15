@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { computeRms, createSpeechSegmenter } from "./audioVad";
+import { computeRms, createRecordingChunkBatcher } from "./audioVad";
 
 export type NoteTab = "upload" | "record" | "text";
 export type NotePhase = "idle" | "uploading" | "transcribing" | "organizing" | "finalizing" | "done" | "error";
@@ -25,10 +25,9 @@ export function useNoteController({
   const RECORDER_SLICE_MS = 250;
   const VAD_POLL_MS = 50;
   const VAD_SILENCE_MS = 650;
-  const VAD_PRE_SPEECH_PAD_MS = 250;
-  const VAD_POST_SPEECH_PAD_MS = 250;
   const VAD_ENERGY_THRESHOLD = 0.02;
-  const MAX_SPEECH_SEGMENT_MS = 30_000;
+  const MAX_UPLOAD_BATCH_MS = 30_000;
+  const CHUNK_UPLOAD_ATTEMPTS = 3;
 
   const finalizeAbortRef = useRef(false);
   const [tab, setTab] = useState<NoteTab>("upload");
@@ -79,12 +78,10 @@ export function useNoteController({
   const retryRequestedRef = useRef(false);
   const resumeAttemptedRef = useRef(false);
   const speechSegmenterRef = useRef(
-    createSpeechSegmenter<Blob>({
+    createRecordingChunkBatcher<Blob>({
       sliceMs: RECORDER_SLICE_MS,
       silenceMs: VAD_SILENCE_MS,
-      preSpeechPadMs: VAD_PRE_SPEECH_PAD_MS,
-      postSpeechPadMs: VAD_POST_SPEECH_PAD_MS,
-      maxSegmentMs: MAX_SPEECH_SEGMENT_MS,
+      maxBatchMs: MAX_UPLOAD_BATCH_MS,
     })
   );
 
@@ -191,12 +188,10 @@ export function useNoteController({
 
     uploadingRef.current = Promise.resolve();
     chunkIndexRef.current = 0;
-    speechSegmenterRef.current = createSpeechSegmenter<Blob>({
+    speechSegmenterRef.current = createRecordingChunkBatcher<Blob>({
       sliceMs: RECORDER_SLICE_MS,
       silenceMs: VAD_SILENCE_MS,
-      preSpeechPadMs: VAD_PRE_SPEECH_PAD_MS,
-      postSpeechPadMs: VAD_POST_SPEECH_PAD_MS,
-      maxSegmentMs: MAX_SPEECH_SEGMENT_MS,
+      maxBatchMs: MAX_UPLOAD_BATCH_MS,
     });
     sliceSpeechDetectedRef.current = false;
 
@@ -259,22 +254,32 @@ export function useNoteController({
             fd.append("chunkIndex", String(sequenceIndex));
             fd.append("file", fileChunk, fileChunk.name);
 
-            const response = await fetch(`/api/ai-note/chunk?noteId=${encodeURIComponent(nid)}&chunkIndex=${sequenceIndex}`, {
-              method: "POST",
-              credentials: "include",
-              body: fd,
-            });
-
-            const raw = await response.text();
+            // Every batch is part of one container stream, so a lost batch corrupts the
+            // recording. The server upserts by (noteId, chunkIndex), which makes retries safe.
             let json: any = null;
-            try {
-              json = raw ? JSON.parse(raw) : null;
-            } catch {
-              json = null;
-            }
+            for (let attempt = 1; ; attempt += 1) {
+              let retryable = true;
+              try {
+                const response = await fetch(`/api/ai-note/chunk?noteId=${encodeURIComponent(nid)}&chunkIndex=${sequenceIndex}`, {
+                  method: "POST",
+                  credentials: "include",
+                  body: fd,
+                });
 
-            if (!response.ok || json?.ok === false) {
-              throw new Error(json?.error || json?.message || raw.slice(0, 300) || `chunk upload failed: ${response.status}`);
+                const raw = await response.text();
+                try {
+                  json = raw ? JSON.parse(raw) : null;
+                } catch {
+                  json = null;
+                }
+
+                if (response.ok && json?.ok !== false) break;
+                retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+                throw new Error(json?.error || json?.message || raw.slice(0, 300) || `chunk upload failed: ${response.status}`);
+              } catch (attemptError) {
+                if (!retryable || attempt >= CHUNK_UPLOAD_ATTEMPTS) throw attemptError;
+                await new Promise((resolve) => window.setTimeout(resolve, 500 * attempt));
+              }
             }
 
             setUploadedChunks((count) => count + 1);

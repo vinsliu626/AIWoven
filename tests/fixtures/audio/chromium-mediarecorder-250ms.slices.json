@@ -1,0 +1,25 @@
+{
+  "description": "Real MediaRecorder output (headless Chromium, fake microphone, no human audio). The .webm file is the byte-exact concatenation of these timeslice blobs, in order.",
+  "recorder": {
+    "mimeType": "audio/webm;codecs=opus",
+    "timesliceMs": 250,
+    "audioBitsPerSecond": 32000,
+    "browser": "HeadlessChrome/141.0.0.0"
+  },
+  "sliceSizes": [
+    218,
+    243,
+    850,
+    799,
+    661,
+    758,
+    731,
+    761,
+    1040,
+    1246,
+    1246,
+    1246,
+    1246,
+    507
+  ]
+}

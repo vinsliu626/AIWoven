@@ -11,6 +11,16 @@ export function isSkippedTranscript(text: string) {
   return text.startsWith(AI_NOTE_ASR_SKIPPED_PREFIX);
 }
 
+/**
+ * Recorded audio is one container stream split across chunks, so the chunk
+ * indexes must be exactly 0..n-1: a missing chunk (especially chunk 0, which
+ * carries the container header) makes the reassembled recording undecodable.
+ */
+export function hasContiguousChunkIndexes(indexes: number[]) {
+  const sorted = [...indexes].sort((a, b) => a - b);
+  return sorted.length > 0 && sorted.every((value, position) => value === position);
+}
+
 export function nextUnprocessedIndex(rows: { chunkIndex: number; text: string }[], total: number) {
   const processed = new Set(
     rows

@@ -16,7 +16,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { transcribeAudioToText } from "@/lib/asr/transcribe";
 import { callGroqTranscribe } from "@/lib/ai/groq";
 import { AiNoteGenerationError, runAiNotePipeline } from "@/lib/aiNote/pipeline";
-import { buildCanonicalTranscript, buildProgressiveNote, buildRawTranscript, nextUnprocessedIndex } from "@/lib/aiNote/finalizeHelpers";
+import { buildCanonicalTranscript, buildProgressiveNote, buildRawTranscript, hasContiguousChunkIndexes, nextUnprocessedIndex } from "@/lib/aiNote/finalizeHelpers";
 import { canonicalizeTranscriptText, transcriptNormalizationMetadata } from "@/lib/aiNote/transcriptCanonicalization";
 import { deriveRecordedSeconds, parseRecordedDurationMs } from "@/lib/aiNote/recordingUsage";
 import { assertNoteRequestAllowed, markNoteAttempt, NoteLimitError, recordNoteGenerateSuccess } from "@/lib/aiNote/quota";
@@ -547,6 +547,15 @@ export async function POST(req: Request) {
           });
 
           if (chunks.length === 0) return bad("NO_CHUNKS", 409, "No chunks uploaded.");
+          if (sourceType === "record" && !hasContiguousChunkIndexes(chunks.map((chunk) => chunk.chunkIndex))) {
+            return bad(
+              "INCOMPLETE_UPLOAD",
+              409,
+              "Part of this recording did not upload, so it cannot be processed. Please record again.",
+              { stage: "uploading", retryable: false, receivedChunks: chunks.length },
+              traceId
+            );
+          }
           if (sourceType === "upload") {
             const contiguous = chunks.every((chunk, index) => chunk.chunkIndex === index);
             const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.size, 0);
