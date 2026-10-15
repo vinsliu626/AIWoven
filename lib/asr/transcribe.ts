@@ -1,6 +1,8 @@
 // lib/asr/transcribe.ts
 import "server-only";
 
+import { parseTranscriptionResponse } from "@/lib/asr/response";
+
 type BinaryLike = ArrayBuffer | Uint8Array; // ✅ 删掉 Buffer 类型，避免客户端/类型炸（Buffer 也属于 Uint8Array）
 
 function resolveAsrUrl(base: string) {
@@ -108,10 +110,6 @@ export async function transcribeAudioToText(
     throw new Error(`ASR HTTP error: ${res.status} ${res.statusText}. url=${url} body=${raw.slice(0, 1200)}`);
   }
 
-  let json: any = null;
-  try {
-    json = raw ? JSON.parse(raw) : null;
-  } catch {}
-
-  return String(json?.text || json?.transcript || raw || "").trim();
+  // "" means the provider found no speech; callers decide how to treat that.
+  return parseTranscriptionResponse(raw, res.headers.get("content-type"));
 }

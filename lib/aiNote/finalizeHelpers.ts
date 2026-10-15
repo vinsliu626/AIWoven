@@ -1,4 +1,5 @@
 import {
+  canonicalizeTranscriptText,
   canonicalTranscriptForRow,
   joinCanonicalTranscriptSegments,
   rawTranscriptForRow,
@@ -7,8 +8,23 @@ import {
 
 export const AI_NOTE_ASR_SKIPPED_PREFIX = "__AI_NOTE_ASR_SKIPPED__:";
 
+export const AI_NOTE_NO_SPEECH_MARKER = `${AI_NOTE_ASR_SKIPPED_PREFIX}{"cause":"no_speech"}`;
+
 export function isSkippedTranscript(text: string) {
   return text.startsWith(AI_NOTE_ASR_SKIPPED_PREFIX);
+}
+
+/**
+ * Maps one ASR segment result to what is stored for it. A segment with no
+ * spoken content (empty or punctuation-only) is stored as an explicit
+ * "no speech" marker: it counts as processed, so it is not transcribed again,
+ * and it is excluded from the transcript that notes are generated from.
+ */
+export function storedSegmentTranscript(text: string | null | undefined) {
+  const rawText = String(text ?? "").trim();
+  const canonicalText = canonicalizeTranscriptText(rawText);
+  if (!canonicalText) return { rawText, canonicalText: AI_NOTE_NO_SPEECH_MARKER, noSpeech: true };
+  return { rawText, canonicalText, noSpeech: false };
 }
 
 /**

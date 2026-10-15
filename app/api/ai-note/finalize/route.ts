@@ -16,7 +16,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { transcribeAudioToText } from "@/lib/asr/transcribe";
 import { callGroqTranscribe } from "@/lib/ai/groq";
 import { AiNoteGenerationError, runAiNotePipeline } from "@/lib/aiNote/pipeline";
-import { buildCanonicalTranscript, buildProgressiveNote, buildRawTranscript, hasContiguousChunkIndexes, nextUnprocessedIndex } from "@/lib/aiNote/finalizeHelpers";
+import { buildCanonicalTranscript, buildProgressiveNote, buildRawTranscript, hasContiguousChunkIndexes, nextUnprocessedIndex, storedSegmentTranscript } from "@/lib/aiNote/finalizeHelpers";
 import { canonicalizeTranscriptText, transcriptNormalizationMetadata } from "@/lib/aiNote/transcriptCanonicalization";
 import { deriveRecordedSeconds, parseRecordedDurationMs } from "@/lib/aiNote/recordingUsage";
 import { assertNoteRequestAllowed, markNoteAttempt, NoteLimitError, recordNoteGenerateSuccess } from "@/lib/aiNote/quota";
@@ -298,7 +298,9 @@ async function transcribeWithFallback(
     return { text: `[offline transcript] ${fname}`, provider: "offline", model: "offline", endpoint: "offline" };
   }
 
-  // 1) External ASR (ASR_URL)
+  // 1) External ASR (ASR_URL). A successful empty transcript means the provider found
+  // no speech in this segment; that is a valid result, not a provider failure, so it is
+  // returned as-is instead of triggering a paid fallback transcription.
   try {
     const text = await withRetry(
       async () =>
@@ -313,9 +315,6 @@ async function transcribeWithFallback(
       `asr_external_${fname}`,
       asrMaxTry
     );
-    if (!canonicalizeTranscriptText(text)) {
-      throw Object.assign(new Error("ASR_CANONICAL_TRANSCRIPT_EMPTY"), { httpStatus: 422, code: "ASR_CANONICAL_TRANSCRIPT_EMPTY" });
-    }
     return {
       text,
       provider: externalAsrProvider(process.env.ASR_URL),
@@ -323,7 +322,7 @@ async function transcribeWithFallback(
       endpoint: safeEndpoint(process.env.ASR_URL, "/transcribe"),
     };
   } catch (e) {
-    // 2) Groq fallback
+    // 2) Groq fallback, only when the external provider failed.
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) throw e;
     const out = await withRetry(
@@ -342,12 +341,8 @@ async function transcribeWithFallback(
       `asr_groq_${fname}`,
       asrMaxTry
     );
-    const text = String(out?.text || "").trim();
-    if (!canonicalizeTranscriptText(text)) {
-      throw Object.assign(new Error("GROQ_ASR_CANONICAL_TRANSCRIPT_EMPTY"), { httpStatus: 422, code: "GROQ_ASR_CANONICAL_TRANSCRIPT_EMPTY" });
-    }
     return {
-      text,
+      text: String(out?.text || "").trim(),
       provider: "groq",
       model: String(out?.modelUsed || process.env.AI_NOTE_ASR_MODEL || "whisper-large-v3"),
       endpoint: "https://api.groq.com/openai/v1/audio/transcriptions",
@@ -772,14 +767,15 @@ export async function POST(req: Request) {
             throw mapTranscriptionProviderError(error);
           }
 
-          const rawText = String(asrResult.text || "").trim();
-          const canonicalText = canonicalizeTranscriptText(rawText);
+          const stored = storedSegmentTranscript(asrResult.text);
+          const { rawText, canonicalText } = stored;
           const metadata = transcriptNormalizationMetadata(rawText, canonicalText);
 
           console.info("[ai-note/asr-result]", {
             traceId,
             noteId,
             segmentIndex: i,
+            noSpeech: stored.noSpeech,
             rawTranscriptHash: metadata.rawTranscriptHash,
             canonicalTranscriptHash: metadata.canonicalTranscriptHash,
             normalizationChanged: metadata.normalizationChanged,

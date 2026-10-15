@@ -2,6 +2,7 @@
 import { withTimeout } from "@/lib/ai/timeout";
 import type { ChatMessage } from "@/lib/ai/openrouter";
 import { parseEnvInt } from "@/lib/env/number";
+import { parseTranscriptionResponse } from "@/lib/asr/response";
 
 /**
  * ✅ Fix for TS error:
@@ -139,32 +140,10 @@ export async function callGroqTranscribe(opts: {
       throw err;
     }
 
-    // Some providers return JSON; some may return plain text
-    let data: any;
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      const outText = text.trim();
-      if (!outText) {
-        const err: any = new Error("GROQ_ASR_NO_TEXT");
-        err.httpStatus = 502;
-        err.code = "GROQ_ASR_NO_TEXT";
-        err.extra = { raw: text.slice(0, 1200) };
-        throw err;
-      }
-      return { text: outText, modelUsed: model, raw: text };
-    }
-
-    const out = String(data?.text || "").trim();
-    if (!out) {
-      const err: any = new Error("GROQ_ASR_NO_TEXT");
-      err.httpStatus = 502;
-      err.code = "GROQ_ASR_NO_TEXT";
-      err.extra = { data };
-      throw err;
-    }
-
-    return { text: out, modelUsed: model, raw: data };
+    // An empty string is a successful "no speech" result. Malformed bodies throw
+    // TranscriptionResponseError (httpStatus 502) instead of becoming transcript text.
+    const out = parseTranscriptionResponse(text, res.headers.get("content-type"));
+    return { text: out, modelUsed: model };
   } catch (e: any) {
     if (e?.name === "AbortError") {
       const err: any = new Error("GROQ_ASR_TIMEOUT");

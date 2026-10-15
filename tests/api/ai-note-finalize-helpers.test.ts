@@ -40,3 +40,25 @@ describe("ai-note finalize helpers", () => {
     expect(hasContiguousChunkIndexes([])).toBe(false);
   });
 });
+
+describe("no-speech ASR segments", () => {
+  it("stores empty or punctuation-only results as an explicit no-speech marker", async () => {
+    const { AI_NOTE_NO_SPEECH_MARKER, storedSegmentTranscript } = await import("@/lib/aiNote/finalizeHelpers");
+    expect(storedSegmentTranscript("")).toEqual({ rawText: "", canonicalText: AI_NOTE_NO_SPEECH_MARKER, noSpeech: true });
+    expect(storedSegmentTranscript("  . ")).toMatchObject({ canonicalText: AI_NOTE_NO_SPEECH_MARKER, noSpeech: true });
+    expect(storedSegmentTranscript(" Hello class ")).toEqual({ rawText: "Hello class", canonicalText: "Hello class", noSpeech: false });
+  });
+
+  it("counts no-speech segments as processed and leaves them out of the note transcript", async () => {
+    const { AI_NOTE_NO_SPEECH_MARKER, buildCanonicalTranscript, buildRawTranscript } = await import("@/lib/aiNote/finalizeHelpers");
+    const rows = [
+      { chunkIndex: 0, text: "First idea.", rawText: "First idea.", canonicalText: "First idea." },
+      { chunkIndex: 1, text: AI_NOTE_NO_SPEECH_MARKER, rawText: "", canonicalText: AI_NOTE_NO_SPEECH_MARKER },
+      { chunkIndex: 2, text: "Second idea.", rawText: "Second idea.", canonicalText: "Second idea." },
+    ];
+    expect(nextUnprocessedIndex(rows, 3)).toBe(3);
+    expect(buildCanonicalTranscript(rows)).toBe("First idea.\nSecond idea.");
+    expect(buildRawTranscript(rows)).toBe("First idea.\nSecond idea.");
+    expect(buildCanonicalTranscript([rows[1]])).toBe("");
+  });
+});
