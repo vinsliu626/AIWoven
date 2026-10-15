@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { transcribeAudioToText } from "@/lib/asr/transcribe";
-import { callGroqTranscribe } from "@/lib/ai/groq";
 import { generateStructuredNotesSafely } from "@/lib/aiNote/staged";
 import { assertQuotaOrThrow, QuotaError } from "@/lib/billing/guard";
 import { assertNoteRequestAllowed, getNoteQuotaStatus, markNoteAttempt, NoteLimitError, recordNoteGenerateSuccess } from "@/lib/aiNote/quota";
@@ -29,26 +27,6 @@ function friendlyNoteErrorMessage(code: string, fallback: string) {
   }
 }
 
-async function transcribeUpload(file: File) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  try {
-    return await transcribeAudioToText(bytes, {
-      filename: file.name,
-      mime: file.type || "audio/webm",
-    });
-  } catch (error) {
-    const groqKey = process.env.GROQ_API_KEY;
-    if (!groqKey) throw error;
-    const fallback = await callGroqTranscribe({
-      apiKey: groqKey,
-      audio: Buffer.from(bytes),
-      mime: file.type || "audio/webm",
-      filename: file.name,
-    });
-    return fallback.text;
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
     const sessionUser = await getRouteSessionUser(req);
@@ -57,26 +35,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "AUTH_REQUIRED", message: "Please sign in to use AI Notes." }, { status: 401 });
     }
 
+    // Text only. Audio must use the chunked flow (/start → /chunk → /finalize), which
+    // checks plan limits and verified duration before any transcription runs.
     const contentType = req.headers.get("content-type") || "";
-    let inputText = "";
-    let inputType: "text" | "upload" = "text";
-
-    if (contentType.includes("application/json")) {
-      const body = await req.json().catch(() => null);
-      inputText = String(body?.text || "").trim();
-      inputType = "text";
-    } else {
-      const form = await req.formData();
-      const file = form.get("file");
-      inputType = "upload";
-      if (!(file instanceof File)) {
-        return NextResponse.json(
-          { ok: false, error: "MISSING_FILE", message: "Please choose an audio file to generate notes." },
-          { status: 400 }
-        );
-      }
-      inputText = String(await transcribeUpload(file)).trim();
+    if (!contentType.includes("application/json")) {
+      return NextResponse.json(
+        { ok: false, error: "UNSUPPORTED_INPUT", message: "Upload audio from the AI Note upload or record tab." },
+        { status: 415 }
+      );
     }
+    const body = await req.json().catch(() => null);
+    const inputText = String(body?.text || "").trim();
+    const inputType = "text" as const;
 
     if (!inputText) {
       return NextResponse.json(
@@ -88,7 +58,7 @@ export async function POST(req: NextRequest) {
     const quota = await assertNoteRequestAllowed(userId, inputText.length, { allowStaged: true });
     markNoteAttempt(userId);
 
-    if (inputType === "upload" || quota.mode === "staged") {
+    if (quota.mode === "staged") {
       const estimatedSeconds = Math.max(1, Math.round(inputText.trim().split(/\s+/).filter(Boolean).length / 2.5));
       try {
         await assertQuotaOrThrow({ userId, action: "note", amount: estimatedSeconds });
