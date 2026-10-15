@@ -1,6 +1,6 @@
 # ASR rework, timeout budgets, and transcript-length limits
 
-**Status:** 2026-10-15. Investigation and proposals only. **Nothing in this document is implemented**, and no plan limit has changed.
+**Status:** 2026-10-15. **Sections 1 and 2 are now implemented** on this branch (see "Implemented" below each). Section 3 is unchanged: no plan limit has changed.
 **Follows:** findings F-03, F-06, and F-07 in `docs/audits/audio-to-notes-audit.md`.
 
 Labels: **MEASURED** (local run in this container), **FACT** (code), **ESTIMATE** (arithmetic from stated assumptions).
@@ -45,6 +45,35 @@ Labels: **MEASURED** (local run in this container), **FACT** (code), **ESTIMATE*
   - Very long WebM files without a seek index make ffmpeg scan from the start on every call. That scan was still fast in the measurement (0.43 s at minute 57).
 - **Follow-up, a larger change:** store decoded segments (object storage or rows) so each call stops reading the whole recording from Postgres.
 
+### Implemented (commits `f7e6096`, `029ab38`)
+
+`lib/aiNote/audioSegments.ts`, used by the `asr` stage of `finalize/route.ts`:
+- **First ASR step:** one streaming decode, with no file written, counts the samples. That gives the segment count and the verified duration.
+- **Every step:** decodes only its own segment, then deletes the segment file.
+- **Seeking:**
+  - Demuxer seek with 1 s of pre-roll for PCM, FLAC, MP3, Ogg/Opus and WebM/Opus.
+  - Decode from the start for AAC (MP4/M4A/ADTS) and unknown codecs. For these, demuxer seeking was measured to give wrong audio.
+  - The first-decoded-sample offset (for example the 7 ms WebM/Opus pre-skip) keeps segments on the same timeline as a full decode.
+
+**Accuracy** (`tests/note/audio-segments.test.ts`, 8 formats plus a real Chromium MediaRecorder recording):
+- Each new segment matches the full decode, and therefore the old pipeline's output.
+- The match is sample-exact, except WebM, which is within 1 ms: WebM block timestamps have millisecond precision.
+- Segment counts are equal, and the segments together cover the whole recording. No audio is lost or duplicated at a boundary beyond that 1 ms WebM tolerance.
+
+**Measured** with `scripts/bench-ai-note-segments.ts`: idle 4-CPU container, synthetic audio, ffmpeg-static, 180 s segments.
+
+| Input | Steps | CPU s/job before → after | Wall s/job before → after | Peak /tmp MB before → after | Peak ffmpeg RSS MB before → after |
+|---|---|---|---|---|---|
+| 15 min WebM/Opus | 5 | 19.3 → 7.0 | 15.8 → 4.6 | 57.6 → 5.8 | 14.8 → 15.1 |
+| 60 min WebM/Opus | 20 | 323.4 → 29.5 | 156.6 → 15.0 | 230.4 → 5.8 | 14.9 → 15.2 |
+| 120 min WebM/Opus | 40 | 1326.4 → 61.2 | 649.3 → 32.0 | 460.8 → 5.8 | 14.9 → 15.1 |
+| 60 min MP3 | 20 | 229.6 → 19.0 | 99.7 → 8.5 | 230.4 → 5.8 | 14.7 → 15.1 |
+| 60 min M4A/AAC | 20 | 213.4 → 81.8 | 90.4 → 49.6 | 230.4 → 5.8 | 18.4 → 19.6 |
+
+The longest single step is about the same before and after, because the first step's sample count is still one full decode: 16.2 s → 15.2 s of wall time at 120 min. AAC gains least, because its steps still decode from the start.
+
+**Not measured:** reading every chunk from Postgres on each step is unchanged.
+
 ## 2. Timeout and retry budgets (F-07)
 
 ### Evidence (FACT, defaults)
@@ -80,6 +109,22 @@ A 180 s ASR call also outlives the 60 s lock lease, so a second request (for exa
 5. **LLM pause.** Replace the fixed 15 s sleep after each segment with a sleep only after a 429, honouring `retryAfterMs`.
 
 Fixes 1, 2, and 4 are small and local. Fix 3 is one helper. None changes the architecture, models, or prompts.
+
+### Implemented (commit `1352b55`)
+
+- **Per-request time budget.** `lib/ai/requestBudget.ts` sets a deadline for each request (`AI_NOTE_REQUEST_BUDGET_MS`, default 270 s, capped at 285 s, inside `maxDuration = 300`). `retryWithBudget` provides:
+  - bounded attempts;
+  - backoff of 1/2/4 s (capped at 8 s), plus jitter;
+  - a timeout per attempt;
+  - no attempt starts without `minAttemptMs` remaining (ASR 30 s, LLM 15 s).
+- **Real cancellation.** `AbortSignal` is passed to the external ASR, Groq ASR and chat, and OpenRouter calls. ffmpeg is spawned with that signal and `killSignal: SIGKILL`.
+- **Fewer paid calls.**
+  - Groq ASR runs only after the external ASR fails, and at most `AI_NOTE_ASR_FALLBACK_MAX_TRIES` times (default 2).
+  - The LLM router never starts a fallback call once the budget can't fit one.
+  - The fixed 15 s pause after each segment is skipped when it would eat into the budget.
+- **No duplicate processing.** A heartbeat refreshes the lease lock while a step runs, so a long provider call can't outlive the lease.
+- **Recoverability.** A request that runs out of time returns `503 PROCESSING_TIME_BUDGET` (`retryable: true`). Completed segments and parts stay saved, and the job is never marked failed.
+- **Client.** The finalize loop retries network errors and retryable 502/503/504 responses up to 3 times in a row, after 2 s, 4 s and 8 s (`components/workspace/note/finalizeRetry.ts`).
 
 ## 3. Transcript-length limits vs subscription entitlements (F-03)
 
