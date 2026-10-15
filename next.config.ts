@@ -9,12 +9,16 @@ const nextConfig: NextConfig = {
     root: projectRoot,
   },
   async redirects() {
-    return redirectHosts.map((host) => ({
-      source: "/:path*",
-      has: [{ type: "host" as const, value: host }],
-      destination: `${canonicalOrigin}/:path*`,
-      permanent: true,
-    }));
+    return [
+      ...redirectHosts.map((host) => ({
+        source: "/:path*",
+        has: [{ type: "host" as const, value: host }],
+        destination: `${canonicalOrigin}/:path*`,
+        permanent: true,
+      })),
+      // Legacy alias: answer with a real 308 instead of a client-side redirect page.
+      { source: "/humanizer", destination: "/ai-humanizer", permanent: true },
+    ];
   },
 };
 
