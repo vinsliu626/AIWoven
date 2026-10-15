@@ -5,6 +5,20 @@
 **Method:** Read-only code inspection, the existing unit tests, and two local experiments that used no network and no user data (described in §2.4). No production configuration, prompts, models, schemas, or data were changed. No paid API calls were made, and nothing was deployed.
 **Repository state audited:** branch `claude/confident-cori-ohkwsh` at `a6c1b53`.
 
+### Implementation status (P0 iteration, 2026-10-15)
+
+The P0 fixes are on branch `claude/confident-cori-ohkwsh`. They are not merged or deployed. The findings below describe the audited commit `a6c1b53`.
+
+| Finding | Status | Commit(s) |
+|---|---|---|
+| F-01 WebM header loss | Fixed: no recorder slice is ever dropped; record chunks must be contiguous; chunk-upload retries | `04f59de` |
+| F-02 JSON in transcript | Fixed: shared response parser; explicit no-speech segments | `94f6152` |
+| F-03 / F-04 limits after ASR | Partly fixed: daily limit, cooldown, and weekly quota (using verified duration) are checked before transcription. **Still after ASR:** the plan's transcript-character limit, which needs a product decision on per-plan minute limits. | `a49ea84`, `1e286b9` |
+| F-05 wall-clock billing | Fixed: billed from the decoded duration | `a49ea84`, `0f07952` |
+| F-08 retention | Partly fixed: completed notes no longer keep transcripts or ledgers. Abandoned and failed sessions still need approved periods (see `docs/audits/audio-retention.md`). | `0c8d90b` |
+| F-09 legacy endpoints | Fixed: `/process` returns 410, and `/api/ai-note` accepts text only | `ea80496` |
+| Others (F-06, F-07, F-10 to F-20) | Not started | — |
+
 ### Evidence labels used in this report
 
 | Label | Meaning |
