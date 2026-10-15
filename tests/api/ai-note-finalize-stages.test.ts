@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AI_NOTE_NO_SPEECH_MARKER } from "@/lib/aiNote/finalizeHelpers";
 
@@ -74,6 +74,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
   delete process.env.AI_NOTE_TEST_MODE;
+  delete process.env.AI_NOTE_ASR_MAX_TRIES;
   process.env.GROQ_API_KEY = "test-key";
   mocks.getServerSession.mockResolvedValue({ user: { id: "user_1" } });
   mocks.prisma.aiNoteSession.findUnique.mockResolvedValue({ userId: "user_1", createdAt: new Date() });
@@ -120,6 +121,7 @@ describe.skipIf(!hasFfmpeg)("finalize ASR stage: empty transcription results", (
   });
 
   it("falls back to Groq only when the external provider fails, and accepts its empty result as no speech", async () => {
+    process.env.AI_NOTE_ASR_MAX_TRIES = "1";
     mocks.transcribeAudioToText.mockRejectedValue(Object.assign(new Error("ASR_MALFORMED_RESPONSE: markup"), { httpStatus: 502 }));
     mocks.callGroqTranscribe.mockResolvedValue({ text: "", modelUsed: "whisper-large-v3" });
 
@@ -364,4 +366,110 @@ describe.skipIf(!hasFfmpeg)("finalize ASR: per-segment extraction across steps",
     // Duration and quota were established once, on the first step.
     expect(mocks.assertQuotaOrThrow).toHaveBeenCalledTimes(1);
   }, 30_000);
+});
+
+describe.skipIf(!hasFfmpeg)("finalize: time budget, cancellation, and bounded retries", () => {
+  beforeEach(() => {
+    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "asr", segmentTimeSec: 180, asrNextIndex: 0, secondsBilled: 4, segmentsTotal: 1 });
+    mocks.prisma.aiNoteChunk.findMany.mockResolvedValue([{ chunkIndex: 0, size: fixture.length, mime: "audio/webm", data: fixture }]);
+  });
+  afterEach(() => {
+    for (const key of ["AI_NOTE_REQUEST_BUDGET_MS", "AI_NOTE_ASR_MIN_ATTEMPT_MS", "AI_NOTE_ASR_MAX_TRIES", "AI_NOTE_ASR_FALLBACK_MAX_TRIES"]) delete process.env[key];
+  });
+
+  const hangUntilCancelled = (seen: AbortSignal[]) => (_blob: unknown, opts: { signal: AbortSignal }) =>
+    new Promise((_resolve, reject) => {
+      seen.push(opts.signal);
+      opts.signal.addEventListener("abort", () => reject(opts.signal.reason), { once: true });
+    });
+
+  it("cancels a slow transcription when the request budget runs out and asks the client to continue", async () => {
+    process.env.AI_NOTE_REQUEST_BUDGET_MS = "1500";
+    process.env.AI_NOTE_ASR_MIN_ATTEMPT_MS = "1000";
+    const signals: AbortSignal[] = [];
+    mocks.transcribeAudioToText.mockImplementation(hangUntilCancelled(signals));
+
+    const started = Date.now();
+    const result = await finalize();
+
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(result.status).toBe(503);
+    expect(result.body).toMatchObject({ error: "PROCESSING_TIME_BUDGET", retryable: true, stage: "asr" });
+    expect(signals).toHaveLength(1);
+    expect(signals[0].aborted).toBe(true);
+    // No paid fallback was started without time to finish, and nothing partial was saved.
+    expect(mocks.callGroqTranscribe).not.toHaveBeenCalled();
+    expect(mocks.prisma.aiNoteTranscript.upsert).not.toHaveBeenCalled();
+  });
+
+  it("retries a network failure and saves the segment", async () => {
+    mocks.transcribeAudioToText.mockRejectedValueOnce(new Error("ASR network error: fetch failed")).mockResolvedValueOnce("Recovered words.");
+
+    const result = await finalize();
+
+    expect(result.status).toBe(200);
+    expect(mocks.transcribeAudioToText).toHaveBeenCalledTimes(2);
+    expect(mocks.callGroqTranscribe).not.toHaveBeenCalled();
+    expect(mocks.prisma.aiNoteTranscript.upsert.mock.calls[0][0].create.text).toBe("Recovered words.");
+  });
+
+  it("stops after bounded retries on both providers and keeps the job resumable", async () => {
+    process.env.AI_NOTE_ASR_MAX_TRIES = "2";
+    process.env.AI_NOTE_ASR_FALLBACK_MAX_TRIES = "1";
+    mocks.transcribeAudioToText.mockRejectedValue(Object.assign(new Error("ASR HTTP error: 503 Service Unavailable"), { httpStatus: 503 }));
+    mocks.callGroqTranscribe.mockRejectedValue(Object.assign(new Error("GROQ_ASR_HTTP_503"), { httpStatus: 503, code: "GROQ_ASR_HTTP_503" }));
+
+    const result = await finalize();
+
+    expect(result.status).toBe(502);
+    expect(result.body).toMatchObject({ error: "TRANSCRIPTION_PROVIDER_FAILED", retryable: true, stage: "transcribing" });
+    expect(mocks.transcribeAudioToText).toHaveBeenCalledTimes(2);
+    expect(mocks.callGroqTranscribe).toHaveBeenCalledTimes(1);
+    expect(mocks.prisma.aiNoteTranscript.upsert).not.toHaveBeenCalled();
+    // The job is not marked failed: a retry resumes at this segment.
+    expect(mocks.prisma.aiNoteJob.update.mock.calls.some(([args]) => args?.data?.stage === "failed")).toBe(false);
+  });
+
+  it("refuses a concurrent request for the same job instead of processing it twice", async () => {
+    let held = false;
+    mocks.prisma.aiNoteJob.updateMany.mockImplementation(async ({ where, data }) => {
+      if ("lockExpiresAt" in data && data.lockedBy && where.OR) {
+        if (held) return { count: 0 };
+        held = true;
+        return { count: 1 };
+      }
+      if (data.lockedBy === null) held = false;
+      return { count: 1 };
+    });
+    let finish: (value: string) => void = () => {};
+    mocks.transcribeAudioToText.mockImplementation(() => new Promise<string>((resolve) => (finish = resolve)));
+
+    const first = finalize();
+    await vi.waitFor(() => expect(mocks.transcribeAudioToText).toHaveBeenCalledTimes(1), { timeout: 5_000 });
+    const second = await finalize();
+    finish("Only once.");
+    const firstResult = await first;
+
+    expect(second.status).toBe(202);
+    expect(second.body.error).toBe("LOCKED");
+    expect(firstResult.status).toBe(200);
+    expect(mocks.transcribeAudioToText).toHaveBeenCalledTimes(1);
+    expect(mocks.prisma.aiNoteTranscript.upsert).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("finalize LLM stage: time budget", () => {
+  it("passes the budget to note generation and keeps the step resumable when time runs out", async () => {
+    const { TimeBudgetExceededError } = await import("@/lib/ai/requestBudget");
+    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "llm", llmNextPart: 0, llmPartsTotal: 1, secondsBilled: 4 });
+    mocks.prisma.aiNoteTranscript.findMany.mockResolvedValue([{ text: "Spoken words about entropy.", rawText: "Spoken words about entropy.", canonicalText: "Spoken words about entropy." }]);
+    mocks.runAiNotePipeline.mockRejectedValue(new TimeBudgetExceededError("segment:groq"));
+
+    const result = await finalize();
+
+    expect(mocks.runAiNotePipeline).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ phase: "segment", budget: expect.objectContaining({ remainingMs: expect.any(Function) }) }));
+    expect(result.status).toBe(503);
+    expect(result.body).toMatchObject({ error: "PROCESSING_TIME_BUDGET", retryable: true, stage: "llm" });
+    expect(mocks.prisma.aiNoteSummaryPart.upsert).not.toHaveBeenCalled();
+  });
 });

@@ -72,6 +72,8 @@ export async function transcribeAudioToText(
     task?: "transcribe" | "translate";
     vad_filter?: boolean;
     beam_size?: number;
+    /** Cancels the request (attempt timeout or request time budget). */
+    signal?: AbortSignal;
   }
 ): Promise<string> {
   const base = process.env.ASR_URL?.trim();
@@ -99,8 +101,10 @@ export async function transcribeAudioToText(
 
   let res: Response;
   try {
-    res = await fetch(url, { method: "POST", body: fd });
+    res = await fetch(url, { method: "POST", body: fd, signal: opts?.signal });
   } catch (e: any) {
+    // Cancellation is reported as-is so callers can tell a timeout from a network failure.
+    if (opts?.signal?.aborted) throw opts.signal.reason ?? e;
     throw new Error(`ASR network error: ${e?.message || String(e)} url=${url}`);
   }
 

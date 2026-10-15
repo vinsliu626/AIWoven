@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRms, createRecordingChunkBatcher } from "./audioVad";
+import { finalizeRetryDelayMs } from "./finalizeRetry";
 
 export type NoteTab = "upload" | "record" | "text";
 export type NotePhase = "idle" | "uploading" | "transcribing" | "organizing" | "finalizing" | "done" | "error";
@@ -625,24 +626,35 @@ export function useNoteController({
 
       const maxAttempts = 180;
       let finalNote = "";
+      let consecutiveFailures = 0;
 
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         if (finalizeAbortRef.current) {
           throw new Error(isZh ? "生成已取消。" : "Generation cancelled.");
         }
 
-        const response = await fetch("/api/ai-note/finalize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            noteId: processingNoteId,
-            inputType,
-            expectedChunks,
-            expectedBytes,
-            expectedSha256,
-            totalDurationMs: inputType === "record" ? recordedDurationMsRef.current ?? Math.max(1, recordSecs * 1000) : undefined,
-          }),
-        });
+        let response: Response;
+        try {
+          response = await fetch("/api/ai-note/finalize", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              noteId: processingNoteId,
+              inputType,
+              expectedChunks,
+              expectedBytes,
+              expectedSha256,
+              totalDurationMs: inputType === "record" ? recordedDurationMsRef.current ?? Math.max(1, recordSecs * 1000) : undefined,
+            }),
+          });
+        } catch (networkError) {
+          // Saved progress is kept server-side, so a dropped connection can simply be retried.
+          const delayMs = finalizeRetryDelayMs({ status: null, payload: null, consecutiveFailures });
+          if (delayMs === null || attempt >= maxAttempts - 1) throw networkError;
+          consecutiveFailures += 1;
+          await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+          continue;
+        }
 
         const raw = await response.text();
         let json: any = null;
@@ -653,10 +665,10 @@ export function useNoteController({
         }
 
         if (!response.ok || json?.ok === false) {
-          const retryAfterMs = Number(json?.retryAfterMs) || Number(json?.extra?.retryAfterMs) || 1500;
-          const retryable = response.status === 202 || json?.error === "LOCKED";
-          if (retryable && attempt < maxAttempts - 1) {
-            await new Promise((resolve) => window.setTimeout(resolve, retryAfterMs));
+          const delayMs = finalizeRetryDelayMs({ status: response.status, payload: json, consecutiveFailures });
+          if (delayMs !== null && attempt < maxAttempts - 1) {
+            if (response.status !== 202 && json?.error !== "LOCKED") consecutiveFailures += 1;
+            await new Promise((resolve) => window.setTimeout(resolve, delayMs));
             continue;
           }
 
@@ -680,6 +692,7 @@ export function useNoteController({
           throw apiError;
         }
 
+        consecutiveFailures = 0;
         const nextStage = String(json?.stage || "done");
         const nextProgress = Number.isFinite(json?.progress) ? Number(json.progress) : 100;
         const partialNote = String(json?.partialNote || "").trim();

@@ -1,6 +1,7 @@
 // lib/ai/openrouter.ts
 import { withTimeout } from "@/lib/ai/timeout";
 import { parseEnvInt } from "@/lib/env/number";
+import { TimeBudgetExceededError } from "@/lib/ai/requestBudget";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -13,12 +14,15 @@ export async function callOpenRouterChat(opts: {
   temperature?: number;
   reasoningEffort?: "none" | "minimal" | "default" | "low" | "medium" | "high";
   excludeReasoning?: boolean;
+  /** Cancels the request (e.g. when the caller's time budget runs out). */
+  signal?: AbortSignal;
 }) {
   const siteUrl = process.env.OPENROUTER_SITE_URL || "http://localhost:3000";
   const appName = process.env.OPENROUTER_APP_NAME || "AIWoven";
   const timeoutMs = opts.timeoutMs ?? parseEnvInt("AI_NOTE_LLM_TIMEOUT_MS", 60_000);
 
   const { controller, cancel } = withTimeout(timeoutMs);
+  const signal = opts.signal ? AbortSignal.any([controller.signal, opts.signal]) : controller.signal;
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -37,7 +41,7 @@ export async function callOpenRouterChat(opts: {
         reasoning_effort: opts.reasoningEffort,
         reasoning: opts.excludeReasoning ? { exclude: true } : undefined,
       }),
-      signal: controller.signal,
+      signal,
     });
 
     const text = await res.text().catch(() => "");
@@ -81,7 +85,8 @@ export async function callOpenRouterChat(opts: {
 
     return { content: String(content), modelUsed: String(actualModel) };
   } catch (e: any) {
-    if (e?.name === "AbortError") {
+    if (opts.signal?.reason instanceof TimeBudgetExceededError && opts.signal.aborted) throw opts.signal.reason;
+    if (e?.name === "AbortError" || e?.name === "TimeoutError") {
       const err: any = new Error("OPENROUTER_TIMEOUT");
       err.httpStatus = 504;
       err.code = "OPENROUTER_TIMEOUT";

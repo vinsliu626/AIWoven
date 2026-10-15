@@ -22,6 +22,7 @@ import { audioProbeArgs, countDecodedSamples, parseAudioProbe, samplesToSeconds,
 import { deriveRecordedSeconds, parseRecordedDurationMs } from "@/lib/aiNote/recordingUsage";
 import { assertNoteRequestAllowed, markNoteAttempt, NoteLimitError, recordNoteGenerateSuccess } from "@/lib/aiNote/quota";
 import { parseEnvInt } from "@/lib/env/number";
+import { attemptSignal, createRequestBudget, retryWithBudget, TimeBudgetExceededError, type RequestBudget } from "@/lib/ai/requestBudget";
 
 import { assertQuotaOrThrow, QuotaError } from "@/lib/billing/guard";
 import { addUsageEvent } from "@/lib/billing/usage";
@@ -55,6 +56,7 @@ type ApiErr =
   | "NOTE_GENERATION_FAILED"
   | "NOTE_GENERATION_TIMEOUT"
   | "PERSISTENCE_FAILED"
+  | "PROCESSING_TIME_BUDGET"
   | "LOCKED";
 
 class AiNoteTranscriptionError extends Error {
@@ -78,16 +80,6 @@ function bad(code: ApiErr, status = 400, message?: string, extra?: Record<string
     { ok: false, error: code, message: message ?? "Unable to generate notes right now.", traceId, ...(extra || {}) },
     { status, headers: { "x-trace-id": traceId } }
   );
-}
-
-function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`TIMEOUT:${label}:${ms}ms`)), ms);
-    p.then(
-      (v) => (clearTimeout(t), resolve(v)),
-      (e) => (clearTimeout(t), reject(e))
-    );
-  });
 }
 
 function firstExisting(paths: string[]) {
@@ -131,9 +123,10 @@ function getFfmpegBin() {
   return found;
 }
 
-function run(cmd: string, args: string[], cwd?: string) {
+/** Runs ffmpeg; the process is killed when `signal` aborts (attempt timeout or request budget). */
+function run(cmd: string, args: string[], options: { signal?: AbortSignal } = {}) {
   return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-    const p = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"], cwd });
+    const p = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"], signal: options.signal, killSignal: "SIGKILL" });
     let out = "";
     let err = "";
     p.on("error", (e) => reject(new Error(`spawn ffmpeg failed: ${e.message}`)));
@@ -249,23 +242,16 @@ function mapTranscriptionProviderError(error: unknown) {
   );
 }
 
-async function withRetry<T>(fn: () => Promise<T>, label: string, maxTry = 4) {
-  let lastErr: any = null;
-  for (let attempt = 1; attempt <= maxTry; attempt++) {
-    try {
-      return await fn();
-    } catch (e: any) {
-      lastErr = e;
-      const msg = String(e?.message || e);
-      const status = parseHttpStatus(msg);
-      const retryable = isRetryableStatus(status ?? undefined) || isRetryableAsrMessage(msg) || String(e?.code || "").toUpperCase().includes("TIMEOUT");
-      if (!retryable || attempt === maxTry) break;
-      const backoff = Math.min(30000, 500 * Math.pow(2, attempt - 1) + Math.round(Math.random() * 250));
-      console.warn(`[ai-note/finalize] retry ${label} attempt=${attempt} backoff=${backoff}ms status=${status ?? "unknown"}`);
-      await new Promise((r) => setTimeout(r, backoff));
-    }
-  }
-  throw lastErr;
+function isRetryableAsrError(error: unknown) {
+  const message = String((error as Error)?.message || error);
+  const explicit = Number((error as { httpStatus?: unknown } | null)?.httpStatus);
+  const status = Number.isInteger(explicit) && explicit > 0 ? explicit : parseHttpStatus(message);
+  return isRetryableStatus(status ?? undefined) || isRetryableAsrMessage(message) || String((error as { code?: unknown })?.code || "").toUpperCase().includes("TIMEOUT");
+}
+
+/** Time budget for one finalize request: Vercel maxDuration (300 s) minus room to save results and respond. */
+function requestBudgetMs() {
+  return Math.min(285_000, Math.max(1_000, parseEnvInt("AI_NOTE_REQUEST_BUDGET_MS", 270_000)));
 }
 
 type ResolvedAsrResult = {
@@ -301,32 +287,27 @@ function externalAsrProvider(value: string | undefined) {
   }
 }
 
-async function transcribeWithFallback(
-  buf: Buffer,
-  fname: string,
-  asrTimeoutMs: number,
-  asrMaxTry: number
-): Promise<ResolvedAsrResult> {
+async function transcribeWithFallback(buf: Buffer, fname: string, budget: RequestBudget): Promise<ResolvedAsrResult> {
   if (isOfflineMode()) {
     return { text: `[offline transcript] ${fname}`, provider: "offline", model: "offline", endpoint: "offline" };
   }
+
+  const attemptTimeoutMs = Math.max(1_000, parseEnvInt("AI_NOTE_ASR_TIMEOUT_MS", 180_000));
+  const minAttemptMs = Math.max(1_000, parseEnvInt("AI_NOTE_ASR_MIN_ATTEMPT_MS", 30_000));
+  const common = { budget, attemptTimeoutMs, minAttemptMs, isRetryable: isRetryableAsrError };
 
   // 1) External ASR (ASR_URL). A successful empty transcript means the provider found
   // no speech in this segment; that is a valid result, not a provider failure, so it is
   // returned as-is instead of triggering a paid fallback transcription.
   try {
-    const text = await withRetry(
-      async () =>
-        await withTimeout(
-          transcribeAudioToText(new Blob([new Uint8Array(buf)], { type: "audio/wav" }) as any, {
-            filename: fname,
-            mime: "audio/wav",
-          } as any),
-          asrTimeoutMs,
-          `asr_external_${fname}`
-        ),
-      `asr_external_${fname}`,
-      asrMaxTry
+    const text = await retryWithBudget(
+      (signal) => transcribeAudioToText(new Blob([new Uint8Array(buf)], { type: "audio/wav" }) as any, { filename: fname, mime: "audio/wav", signal } as any),
+      {
+        ...common,
+        label: `asr_external_${fname}`,
+        maxAttempts: Math.max(1, parseEnvInt("AI_NOTE_ASR_MAX_TRIES", 4)),
+        onRetry: ({ attempt, delayMs }) => console.warn(`[ai-note/finalize] retry asr_external_${fname} attempt=${attempt} backoff=${delayMs}ms`),
+      }
     );
     return {
       text,
@@ -335,24 +316,20 @@ async function transcribeWithFallback(
       endpoint: safeEndpoint(process.env.ASR_URL, "/transcribe"),
     };
   } catch (e) {
-    // 2) Groq fallback, only when the external provider failed.
+    // Out of time: stop here instead of starting a (paid) fallback that cannot finish.
+    if (e instanceof TimeBudgetExceededError) throw e;
+    // 2) Groq fallback, only when the external provider failed. Fewer attempts: each
+    // one is billed, including attempts that are cancelled after the provider started.
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) throw e;
-    const out = await withRetry(
-      async () =>
-        await withTimeout(
-          callGroqTranscribe({
-            apiKey: groqKey,
-            audio: buf,
-            mime: "audio/wav",
-            filename: fname,
-            model: process.env.AI_NOTE_ASR_MODEL || "whisper-large-v3",
-          }),
-          asrTimeoutMs,
-          `asr_groq_${fname}`
-        ),
-      `asr_groq_${fname}`,
-      asrMaxTry
+    const out = await retryWithBudget(
+      (signal) => callGroqTranscribe({ apiKey: groqKey, audio: buf, mime: "audio/wav", filename: fname, model: process.env.AI_NOTE_ASR_MODEL || "whisper-large-v3", timeoutMs: attemptTimeoutMs, signal }),
+      {
+        ...common,
+        label: `asr_groq_${fname}`,
+        maxAttempts: Math.max(1, parseEnvInt("AI_NOTE_ASR_FALLBACK_MAX_TRIES", 2)),
+        onRetry: ({ attempt, delayMs }) => console.warn(`[ai-note/finalize] retry asr_groq_${fname} attempt=${attempt} backoff=${delayMs}ms`),
+      }
     );
     return {
       text: String(out?.text || "").trim(),
@@ -505,6 +482,10 @@ async function releaseJobLock(noteId: string, lockId: string) {
 
 export async function POST(req: Request) {
   const t0 = Date.now();
+  // Bounded wall-clock budget for this request; every provider call and ffmpeg run is
+  // cancelled when it runs out, and the client resumes with the next request.
+  const budget = createRequestBudget(requestBudgetMs());
+  let currentStage = "prep";
   const { noteId, body } = await readBodyNoteId(req);
   const traceId = req.headers.get("x-vercel-id") || randomUUID();
   const sourceType = body?.inputType === "upload" ? "upload" : "record";
@@ -564,6 +545,12 @@ export async function POST(req: Request) {
         retryAfterMs: 1500,
       });
     }
+
+    currentStage = String(job.stage || "prep");
+    // Keep the lease alive while this request works (provider calls can outlast the TTL),
+    // so a retry cannot start a duplicate run of the same step. If this function is
+    // killed, the heartbeat stops and the lease expires after one TTL.
+    const heartbeat = setInterval(() => void refreshJobLock(noteId, lock.lockId).catch(() => {}), Math.max(5_000, Math.floor(lock.ttlMs / 3)));
 
     try {
       // ---------- STAGE: PREP ----------
@@ -688,8 +675,6 @@ export async function POST(req: Request) {
           1,
           parseEnvInt("AI_NOTE_ASR_BATCH", parseEnvInt("AI_NOTE_ASR_CONCURRENCY", 1))
         );
-        const asrTimeoutMs = Math.max(30_000, parseEnvInt("AI_NOTE_ASR_TIMEOUT_MS", 180_000));
-        const asrMaxTry = Math.max(1, parseEnvInt("AI_NOTE_ASR_MAX_TRIES", 4));
         // Keep individual ASR requests bounded; larger slices were causing upstream resets/timeouts.
         const requestedSegTime = Math.max(30, job.segmentTimeSec || parseEnvInt("AI_NOTE_SEGMENT_TIME_SEC", 300));
         const segTime = Math.min(requestedSegTime, 180);
@@ -730,7 +715,8 @@ export async function POST(req: Request) {
           });
         }
 
-        const probeRun = await withTimeout(run(ffmpegBin, audioProbeArgs(fullSource)), 30_000, "ffmpeg_probe").catch((error) => {
+        const probeRun = await run(ffmpegBin, audioProbeArgs(fullSource), { signal: attemptSignal(budget, 30_000) }).catch((error) => {
+          if (budget.signal.aborted) throw new TimeBudgetExceededError("ffmpeg_probe");
           throw Object.assign(new Error(String((error as Error)?.message || error)), { _code: "AUDIO_VALIDATION_FAILED" });
         });
         const audioProbe = parseAudioProbe(probeRun.stderr);
@@ -754,7 +740,8 @@ export async function POST(req: Request) {
         // per job (no WAV is written). Later ASR steps decode only their own segment.
         let total = Number(job.segmentsTotal) || 0;
         if (job.secondsBilled == null || total <= 0) {
-          const decodedSamples = await withTimeout(countDecodedSamples(ffmpegBin, fullSource), 180_000, "ffmpeg_decode_count").catch((e) => {
+          const decodedSamples = await countDecodedSamples(ffmpegBin, fullSource, { signal: attemptSignal(budget, 180_000) }).catch((e) => {
+            if (budget.signal.aborted) throw new TimeBudgetExceededError("ffmpeg_decode_count");
             throw Object.assign(new Error(String((e as any)?.message || e)), { _code: "FFMPEG_FAILED" });
           });
           if (decodedSamples <= 0) {
@@ -815,11 +802,10 @@ export async function POST(req: Request) {
 
           const fname = `seg-${String(i).padStart(3, "0")}.wav`;
           const p = path.join(workDir, fname);
-          await withTimeout(
-            run(ffmpegBin, segmentExtractArgs({ source: fullSource, output: p, index: i, segmentSeconds: segTime, probe: audioProbe })),
-            120_000,
-            "ffmpeg_segment"
-          ).catch((e) => {
+          await run(ffmpegBin, segmentExtractArgs({ source: fullSource, output: p, index: i, segmentSeconds: segTime, probe: audioProbe }), {
+            signal: attemptSignal(budget, 120_000),
+          }).catch((e) => {
+            if (budget.signal.aborted) throw new TimeBudgetExceededError("ffmpeg_segment");
             throw Object.assign(new Error(String((e as any)?.message || e)), { _code: "FFMPEG_FAILED" });
           });
           const buf = await fs.readFile(p);
@@ -827,8 +813,9 @@ export async function POST(req: Request) {
 
           let asrResult: ResolvedAsrResult;
           try {
-            asrResult = await transcribeWithFallback(buf, fname, asrTimeoutMs, asrMaxTry);
+            asrResult = await transcribeWithFallback(buf, fname, budget);
           } catch (error) {
+            if (error instanceof TimeBudgetExceededError) throw error;
             throw mapTranscriptionProviderError(error);
           }
 
@@ -1059,7 +1046,8 @@ export async function POST(req: Request) {
           await refreshJobLock(noteId, lock.lockId);
 
           const text = chunks[p];
-          const part = await withTimeout(runAiNotePipeline(text, { phase: "segment", traceId, noteId }), llmTimeoutMs, `llm_part_${p}`);
+          const llmBudget = budget.child(llmTimeoutMs);
+          const part = await runAiNotePipeline(text, { phase: "segment", traceId, noteId, budget: llmBudget }).finally(() => llmBudget.dispose());
           const normalizedPart = String(part || "").trim();
 
           await prisma.aiNoteSummaryPart.upsert({
@@ -1069,7 +1057,8 @@ export async function POST(req: Request) {
           });
           if (normalizedPart) progressiveParts.set(p, normalizedPart);
 
-          if (pauseMs > 0) {
+          // Spacing between provider calls; skipped when it would eat into the time budget.
+          if (pauseMs > 0 && budget.remainingMs() > pauseMs + 10_000) {
             await new Promise((r) => setTimeout(r, pauseMs));
           }
         }
@@ -1125,7 +1114,8 @@ export async function POST(req: Request) {
           select: { text: true },
         });
         const merged = parts.map((p) => String(p.text || "").trim()).filter(Boolean).join("\n\n---\n\n");
-        const final = await withTimeout(runAiNotePipeline(merged, { phase: "final", traceId, noteId }), llmTimeoutMs, "llm_merge").catch((error) => {
+        const mergeBudget = budget.child(llmTimeoutMs);
+        const final = await runAiNotePipeline(merged, { phase: "final", traceId, noteId, budget: mergeBudget }).finally(() => mergeBudget.dispose()).catch((error) => {
           if (error && typeof error === "object") Object.assign(error, { failedStage: "merge" });
           throw error;
         });
@@ -1178,6 +1168,7 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ ok: true, stage: job.stage, progress: job.progress, noteId });
     } finally {
+      clearInterval(heartbeat);
       await releaseJobLock(noteId, lock.lockId).catch(() => {});
     }
   } catch (e: any) {
@@ -1195,6 +1186,10 @@ export async function POST(req: Request) {
       bestDraftPreserved: Boolean(preservedDraft),
     });
 
+    if (e instanceof TimeBudgetExceededError) {
+      // Completed segments/parts are saved; the next request continues from there.
+      return bad("PROCESSING_TIME_BUDGET", 503, "Still working on this note. Continuing automatically…", { stage: currentStage, retryable: true, retryAfterMs: 1_000 }, traceId);
+    }
     if (e?._code === "UPLOAD_INTEGRITY_FAILED") return bad("UPLOAD_INTEGRITY_FAILED", 409, "The uploaded audio failed its integrity check. Please upload it again.", { stage: "uploading", retryable: false }, traceId);
     if (e?._code === "AUDIO_VALIDATION_FAILED") return bad("AUDIO_VALIDATION_FAILED", 422, "This file is not valid audio or uses an unsupported container.", { stage: "transcribing", retryable: false }, traceId);
     if (e?._code === "FFMPEG_FAILED") return bad("AUDIO_DECODE_FAILED", 422, "This audio file could not be decoded. Try a supported MP3, WAV, M4A, MP4, WebM, OGG, AAC, or FLAC file.", { stage: "transcribing", retryable: false }, traceId);
@@ -1240,5 +1235,7 @@ export async function POST(req: Request) {
     }
 
     return bad("INTERNAL_ERROR", 500, "Unable to generate notes right now. Please try again.", undefined, traceId);
+  } finally {
+    budget.dispose();
   }
 }

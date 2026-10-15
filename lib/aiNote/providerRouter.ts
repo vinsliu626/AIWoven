@@ -1,5 +1,7 @@
 import { callGroqChat } from "@/lib/ai/groq";
 import { callOpenRouterChat, shouldFallback, type ChatMessage } from "@/lib/ai/openrouter";
+import { TimeBudgetExceededError, type RequestBudget } from "@/lib/ai/requestBudget";
+import { parseEnvInt } from "@/lib/env/number";
 
 export type AiNoteProvider = "groq" | "openrouter";
 
@@ -112,6 +114,12 @@ export async function callAiNoteChatWithFallback(
     groqKey?: string;
     openRouterKey?: string;
     openRouterModels?: string[];
+    /**
+     * Request time budget. Each provider attempt is limited to the time left and is
+     * cancelled when it runs out; no further (paid) fallback attempt starts once less
+     * than AI_NOTE_LLM_MIN_ATTEMPT_MS remains.
+     */
+    budget?: RequestBudget;
   },
   dependencies: ProviderDependencies = {}
 ) {
@@ -132,6 +140,16 @@ export async function callAiNoteChatWithFallback(
     promptHash: input.promptHash,
   };
 
+  const attemptTimeoutMs = parseEnvInt("AI_NOTE_LLM_TIMEOUT_MS", 60_000);
+  const minAttemptMs = Math.max(1_000, parseEnvInt("AI_NOTE_LLM_MIN_ATTEMPT_MS", 15_000));
+  // Time for the next attempt, or a budget error when it would not fit (no call is made).
+  const nextAttempt = (label: string) => {
+    if (!input.budget) return { timeoutMs: attemptTimeoutMs, signal: undefined };
+    const remaining = input.budget.remainingMs();
+    if (remaining < minAttemptMs) throw new TimeBudgetExceededError(label);
+    return { timeoutMs: Math.min(attemptTimeoutMs, remaining), signal: input.budget.signal };
+  };
+
   const primaryStarted = Date.now();
   try {
     const result = await groq({
@@ -141,12 +159,14 @@ export async function callAiNoteChatWithFallback(
       maxTokens: input.maxTokens,
       temperature: 0,
       reasoningEffort: input.reasoningEffort,
+      ...nextAttempt(`${input.stage}:groq`),
     });
     emitAttempt(log, { ...common, provider: "groq", model: result.modelUsed, attempt: 1, startedAt: new Date(primaryStarted).toISOString() }, primaryStarted, {
       status: "succeeded", retryable: false, fallbackEligible: false, outcome: "primary_success", errorClass: undefined,
     });
     return { content: result.content, provider: "groq" as const, model: result.modelUsed, fallbackUsed: false };
   } catch (error) {
+    if (error instanceof TimeBudgetExceededError) throw error;
     const eligible = isGroqFallbackEligible(error);
     emitAttempt(log, { ...common, provider: "groq", model: input.groqModel, attempt: 1, startedAt: new Date(primaryStarted).toISOString() }, primaryStarted, {
       status: "failed", retryable: isRetryable(error), fallbackEligible: eligible,
@@ -170,12 +190,14 @@ export async function callAiNoteChatWithFallback(
         temperature: 0,
         reasoningEffort: openRouterReasoningEffort,
         excludeReasoning: true,
+        ...nextAttempt(`${input.stage}:openrouter:${model}`),
       });
       emitAttempt(log, { ...common, provider: "openrouter", model: result.modelUsed, attempt: index + 1, startedAt: new Date(started).toISOString() }, started, {
         status: "succeeded", retryable: false, fallbackEligible: false, outcome: "fallback_success", errorClass: undefined,
       });
       return { content: result.content, provider: "openrouter" as const, model: result.modelUsed, fallbackUsed: true };
     } catch (error) {
+      if (error instanceof TimeBudgetExceededError) throw error;
       lastError = error;
       const unavailableModel = isOpenRouterModelUnavailable(error);
       const fallbackEligible = unavailableModel || shouldFallback(error);

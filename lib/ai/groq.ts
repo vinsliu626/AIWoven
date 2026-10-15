@@ -3,6 +3,7 @@ import { withTimeout } from "@/lib/ai/timeout";
 import type { ChatMessage } from "@/lib/ai/openrouter";
 import { parseEnvInt } from "@/lib/env/number";
 import { parseTranscriptionResponse } from "@/lib/asr/response";
+import { TimeBudgetExceededError } from "@/lib/ai/requestBudget";
 
 /**
  * ✅ Fix for TS error:
@@ -31,9 +32,12 @@ export async function callGroqChat(opts: {
   maxTokens?: number;
   temperature?: number;
   reasoningEffort?: "none" | "default" | "low" | "medium" | "high";
+  /** Cancels the request (e.g. when the caller's time budget runs out). */
+  signal?: AbortSignal;
 }) {
   const timeoutMs = opts.timeoutMs ?? parseEnvInt("AI_NOTE_LLM_TIMEOUT_MS", 60_000);
   const { controller, cancel } = withTimeout(timeoutMs);
+  const signal = opts.signal ? AbortSignal.any([controller.signal, opts.signal]) : controller.signal;
 
   try {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -46,7 +50,7 @@ export async function callGroqChat(opts: {
         temperature: opts.temperature ?? 0.6,
         reasoning_effort: opts.reasoningEffort,
       }),
-      signal: controller.signal,
+      signal,
     });
 
     const text = await res.text().catch(() => "");
@@ -79,7 +83,8 @@ export async function callGroqChat(opts: {
 
     return { content: String(content), modelUsed: String(opts.modelId) };
   } catch (e: any) {
-    if (e?.name === "AbortError") {
+    if (opts.signal?.reason instanceof TimeBudgetExceededError && opts.signal.aborted) throw opts.signal.reason;
+    if (e?.name === "AbortError" || e?.name === "TimeoutError") {
       const err: any = new Error("GROQ_TIMEOUT");
       err.httpStatus = 504;
       err.code = "GROQ_TIMEOUT";
@@ -100,11 +105,14 @@ export async function callGroqTranscribe(opts: {
   model?: string;
   timeoutMs?: number;
   language?: string; // optional
+  /** Cancels the request (e.g. when the caller's time budget runs out). */
+  signal?: AbortSignal;
 }) {
   const model = opts.model || process.env.AI_NOTE_ASR_MODEL || "whisper-large-v3";
   const timeoutMs = opts.timeoutMs ?? parseEnvInt("AI_NOTE_ASR_TIMEOUT_MS", 90_000);
 
   const { controller, cancel } = withTimeout(timeoutMs);
+  const signal = opts.signal ? AbortSignal.any([controller.signal, opts.signal]) : controller.signal;
 
   try {
     const fd = new FormData();
@@ -128,7 +136,7 @@ export async function callGroqTranscribe(opts: {
         Authorization: `Bearer ${opts.apiKey}`,
       },
       body: fd as any,
-      signal: controller.signal,
+      signal,
     });
 
     const text = await res.text().catch(() => "");
@@ -145,7 +153,8 @@ export async function callGroqTranscribe(opts: {
     const out = parseTranscriptionResponse(text, res.headers.get("content-type"));
     return { text: out, modelUsed: model };
   } catch (e: any) {
-    if (e?.name === "AbortError") {
+    if (opts.signal?.reason instanceof TimeBudgetExceededError && opts.signal.aborted) throw opts.signal.reason;
+    if (e?.name === "AbortError" || e?.name === "TimeoutError") {
       const err: any = new Error("GROQ_ASR_TIMEOUT");
       err.httpStatus = 504;
       err.code = "GROQ_ASR_TIMEOUT";

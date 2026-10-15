@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TimeBudgetExceededError, type RequestBudget } from "@/lib/ai/requestBudget";
 import { buildAudioStudyNoteSystemPrompt, buildAudioStudyNoteUserPrompt, buildStudyNoteAuditSystemPrompt, buildStudyNoteAuditUserPrompt, buildStudyNotePrecisionRepairSystemPrompt, buildStudyNotePrecisionRepairUserPrompt, outlinePrompt, sectionNotesPrompt, finalMergePrompt } from "./prompts";
 
 import { callGroqChat } from "@/lib/ai/providers/groq";
@@ -986,7 +987,10 @@ async function callFinalMergeRobust(args: { hfToken: string; groqKey: string; me
 }
 
 /** ===================== Main Pipeline ===================== */
-export async function runAiNotePipeline(rawText: string, options?: { phase?: "segment" | "final"; traceId?: string; noteId?: string }): Promise<string> {
+export async function runAiNotePipeline(
+  rawText: string,
+  options?: { phase?: "segment" | "final"; traceId?: string; noteId?: string; budget?: RequestBudget }
+): Promise<string> {
   const text = normalizeInput(rawText);
   if (text.length < 20) throw new Error("Text too short");
 
@@ -1014,6 +1018,7 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
       stage: `${phase}:${operation}`,
       inputChars: messages.reduce((total, message) => total + message.content.length, 0),
       promptHash: hashPromptMessages(messages),
+      budget: options?.budget,
     });
     return result;
   }
@@ -1080,6 +1085,8 @@ export async function runAiNotePipeline(rawText: string, options?: { phase?: "se
 
     return normalized;
   } catch (error) {
+    // Out of request time: not a provider failure. The caller resumes on the next request.
+    if (error instanceof TimeBudgetExceededError) throw error;
     throw mapGenerationProviderError(error);
   }
 }
