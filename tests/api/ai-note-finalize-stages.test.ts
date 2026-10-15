@@ -18,8 +18,8 @@ const mocks = vi.hoisted(() => ({
     aiNoteSession: { findUnique: vi.fn() },
     aiNoteJob: { upsert: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
     aiNoteChunk: { findMany: vi.fn(), deleteMany: vi.fn() },
-    aiNoteTranscript: { findMany: vi.fn(), upsert: vi.fn() },
-    aiNoteSummaryPart: { findMany: vi.fn(), upsert: vi.fn() },
+    aiNoteTranscript: { findMany: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
+    aiNoteSummaryPart: { findMany: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
   },
 }));
 
@@ -84,6 +84,8 @@ beforeEach(() => {
   mocks.prisma.aiNoteSummaryPart.findMany.mockResolvedValue([]);
   mocks.prisma.aiNoteSummaryPart.upsert.mockResolvedValue({});
   mocks.prisma.aiNoteChunk.deleteMany.mockResolvedValue({ count: 0 });
+  mocks.prisma.aiNoteTranscript.deleteMany.mockResolvedValue({ count: 0 });
+  mocks.prisma.aiNoteSummaryPart.deleteMany.mockResolvedValue({ count: 0 });
   mocks.addUsageEvent.mockResolvedValue(undefined);
   mocks.recordNoteGenerateSuccess.mockResolvedValue(undefined);
 });
@@ -260,5 +262,50 @@ describe("finalize LLM and merge: limits and billing", () => {
     expect(result.status).toBe(200);
     expect(result.body).toMatchObject({ stage: "done", secondsBilled: 4 });
     expect(mocks.addUsageEvent).toHaveBeenCalledWith("user_1", "note_seconds", 4);
+  });
+});
+
+describe("finalize merge: retention of processing data", () => {
+  beforeEach(() => {
+    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "merge", secondsBilled: 4 });
+    mocks.prisma.aiNoteTranscript.findMany.mockResolvedValue([{ text: "Spoken words.", rawText: "Spoken words.", canonicalText: "Spoken words." }]);
+    mocks.prisma.aiNoteSummaryPart.findMany.mockResolvedValue([{ text: "## Segment Topic\nEntropy" }]);
+  });
+
+  it("deletes audio, transcripts, and segment ledgers once the finished note is saved, and keeps the note", async () => {
+    mocks.runAiNotePipeline.mockResolvedValue("# Notes\n\n## Executive Summary\nEntropy.");
+
+    const result = await finalize();
+
+    expect(result.body.stage).toBe("done");
+    const savedDone = mocks.prisma.aiNoteJob.update.mock.calls.find(([args]) => args?.data?.stage === "done")?.[0];
+    expect(savedDone?.data.noteMarkdown).toContain("Executive Summary");
+    for (const table of [mocks.prisma.aiNoteChunk, mocks.prisma.aiNoteTranscript, mocks.prisma.aiNoteSummaryPart]) {
+      expect(table.deleteMany).toHaveBeenCalledWith({ where: { noteId: NOTE_ID } });
+    }
+    // The note is saved before anything is deleted.
+    const doneOrder = mocks.prisma.aiNoteJob.update.mock.invocationCallOrder.at(-1)!;
+    expect(mocks.prisma.aiNoteTranscript.deleteMany.mock.invocationCallOrder[0]).toBeGreaterThan(doneOrder);
+  });
+
+  it("keeps transcripts and ledgers when the final merge fails, so the user can retry from finalizing", async () => {
+    mocks.runAiNotePipeline.mockRejectedValue(new Error("provider timeout"));
+
+    const result = await finalize();
+
+    expect(result.status).toBeGreaterThanOrEqual(400);
+    expect(mocks.prisma.aiNoteTranscript.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.prisma.aiNoteSummaryPart.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.prisma.aiNoteChunk.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("still completes the note if cleanup fails", async () => {
+    mocks.runAiNotePipeline.mockResolvedValue("# Notes\n\n## Executive Summary\nEntropy.");
+    mocks.prisma.aiNoteTranscript.deleteMany.mockRejectedValue(new Error("db busy"));
+
+    const result = await finalize();
+
+    expect(result.status).toBe(200);
+    expect(result.body.stage).toBe("done");
   });
 });

@@ -161,6 +161,18 @@ async function cleanupWorkDir(noteId: string) {
   await fs.rm(path.join(os.tmpdir(), "ai-note", noteId), { recursive: true, force: true }).catch(() => {});
 }
 
+/**
+ * Once the finished note is saved, the audio, per-segment transcripts, and segment
+ * ledgers are no longer read by any code path (a completed note is served from
+ * AiNoteJob.noteMarkdown). Delete them so they are not kept long-term; see
+ * lib/aiNote/retention.ts. Best-effort: a failure here must not fail the note.
+ */
+async function deleteCompletedNoteProcessingData(noteId: string) {
+  await prisma.aiNoteChunk.deleteMany({ where: { noteId } }).catch(() => {});
+  await prisma.aiNoteTranscript.deleteMany({ where: { noteId } }).catch(() => {});
+  await prisma.aiNoteSummaryPart.deleteMany({ where: { noteId } }).catch(() => {});
+}
+
 function isOfflineMode() {
   const devFlag = String(process.env.AI_NOTE_DEV_OFFLINE_MODE || "").trim();
   const testFlag = String(process.env.AI_NOTE_TEST_MODE || "").trim();
@@ -964,7 +976,7 @@ export async function POST(req: Request) {
             } as any,
           });
 
-          await prisma.aiNoteChunk.deleteMany({ where: { noteId } }).catch(() => {});
+          await deleteCompletedNoteProcessingData(noteId);
           await cleanupWorkDir(noteId);
           void trackFeatureUsage({
             userId,
@@ -1142,7 +1154,7 @@ export async function POST(req: Request) {
           } as any,
         });
 
-        await prisma.aiNoteChunk.deleteMany({ where: { noteId } }).catch(() => {});
+        await deleteCompletedNoteProcessingData(noteId);
         await cleanupWorkDir(noteId);
         void trackFeatureUsage({
           userId,
