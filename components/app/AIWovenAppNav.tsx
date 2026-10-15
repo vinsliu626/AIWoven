@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -83,12 +83,30 @@ function NavButton({ label, icon, collapsed, onClick }: { label: string; icon: I
   </button>;
 }
 
-export function AIWovenAppNav({ mobile = false, isOwner = false, collapsed = false, collapsible = false, transitionReady = true, onToggleCollapsed, onClose, onBilling, onSettings }: { mobile?: boolean; isOwner?: boolean; collapsed?: boolean; collapsible?: boolean; transitionReady?: boolean; onToggleCollapsed?: () => void; onClose?: () => void; onBilling?: () => void; onSettings?: () => void }) {
-  const pathname = usePathname();
+type AppNavProps = { mobile?: boolean; isOwner?: boolean; collapsed?: boolean; collapsible?: boolean; transitionReady?: boolean; onToggleCollapsed?: () => void; onClose?: () => void; onBilling?: () => void; onSettings?: () => void };
+
+/**
+ * useSearchParams() opts the nearest Suspense boundary out of server rendering. Keeping that
+ * boundary around the navigation only means every page that shows the sidebar still ships its
+ * content in the initial HTML; the fallback is the same nav without the query-derived highlights.
+ */
+export function AIWovenAppNav(props: AppNavProps) {
+  return (
+    <Suspense fallback={<AppNavView {...props} activeSessionId={null} chatHistoryParam={false} />}>
+      <AppNavWithSearchParams {...props} />
+    </Suspense>
+  );
+}
+
+function AppNavWithSearchParams(props: AppNavProps) {
   const searchParams = useSearchParams();
+  return <AppNavView {...props} activeSessionId={searchParams.get("session")} chatHistoryParam={searchParams.get("history") === "1"} />;
+}
+
+function AppNavView({ mobile = false, isOwner = false, collapsed = false, collapsible = false, transitionReady = true, onToggleCollapsed, onClose, onBilling, onSettings, activeSessionId, chatHistoryParam }: AppNavProps & { activeSessionId: string | null; chatHistoryParam: boolean }) {
+  const pathname = usePathname();
   const compact = collapsible && collapsed && !mobile;
-  const activeSessionId = searchParams.get("session");
-  const historyActive = pathname === "/chat" && searchParams.get("history") === "1";
+  const historyActive = pathname === "/chat" && chatHistoryParam;
   const [chatOpen, setChatOpen] = useState(true);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
 

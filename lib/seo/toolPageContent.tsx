@@ -46,14 +46,14 @@ export type ToolSeoContent = {
 export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer" | "converter", ToolSeoContent> = {
   detector: {
     heroEyebrow: "AI Detector",
-    heroTitle: "AI Detector for Student Writing, Draft Reviews, and Risk Checks",
+    heroTitle: "AI Detector for Essays and Student Writing",
     heroSubtitle:
-      "Paste text, review suspicious passages, and check whether writing sounds overly machine-like before you submit or publish it.",
+      "Paste 80+ words of English text to see an AI-likelihood breakdown and the passages behind it. Results are a signal to review, not proof of authorship.",
     guideLabel: "AI WRITING CHECKER GUIDE",
     seoTitle: "AI Detector Guide",
     productName: "AI Detector",
     overviewIntro:
-      "This page combines the live detector with a richer decision layer below it, so students and educators can understand what the tool does, who it helps, and how it fits into a responsible review workflow.",
+      "Below: what an AI detector can and can’t tell you, who it helps, and how to use its results responsibly. Detection is probabilistic—treat every score as a reason to look closer, never as proof of authorship.",
     whatIs: [
       "An AI detector reviews writing patterns and estimates whether a passage looks machine-generated. The useful version of that task is not a dramatic yes-or-no verdict. It is a guided review process that helps you find sections where the phrasing, rhythm, or consistency feels too synthetic for comfort.",
       "That matters when your workflow already moves through multiple tools. A draft may begin as class material inside " +
@@ -193,14 +193,14 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
   },
   note: {
     heroEyebrow: "AI Note",
-    heroTitle: "AI Note Generator for Lectures, Readings, and Fast Study Prep",
+    heroTitle: "AI Note Taker: Turn Lecture Recordings and Audio into Study Notes",
     heroSubtitle:
-      "Upload audio, paste source text, or work from transcripts to turn raw material into structured notes you can actually review.",
+      "Record a lecture in your browser or upload an audio file. AIWoven transcribes it and organizes it into notes with a summary, key definitions, concepts, and takeaways.",
     guideLabel: "AI NOTE TAKING GUIDE",
     seoTitle: "AI Note Generator Guide",
     productName: "AI Note",
     overviewIntro:
-      "This page keeps the live AI note tool in front and adds a more visual explainer below it, so students can understand how note generation fits into lecture review, reading compression, and study prep.",
+      "Below: how AI Note turns lecture recordings and transcripts into structured notes, what the output looks like, and how to fit it into lecture review and exam prep.",
     whatIs: [
       "An AI note generator helps convert lectures, transcripts, recordings, and source text into cleaner notes. The main benefit for students is not fancy wording. It is reduced cleanup. When your raw material is long, repetitive, or incomplete, AI can impose a structure that is easier to study from later.",
       "That only becomes useful when the notes are actually reviewable. Good note output separates main concepts from examples, pulls repeated points together, and leaves you with something that can feed directly into " +
@@ -345,14 +345,14 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
   },
   study: {
     heroEyebrow: "AI Study",
-    heroTitle: "AI Study Tool for Flashcards, Quizzes, and Faster Revision",
+    heroTitle: "AI Flashcard and Quiz Generator for Your Course Documents",
     heroSubtitle:
-      "Upload documents, extract the core ideas, and turn them into revision-ready notes, flashcards, and quiz sets without leaving the workspace.",
+      "Upload a PDF, DOCX, or PPTX and turn it into flashcards, study notes, or a quiz with an explanation for every answer.",
     guideLabel: "AI STUDY TOOL GUIDE",
     seoTitle: "AI Study Tool Guide",
     productName: "AI Study",
     overviewIntro:
-      "This page pairs the live study generator with a more product-like landing layer underneath, so students can understand how the tool fits into active recall, exam prep, and document-based revision.",
+      "Below: how AI Study turns PDFs, DOCX files, and slides into flashcards, notes, and explained quizzes, and how to use them for active recall and exam prep.",
     whatIs: [
       "An AI study tool is useful when your source material is available but your revision materials are not. Students often have slides, PDFs, reading packets, or copied notes, yet still do not have flashcards, quizzes, or clean concept checks to study from. AI Study closes that gap.",
       "The value is not just that it generates text. It turns documents into active review outputs. That means notes can become flashcards, key points can become quiz questions, and a long chapter can become a more realistic exam-prep set without hours of manual setup.",
@@ -502,7 +502,7 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
     seoTitle: "AI Humanizer Guide",
     productName: "AI Humanizer",
     overviewIntro:
-      "This page keeps the rewrite tool at the top and turns the space below it into a more polished product landing section, with clearer use cases, rewrite steps, and FAQs around natural-sounding writing.",
+      "Below: when light rewriting helps, how AI Humanizer keeps your meaning intact, and how to use it responsibly alongside your course’s policies.",
     whatIs: [
       "An AI humanizer is a rewrite tool for text that already contains the right idea but still sounds too stiff, too smooth, or too obviously generated. Students often need this after using AI for brainstorming, summaries, or early draft assistance when the final wording no longer feels like something they would naturally write.",
       "The important point is that humanizing is not the same as random paraphrasing. A good tool should improve rhythm, readability, and tone while keeping the original meaning stable. That makes it more useful for final polish than for first-draft invention.",
@@ -646,14 +646,14 @@ export const toolPageContent: Record<"detector" | "note" | "study" | "humanizer"
   },
   converter: {
     heroEyebrow: "Converter",
-    heroTitle: "File Converter for PDFs, Images, Audio, and Quick Format Changes",
+    heroTitle: "File Converter for PDFs and Images: JPG, PNG, WEBP",
     heroSubtitle:
       "Convert common files without leaving the AIWoven workspace, then keep moving through notes, study prep, or writing review.",
     guideLabel: "FILE CONVERSION GUIDE",
     seoTitle: "File Converter Guide",
     productName: "Converter",
     overviewIntro:
-      "This page keeps the actual converter in front and upgrades the lower SEO layer into a more visual product explanation, built around school and work file tasks instead of one long wall of text.",
+      "Below: which conversions are supported, when each format makes sense, and how converted files fit into your notes and study workflow.",
     whatIs: [
       "A file converter solves one of the most common workflow problems: the file you have is not the format you need. Students run into this with PDFs, images, scanned worksheets, slide exports, and upload portals all the time. A clean converter keeps that small technical issue from turning into a deadline problem.",
       "The reason it belongs inside AIWoven is simple. Conversion is rarely the end goal. It is usually the step that lets you move into notes, study prep, or writing without leaving the workspace to solve a basic format issue somewhere else.",

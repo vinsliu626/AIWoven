@@ -20,18 +20,18 @@ export default function PngToWebpPage() {
       title="Convert PNG to WEBP for lighter web-ready images"
       intro="PNG to WEBP is a high-intent conversion path for people optimizing images for sites, apps, and performance-focused delivery. This AIWoven page explains the workflow and links to the converter."
       paragraphs={[
-        "WEBP is commonly chosen when users want smaller image files and a format that fits modern web delivery. That makes PNG to WEBP a strong search-intent route and a practical addition to the AIWoven public surface.",
-        "The page gives search engines direct text about PNG to WEBP conversion instead of forcing discovery through the interactive app alone. It also keeps the visual treatment consistent with the existing AIWoven design language.",
-        "Use the CTA below to open the converter workspace and handle the actual image conversion inside the product.",
+        "WEBP images are typically smaller than PNG files at similar visual quality, which makes them a good choice for websites, portfolios, and anywhere upload size matters.",
+        "In AIWoven, open the Converter, choose PNG as the source and WEBP as the target, and upload your image. PNG can also be converted to JPG or PDF. Conversions require a free account and follow your plan’s file-size and daily limits.",
+        "Most modern browsers support WEBP, but some older apps and editors don’t—keep the original PNG if you might need to edit the image later.",
       ]}
       ctaHref="/converter"
       ctaLabel="Open Converter"
       secondaryHref="/jpg-to-png"
       secondaryLabel="See JPG to PNG"
       highlights={[
-        "Built for web-ready image optimization intent.",
-        "Creates a dedicated indexable route for PNG to WEBP queries.",
-        "Routes users into the existing AIWoven converter workflow.",
+        "Convert PNG images to WEBP, JPG, or PDF.",
+        "Smaller files for web pages and uploads.",
+        "Free account required; plan limits apply.",
       ]}
       relatedLinks={[
         { href: "/jpg-to-png", label: "JPG to PNG landing page" },
@@ -42,11 +42,15 @@ export default function PngToWebpPage() {
       faq={[
         {
           question: "Why convert PNG to WEBP?",
-          answer: "PNG to WEBP is common when users want lighter web image files while staying in a modern delivery format used across websites and apps.",
+          answer: "WEBP usually produces smaller files than PNG for the same image, which speeds up web pages and makes uploads lighter.",
+        },
+        {
+          question: "Does WEBP work everywhere?",
+          answer: "Modern browsers support it, but some older software doesn’t. Keep your original PNG if compatibility matters.",
         },
         {
           question: "How do I start the conversion?",
-          answer: "Open the AIWoven converter from the CTA, choose PNG as the source format, and select WEBP as the target format.",
+          answer: "Open the AIWoven Converter, choose PNG as the source format, select WEBP as the target, and upload your file.",
         },
       ]}
     />

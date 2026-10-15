@@ -2,11 +2,11 @@ import { AiStudyWorkspacePage } from "@/components/workspace/public/AiStudyWorks
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "AI Study Tools | AIWoven",
+  title: "AI Flashcard & Quiz Generator from PDF, DOCX, PPTX | AIWoven",
   description:
-    "Use AIWoven AI Study to turn uploaded documents into notes, flashcards, and quiz sets for faster revision and exam prep.",
+    "Upload lecture slides or readings and generate AI flashcards, study notes, or a quiz with explanations for every answer. Free for students.",
   path: "/ai-study",
-  keywords: ["AI study tool", "study notes generator", "flashcard generator", "quiz generator"],
+  keywords: ["AI flashcards", "AI flashcard generator", "AI quiz generator", "flashcards from PDF"],
   robots: {
     index: true,
     follow: true,

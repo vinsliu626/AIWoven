@@ -27,6 +27,12 @@ export async function generateMetadata({ params }: BlogArticlePageProps): Promis
     title: post.seoTitle,
     description: post.seoDescription,
     path: getBlogPostUrl(post.slug),
+    keywords: post.primaryKeyword ? [post.primaryKeyword, ...(post.tags ?? [])] : post.tags,
+    publishedTime: post.date,
+    modifiedTime: post.updated,
+    section: post.category,
+    tags: post.tags,
+    robots: { index: true, follow: true },
   });
 }
 

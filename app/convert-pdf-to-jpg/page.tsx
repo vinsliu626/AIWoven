@@ -20,18 +20,18 @@ export default function ConvertPdfToJpgPage() {
       title="Convert PDF to JPG with the AIWoven converter"
       intro="Need to convert PDF to JPG for sharing, previews, or image-based workflows? This page explains the AIWoven PDF to JPG path and links directly to the converter workspace."
       paragraphs={[
-        "A PDF to JPG converter is useful when you need individual pages as images for slides, websites, design reviews, or quick visual sharing. AIWoven gives you a dedicated converter workspace with a clear FROM-to-TO flow.",
-        "This landing page exists for high-intent search traffic around PDF to JPG conversion. It gives search engines plain-language HTML about the use case while pointing users into the same AIWoven converter used for the rest of the product.",
-        "If your goal is to turn a PDF into JPG output quickly and keep the workflow inside the AIWoven environment, the converter page below is the next step.",
+        "A PDF to JPG converter turns each page of a PDF into an image. Students use it to drop a lecture slide into notes or a presentation, share a single page of a handout in a group chat, or add a diagram to a flashcard.",
+        "In AIWoven, open the Converter, choose PDF as the source and JPG as the target, then upload your file. PDF can also be converted to PNG (sharper text and line art) or WEBP (smaller files). Conversions require a free account and follow your plan’s file-size and daily limits.",
+        "Tip: if you want flashcards or a quiz from a PDF rather than images, upload it to AI Study instead—it reads the document text directly.",
       ]}
       ctaHref="/converter"
       ctaLabel="Open Converter"
       secondaryHref="/jpg-to-pdf"
       secondaryLabel="See JPG to PDF"
       highlights={[
-        "Useful for image previews, sharing, and visual extraction workflows.",
-        "Built around a simple source-format to target-format path.",
-        "Supports search intent for PDF to JPG conversion queries.",
+        "Turn PDF pages into JPG, PNG, or WEBP images.",
+        "Useful for slides, handouts, and diagrams you want to reuse.",
+        "Free account required; plan limits apply.",
       ]}
       relatedLinks={[
         { href: "/jpg-to-png", label: "JPG to PNG landing page" },
@@ -42,11 +42,15 @@ export default function ConvertPdfToJpgPage() {
       faq={[
         {
           question: "Why convert PDF to JPG?",
-          answer: "People often convert PDF pages to JPG when they need image previews, attachments, slide assets, or visual extracts that are easier to share than a full document.",
+          answer: "JPG images are easy to paste into notes, slides, chats, and flashcards, and they open on almost any device without a PDF reader.",
         },
         {
-          question: "Where do I do the actual conversion?",
-          answer: "Use the converter CTA on this page to open the AIWoven converter workspace and choose the appropriate source and target formats.",
+          question: "Should I choose JPG or PNG?",
+          answer: "JPG gives smaller files for photos and scanned pages. PNG keeps text and line drawings sharper, which is often better for slides and diagrams.",
+        },
+        {
+          question: "Can I make flashcards from a PDF instead?",
+          answer: "Yes. Upload the PDF to AI Study to generate notes, flashcards, or an explained quiz from its text.",
         },
       ]}
     />

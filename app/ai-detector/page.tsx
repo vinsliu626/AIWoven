@@ -2,9 +2,9 @@ import { AiDetectorWorkspacePage } from "@/components/workspace/public/AiDetecto
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "AI Detector | AIWoven",
+  title: "AI Detector for Essays & Student Writing | AIWoven",
   description:
-    "Check text with the AIWoven AI Detector. Review AI-like writing patterns, highlight suspicious passages, and inspect content before publishing.",
+    "Check English writing for AI-like patterns with a probability breakdown and highlighted passages. A review signal, not proof of authorship.",
   path: "/ai-detector",
   keywords: ["AI detector", "AI content detector", "detect AI writing", "AI text checker"],
   robots: {

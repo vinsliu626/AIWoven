@@ -20,18 +20,18 @@ export default function JpgToPdfPage() {
       title="Convert JPG to PDF for shareable document output"
       intro="JPG to PDF is useful when you need image files turned into a document that is easier to send, archive, or include in a workflow that expects PDF output."
       paragraphs={[
-        "People often search for a JPG to PDF converter when they are packaging screenshots, scans, forms, or image assets into a single document flow. This AIWoven landing page targets that intent directly and then points them into the converter workspace.",
-        "The route improves crawlability by adding descriptive HTML around a specific conversion job instead of relying only on the interactive converter screen. That gives search engines a stronger content signal for JPG to PDF queries.",
-        "If you want to move images into a PDF workflow inside AIWoven, open the converter below and pick the matching source and target formats.",
+        "JPG to PDF is the quickest way to turn photos of handouts, whiteboards, or handwritten notes into a document you can file, share, or submit.",
+        "In AIWoven, open the Converter, choose JPG as the source and PDF as the target, and upload your image. PNG images can be converted to PDF too. Conversions require a free account and follow your plan’s file-size and daily limits.",
+        "Keeping scans as PDFs makes them easier to organize alongside lecture slides—and a PDF can later be uploaded to AI Study to generate flashcards or a quiz.",
       ]}
       ctaHref="/converter"
       ctaLabel="Open Converter"
       secondaryHref="/convert-pdf-to-jpg"
       secondaryLabel="See PDF to JPG"
       highlights={[
-        "Useful for sending images as one document.",
-        "Targets a specific image-to-document conversion intent.",
-        "Supports the AIWoven converter without redesigning it.",
+        "Turn photos of notes and handouts into PDFs.",
+        "Works with JPG and PNG images.",
+        "Free account required; plan limits apply.",
       ]}
       relatedLinks={[
         { href: "/convert-pdf-to-jpg", label: "PDF to JPG landing page" },
@@ -42,11 +42,15 @@ export default function JpgToPdfPage() {
       faq={[
         {
           question: "Why would I convert JPG to PDF?",
-          answer: "JPG to PDF is common for scans, screenshots, forms, and image bundles that need to be shared or stored in a document format.",
+          answer: "PDF is a better format for storing and sharing documents: it keeps pages together, prints predictably, and is accepted by most submission systems.",
         },
         {
-          question: "Is the converter part of AIWoven?",
-          answer: "Yes. This page is the indexable public landing page and the CTA opens the existing AIWoven converter workspace.",
+          question: "Can I convert a PNG to PDF as well?",
+          answer: "Yes. Choose PNG as the source format and PDF as the target in the Converter.",
+        },
+        {
+          question: "Can AI Study read a scanned PDF?",
+          answer: "AI Study extracts text that is embedded in the PDF. Photos of handwriting usually contain no extractable text, so typed or digital documents work best.",
         },
       ]}
     />

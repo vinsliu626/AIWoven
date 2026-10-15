@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
@@ -6,6 +7,8 @@ import { studyCardsFromResult } from "@/lib/study/material";
 import { FocusedStudyExperience } from "@/components/workspace/study/FocusedStudyExperience";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: { absolute: "Study Session | AIWoven" }, robots: { index: false, follow: false } };
 
 export default async function FocusedStudyPage({ params }: { params: Promise<{ id: string }> }) {
   const auth = await getServerSession(authOptions);

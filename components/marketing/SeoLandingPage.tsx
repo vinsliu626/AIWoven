@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+
 type LinkItem = {
   href: string;
   label: string;
@@ -33,6 +36,8 @@ export function SeoLandingPage({
   faq,
 }: SeoLandingPageProps) {
   return (
+    <>
+    <SiteHeader />
     <main className="relative min-h-screen overflow-hidden bg-white px-4 py-10 text-slate-900 sm:px-6">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a08_1px,transparent_1px),linear-gradient(to_bottom,#0f172a08_1px,transparent_1px)] bg-[size:34px_34px] opacity-50" />
 
@@ -113,5 +118,7 @@ export function SeoLandingPage({
         </section>
       </div>
     </main>
+    <SiteFooter />
+    </>
   );
 }

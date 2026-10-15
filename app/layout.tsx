@@ -17,11 +17,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   applicationName: SITE_NAME,
   title: {
-    default: "AIWoven | AI Note, AI Detector, AI Study, and Converter Tools",
+    default: "AIWoven: AI Study Assistant for Lecture Notes, Flashcards & Quizzes",
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    "Every study tool, woven into one AI workspace. Record lectures, organize notes, build flashcards and explained quizzes, improve writing, convert files, and work with AIWoven Assistant.",
+    "Turn lecture recordings into structured study notes, and course documents into flashcards and explained quizzes. Free AI study assistant for students.",
   keywords: [
     "AIWoven",
     "AI note generator",
@@ -30,9 +30,6 @@ export const metadata: Metadata = {
     "AI humanizer",
     "file converter",
   ],
-  alternates: {
-    canonical: "/",
-  },
   robots: {
     index: true,
     follow: true,
@@ -43,16 +40,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
-    title: "AIWoven | AI Note, AI Detector, AI Study, and Converter Tools",
-    description: "Every study tool, woven into one AI workspace.",
+    title: "AIWoven: AI Study Assistant for Lecture Notes, Flashcards & Quizzes",
+    description: "Turn lectures into study notes, flashcards, and explained quizzes.",
     url: getSiteUrl(),
     locale: "en_US",
     images: [{ url: "/brand/aiwoven-image2-concept.png", width: 1536, height: 1024, alt: "AIWoven interwoven W brand identity" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AIWoven | AI Note, AI Detector, AI Study, and Converter Tools",
-    description: "Every study tool, woven into one AI workspace.",
+    title: "AIWoven: AI Study Assistant for Lecture Notes, Flashcards & Quizzes",
+    description: "Turn lectures into study notes, flashcards, and explained quizzes.",
     images: ["/brand/aiwoven-image2-concept.png"],
   },
   icons: {

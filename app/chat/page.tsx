@@ -1138,14 +1138,6 @@ function ChatPageInner() {
             </div>
           )}
 
-          <div className="sr-only">
-            <p>AI Chat</p>
-            <h1>AIWoven AI chat workspace for direct conversations and workflow collaboration</h1>
-            <p>
-              Use this route for direct chat with AIWoven. You can stay in normal chat, switch to workflow chat, or jump into the dedicated tool routes for AI Note, AI Detector, AI Study, AI Humanizer, and Converter.
-            </p>
-          </div>
-
           {/* Body */}
           {mode === "detector" ? (
             <div className="custom-scrollbar flex-1 overflow-y-auto px-4 py-6 md:px-8">
@@ -1451,16 +1443,25 @@ function ChatPageInner() {
 
 export default function ChatPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="h-screen w-screen bg-white flex items-center justify-center text-slate-500 font-mono text-sm">
-          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse mr-3" />
-          INITIALIZING...
-        </div>
-      }
-    >
-      <ChatPageInner />
-    </Suspense>
+    <>
+      {/* Rendered outside Suspense so the page's heading and purpose are present in the server HTML. */}
+      <div className="sr-only">
+        <h1>AI Chat: ask questions and draft with AIWoven Assistant</h1>
+        <p>
+          Chat with AIWoven Assistant directly, or switch to workflow mode to plan, draft, and review in one run. Dedicated tools are available for AI Note, AI Study, AI Detector, AI Humanizer, and the file Converter.
+        </p>
+      </div>
+      <Suspense
+        fallback={
+          <div className="flex h-screen w-screen items-center justify-center bg-[var(--app-canvas)] text-sm text-slate-500">
+            <span className="mr-3 h-2 w-2 animate-pulse rounded-full bg-blue-600" />
+            Loading workspace…
+          </div>
+        }
+      >
+        <ChatPageInner />
+      </Suspense>
+    </>
   );
 }
 

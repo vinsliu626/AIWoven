@@ -1,23 +1,32 @@
-"use client";
-
 import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
-import { AIWovenLogo, AIWovenMark } from "@/components/brand/AIWovenLogo";
-import type { PublicImpactStats } from "@/lib/analytics/publicStats";
-import { hasMeaningfulPublicImpactStats } from "@/lib/analytics/publicStatsDisplay";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { getBlogPost, getBlogPostUrl, getReadingTime } from "@/lib/blog/posts";
+import type { BlogPost } from "@/lib/blog/types";
+import { jsonLd } from "@/lib/seo";
+import { absoluteUrl } from "@/lib/site-url";
 
 type ToolIcon = "chat" | "note" | "study" | "detect" | "humanizer" | "converter";
 
-const tools: Array<{ title: string; description: string; href: string; icon: ToolIcon; tag: string }> = [
-  { title: "AI Detector", description: "Score drafts for AI-like writing and review highlighted passages before you submit.", href: "/ai-detector", icon: "detect", tag: "Writing" },
-  { title: "AI Humanizer", description: "Improve flow and readability while preserving your original meaning.", href: "/ai-humanizer", icon: "humanizer", tag: "Writing" },
-  { title: "AI Note", description: "Turn recordings and text into structured, review-ready notes.", href: "/ai-note", icon: "note", tag: "Study" },
-  { title: "AI Study", description: "Build notes, large flashcards, and explained quizzes from documents.", href: "/ai-study", icon: "study", tag: "Study" },
-  { title: "AI Chat", description: "Compare ideas and draft with AIWoven Assistant or a multi-step workflow.", href: "/chat", icon: "chat", tag: "Assistant" },
-  { title: "Converter", description: "Move between PDF, JPG, PNG, WEBP, and other supported formats.", href: "/converter", icon: "converter", tag: "Files" },
+const tools: Array<{ title: string; cta: string; description: string; href: string; icon: ToolIcon; tag: string }> = [
+  { title: "AI Note Taker", cta: "Turn audio into notes", description: "Record a lecture in the browser or upload audio, then get transcribed, structured study notes with definitions and key takeaways.", href: "/ai-note", icon: "note", tag: "Lectures" },
+  { title: "AI Flashcards & Quizzes", cta: "Make flashcards", description: "Upload a PDF, DOCX, or PPTX and generate notes, flashcards, or quizzes with an explanation for every answer.", href: "/ai-study", icon: "study", tag: "Documents" },
+  { title: "AI Detector", cta: "Check a draft", description: "Get an AI-likelihood breakdown and highlighted passages to review—one signal, not proof of authorship.", href: "/ai-detector", icon: "detect", tag: "Writing" },
+  { title: "AI Humanizer", cta: "Smooth your wording", description: "Lightly revise stiff phrasing for clearer, more natural flow while keeping your original meaning.", href: "/ai-humanizer", icon: "humanizer", tag: "Writing" },
+  { title: "AI Study Assistant Chat", cta: "Ask a question", description: "Ask questions, draft explanations, or run a plan–write–review workflow on harder problems.", href: "/chat", icon: "chat", tag: "Assistant" },
+  { title: "File Converter", cta: "Convert a file", description: "Convert between PDF, JPG, PNG, and WEBP when course files arrive in the wrong format.", href: "/converter", icon: "converter", tag: "Files" },
 ];
+
+const guideSlugs = [
+  "turn-lecture-recordings-into-study-notes",
+  "active-recall-vs-rereading",
+  "how-to-study-for-exams-with-ai",
+  "turn-class-notes-into-flashcards",
+  "how-accurate-are-ai-detectors",
+  "create-study-guide-from-lecture-notes",
+] as const;
 
 const workflow = [
   ["Lecture", "Capture"],
@@ -70,20 +79,14 @@ const trustPillars = [
 ] as const;
 
 const faqs = [
-  ["Is AIWoven free to use?", "Yes. AIWoven has a Basic plan with usage limits, while paid plans increase limits and unlock additional capacity."],
+  ["Is AIWoven free to use?", "Yes. AIWoven has a free Basic plan with weekly and daily usage limits. Paid plans raise those limits."],
+  ["Can AIWoven turn a lecture recording into notes?", "Yes. AI Note accepts common audio formats (such as MP3, M4A, WAV, and WEBM) or a recording made in your browser, transcribes it, and organizes it into study notes. Always check names, numbers, and formulas against your slides."],
   ["Which AI tools are included?", "AI Chat, AI Note, AI Study, Flashcards, explained Quizzes, AI Detector, Humanizer, and File Converter are available in the workspace."],
   ["Can I upload lecture notes or documents?", "Yes. AI Study accepts supported PDF, DOCX, and PPTX documents and extracts text in the browser before generation."],
   ["How does AI Study create flashcards and quizzes?", "It uses the document text to generate structured notes, large interactive flashcards, and a separate question-by-question quiz flow."],
   ["Does every quiz answer include an explanation?", "Yes. New quiz items are validated to include an explanation, and incorrect answers show your answer, the correct answer, and the explanation."],
   ["Is my uploaded content private?", "Private tools require authentication. AI Study history is tied to your account, and public analytics expose only aggregate counts—not identities or event details."],
   ["What powers AIWoven Assistant?", "AIWoven routes requests through supported AI systems selected for the task. The active provider and model are intentionally not exposed in the workspace."],
-] as const;
-
-const navLinks = [
-  ["Products", "#tools"],
-  ["Workflow", "#workflow"],
-  ["Why AIWoven", "#trust"],
-  ["FAQ", "#faq"],
 ] as const;
 
 function ArrowIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -116,23 +119,9 @@ function SectionHeading({ eyebrow, title, body, center = false, id }: { eyebrow:
   );
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
-  const display = new Intl.NumberFormat("en-US").format(value);
-  return <div className="min-w-0"><p className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">{display}</p><p className="mt-1 text-sm text-slate-500">{label}</p></div>;
-}
-
-function StudentNeeds({ stats }: { stats: PublicImpactStats }) {
-  const showPublicStats = hasMeaningfulPublicImpactStats(stats);
-  const visibleStats = [
-    { value: stats.studentsHelped, label: "Students helped" },
-    { value: stats.studySessionsCompleted, label: "Study activities" },
-    { value: stats.notesGenerated, label: "Notes generated" },
-    { value: stats.flashcardSetsCreated, label: "Flashcard sets" },
-    { value: stats.aiToolsAvailable, label: "AI tools available" },
-  ].filter((item) => item.value > 0);
-
+function StudentNeeds() {
   return (
-    <section id="student-needs" aria-labelledby="student-needs-title" data-testid="student-needs" className="scroll-mt-24 bg-slate-50 px-4 py-20 sm:px-6 lg:py-24">
+    <section id="student-needs" aria-labelledby="student-needs-title" data-testid="student-needs" className="scroll-mt-24 bg-slate-50 px-4 py-16 sm:px-6 lg:py-20">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
           <SectionHeading eyebrow="Student needs" title="Built around the way students actually study." id="student-needs-title" />
@@ -156,18 +145,11 @@ function StudentNeeds({ stats }: { stats: PublicImpactStats }) {
           ))}
         </div>
 
-        <div className="mt-10 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium text-slate-700">One workspace for the full path from lecture to mastery.</p>
           <a href="#workflow" data-testid="student-needs-workflow-link" className="group inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">See how it works <span className="transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"><ArrowIcon /></span></a>
         </div>
 
-        {showPublicStats ? (
-          <div data-testid="public-impact-stats" className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
-            <p className="flex items-center gap-2 text-sm font-semibold text-slate-900"><span className="aiwoven-status-pulse h-2 w-2 rounded-full bg-emerald-500" />Live aggregate activity</p>
-            <div className="mt-6 grid grid-cols-2 gap-y-7 sm:grid-cols-3 lg:grid-cols-5">{visibleStats.map((item) => <Stat key={item.label} value={item.value} label={item.label} />)}</div>
-            <p className="mt-6 text-xs text-slate-400">Counts come from successful registered-user tool events and saved study sessions. Anonymous visits are excluded.</p>
-          </div>
-        ) : null}
       </div>
     </section>
   );
@@ -261,53 +243,78 @@ function StudyShowcase() {
   );
 }
 
-export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
-  const { data: session } = useSession();
-  const [menuOpen, setMenuOpen] = useState(false);
+function GuideCard({ post }: { post: BlogPost }) {
+  return (
+    <Link href={getBlogPostUrl(post.slug)} className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md motion-reduce:transform-none">
+      <span className="text-xs font-semibold uppercase tracking-[.06em] text-blue-600">{post.category}</span>
+      <h3 className="mt-3 text-lg font-semibold leading-snug text-slate-900">{post.title}</h3>
+      <p className="mt-2 flex-1 text-[15px] leading-6 text-slate-600">{post.description}</p>
+      <span className="mt-5 flex items-center justify-between text-sm">
+        <span className="text-slate-400">{getReadingTime(post)}</span>
+        <span className="inline-flex items-center gap-1 font-semibold text-blue-600">Read guide <span className="transition-transform group-hover:translate-x-0.5"><ArrowIcon /></span></span>
+      </span>
+    </Link>
+  );
+}
+
+function homeJsonLd() {
+  const site = absoluteUrl("/");
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${site}#organization`,
+        name: "AIWoven",
+        url: site,
+        logo: absoluteUrl("/icon.svg"),
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${site}#website`,
+        name: "AIWoven",
+        url: site,
+        publisher: { "@id": `${site}#organization` },
+        inLanguage: "en",
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${site}#faq`,
+        mainEntity: faqs.map(([question, answer]) => ({
+          "@type": "Question",
+          name: question,
+          acceptedAnswer: { "@type": "Answer", text: answer },
+        })),
+      },
+    ],
+  };
+}
+
+export function AIWovenHome() {
+  const guides = guideSlugs.map((slug) => getBlogPost(slug)).filter((post): post is BlogPost => Boolean(post));
 
   return (
+    <>
+    <SiteHeader />
     <main className="aiwoven-site min-h-screen overflow-x-clip bg-white text-slate-900">
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur">
-        <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6" aria-label="Main navigation">
-          <div className="flex items-center gap-10">
-            <Link href="/" aria-label="AIWoven home"><AIWovenLogo /></Link>
-            <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">{navLinks.map(([label, href]) => <a key={href} href={href} className="transition hover:text-slate-900">{label}</a>)}</div>
-          </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            <Link href="/chat" className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">{session ? "Open workspace" : "Log in"}</Link>
-            <Link href="/chat" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">Try for free <ArrowIcon /></Link>
-          </div>
-          <button type="button" className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-700 sm:hidden" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}>
-            <svg viewBox="0 0 20 20" aria-hidden className="h-4 w-4"><path d={menuOpen ? "m5 5 10 10M15 5 5 15" : "M3.5 6h13M3.5 10h13M3.5 14h13"} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
-          </button>
-        </nav>
-        {menuOpen ? (
-          <div className="border-t border-slate-200 bg-white px-4 pb-4 pt-2 sm:hidden">
-            <div className="grid gap-1">
-              {navLinks.map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">{label}</a>)}
-              <Link href="/chat" className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">{session ? "Open workspace" : "Log in"}</Link>
-              <Link href="/chat" className="mt-2 rounded-lg bg-blue-600 px-4 py-2.5 text-center text-sm font-semibold text-white">Try for free</Link>
-            </div>
-          </div>
-        ) : null}
-      </header>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(homeJsonLd()) }} />
 
-      <section className="aiwoven-hero-bg relative isolate overflow-hidden px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:pb-24 lg:pt-16" aria-labelledby="hero-title">
+      <section className="aiwoven-hero-bg relative isolate overflow-hidden px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:pb-20 lg:pt-16" aria-labelledby="hero-title">
         <div className="aiwoven-grid pointer-events-none absolute inset-0 -z-10" aria-hidden />
         <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14">
           <div className="text-center lg:text-left">
-            <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm">
-              <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] text-white">New</span>
-              Every study tool, woven into one workspace.
-            </span>
-            <h1 id="hero-title" className="mx-auto mt-5 max-w-2xl text-balance text-[2.6rem] font-semibold leading-[1.05] tracking-tight text-slate-900 sm:text-6xl lg:mx-0 lg:text-[4rem]">
-              From <span className="aiwoven-highlight">Lecture</span> to <span className="aiwoven-highlight">Mastery.</span>
-              <span className="mt-2 block text-[0.55em] font-medium leading-tight text-slate-500">All in One AI Workspace.</span>
+            <p className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm">
+              AI study assistant for students
+            </p>
+            <h1 id="hero-title" className="mx-auto mt-5 max-w-2xl text-balance text-[2.35rem] font-semibold leading-[1.08] tracking-tight text-slate-900 sm:text-[3.25rem] lg:mx-0 lg:text-[3.6rem]">
+              Turn <span className="aiwoven-highlight">lectures</span> into notes, flashcards, and quizzes.
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-7 text-slate-600 sm:text-lg sm:leading-8 lg:mx-0">Record lectures, organize notes, create flashcards and explained quizzes, check writing for AI, convert files, and work with AIWoven Assistant—without switching tabs.</p>
+            <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-7 text-slate-600 sm:text-lg sm:leading-8 lg:mx-0">
+              Record or upload a lecture and AIWoven transcribes it into structured study notes. Upload slides or readings to generate flashcards and explained quizzes—then review it all in one workspace.
+            </p>
             <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
               <Link href="/chat" data-testid="hero-primary-cta" className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-[15px] font-semibold text-white shadow-[0_8px_20px_-6px_rgba(37,99,235,0.55)] transition hover:bg-blue-700 sm:w-auto">Try for free <span className="transition-transform group-hover:translate-x-0.5"><ArrowIcon /></span></Link>
-              <Link href="/ai-detector" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 text-[15px] font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-auto">Check text for AI</Link>
+              <Link href="/ai-note" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 text-[15px] font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-auto">Turn a lecture into notes</Link>
             </div>
             <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-slate-500 lg:justify-start">
               {["No credit card required", "Free plan", "Private by default"].map((item) => <li key={item} className="flex items-center gap-1.5"><CheckIcon className="h-4 w-4 text-emerald-600" />{item}</li>)}
@@ -326,9 +333,9 @@ export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
         </div>
       </section>
 
-      <section id="tools" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-24" aria-labelledby="tools-title">
+      <section id="tools" className="scroll-mt-20 px-4 py-16 sm:px-6 lg:py-20" aria-labelledby="tools-title">
         <div id="features" className="mx-auto max-w-6xl scroll-mt-20">
-          <SectionHeading eyebrow="The connected toolkit" title="Do the whole assignment without rebuilding context." body="Six focused tools share one account, one history, and one workflow—so the output of one step becomes the input of the next." center id="tools-title" />
+          <SectionHeading eyebrow="Study tools" title="Everything between the lecture and the exam." body="Focused tools that share one account and one history, so the notes you make after class become the flashcards and quizzes you review before the exam." center id="tools-title" />
           <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {tools.map((tool) => (
               <Link key={tool.title} href={tool.href} className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md motion-reduce:transform-none">
@@ -338,16 +345,16 @@ export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
                 </div>
                 <h3 className="mt-5 text-lg font-semibold text-slate-900">{tool.title}</h3>
                 <p className="mt-2 flex-1 text-[15px] leading-6 text-slate-600">{tool.description}</p>
-                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600">Open {tool.title} <span className="transition-transform group-hover:translate-x-0.5"><ArrowIcon /></span></span>
+                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600">{tool.cta} <span className="transition-transform group-hover:translate-x-0.5"><ArrowIcon /></span></span>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <StudentNeeds stats={stats} />
+      <StudentNeeds />
 
-      <section id="workflow" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-24" aria-labelledby="workflow-title">
+      <section id="workflow" className="scroll-mt-20 px-4 py-16 sm:px-6 lg:py-20" aria-labelledby="workflow-title">
         <div className="mx-auto max-w-6xl">
           <SectionHeading eyebrow="Student workflow" title="One continuous path from class to recall." body="Each step keeps the context from the step before it, so studying feels like one workflow instead of five disconnected tools." center id="workflow-title" />
           <ol className="relative mt-14 grid gap-6 sm:grid-cols-5 sm:gap-4">
@@ -362,7 +369,7 @@ export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
         </div>
       </section>
 
-      <section className="bg-slate-50 px-4 py-20 sm:px-6 lg:py-24" aria-label="Product highlights">
+      <section className="bg-slate-50 px-4 py-16 sm:px-6 lg:py-20" aria-label="Product highlights">
         <div className="mx-auto grid max-w-6xl gap-20">
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
             <div>
@@ -384,7 +391,7 @@ export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
         </div>
       </section>
 
-      <section id="trust" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-24" aria-labelledby="trust-title">
+      <section id="trust" className="scroll-mt-20 px-4 py-16 sm:px-6 lg:py-20" aria-labelledby="trust-title">
         <div className="mx-auto max-w-6xl">
           <SectionHeading eyebrow="Why AIWoven" title="Serious tools for serious work." body="Built with the safeguards you expect from professional software—so you can rely on it the night before a deadline." center id="trust-title" />
           <div className="mt-14 grid gap-5 md:grid-cols-3">
@@ -403,7 +410,19 @@ export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
         </div>
       </section>
 
-      <section id="faq" className="scroll-mt-20 border-t border-slate-200 px-4 py-20 sm:px-6 lg:py-24" aria-labelledby="faq-title">
+      <section id="guides" className="scroll-mt-20 bg-slate-50 px-4 py-16 sm:px-6 lg:py-20" aria-labelledby="guides-title">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <SectionHeading eyebrow="Study guides" title="Learn the method, then let the tools do the busywork." id="guides-title" />
+            <Link href="/blog" className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">All guides <ArrowIcon /></Link>
+          </div>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {guides.map((post) => <GuideCard key={post.slug} post={post} />)}
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" className="scroll-mt-20 px-4 py-16 sm:px-6 lg:py-20" aria-labelledby="faq-title">
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[.8fr_1.2fr]">
           <SectionHeading eyebrow="FAQ" title="Frequently asked questions" body="Everything you need to know before weaving AIWoven into your study routine." id="faq-title" />
           <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200">
@@ -427,35 +446,13 @@ export function AIWovenHome({ stats }: { stats: PublicImpactStats }) {
           <p className="relative mx-auto mt-4 max-w-xl text-base text-blue-100">Start free in seconds. No credit card required.</p>
           <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/chat" className="inline-flex h-12 items-center gap-2 rounded-lg bg-white px-6 text-[15px] font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50">Try for free <ArrowIcon /></Link>
-            <Link href="/ai-detector" className="inline-flex h-12 items-center rounded-lg border border-white/30 px-6 text-[15px] font-semibold text-white transition hover:bg-white/10">Check text for AI</Link>
+            <Link href="/ai-note" className="inline-flex h-12 items-center rounded-lg border border-white/30 px-6 text-[15px] font-semibold text-white transition hover:bg-white/10">Turn a lecture into notes</Link>
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-slate-200 bg-slate-50 px-4 py-12 sm:px-6">
-        <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
-          <div>
-            <AIWovenLogo />
-            <p className="mt-3 max-w-xs text-sm leading-6 text-slate-500">Every study tool, woven into one AI workspace.</p>
-          </div>
-          {[
-            ["Writing", [["AI Detector", "/ai-detector"], ["AI Humanizer", "/ai-humanizer"], ["AI Chat", "/chat"]]],
-            ["Study", [["AI Note", "/ai-note"], ["AI Study", "/ai-study"], ["Flashcards", "/flashcards"], ["Quiz Me", "/quiz-me"]]],
-            ["Company", [["Blog", "/blog"], ["Privacy", "/privacy"], ["Converter", "/converter"], [session ? "Workspace" : "Log in", "/chat"]]],
-          ].map(([title, links]) => (
-            <div key={title as string}>
-              <p className="text-sm font-semibold text-slate-900">{title as string}</p>
-              <ul className="mt-3 space-y-2">
-                {(links as string[][]).map(([label, href]) => <li key={label}><Link href={href} className="text-sm text-slate-500 transition hover:text-slate-900">{label}</Link></li>)}
-              </ul>
-            </div>
-          ))}
-        </div>
-        <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-2 border-t border-slate-200 pt-6 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} AIWoven. All rights reserved.</p>
-          <div className="flex items-center gap-2"><AIWovenMark className="h-4 w-5" title="" /> Built for learners.</div>
-        </div>
-      </footer>
     </main>
+    <SiteFooter />
+    </>
   );
 }

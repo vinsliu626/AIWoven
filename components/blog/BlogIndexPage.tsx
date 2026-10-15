@@ -1,86 +1,118 @@
 import Link from "next/link";
 
-import { blogPosts, getBlogPostUrl } from "@/lib/blog/posts";
+import { formatBlogDate } from "@/components/blog/BlogArticlePage";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { blogPosts, getBlogCategories, getBlogPostUrl, getReadingTime } from "@/lib/blog/posts";
+import type { BlogPost } from "@/lib/blog/types";
+import { jsonLd } from "@/lib/seo";
+import { absoluteUrl } from "@/lib/site-url";
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(`${date}T00:00:00`));
-}
+/** Display order for categories; anything else follows alphabetically. */
+const CATEGORY_ORDER = ["Lecture Notes", "Study Skills", "AI Detection", "Note Taking", "Study Tools", "AI Writing", "Student Productivity", "File Conversion"];
 
-export function BlogIndexPage() {
+function PostRow({ post }: { post: BlogPost }) {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-white px-4 py-12 text-slate-900 sm:px-6">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#0f172a08_1px,transparent_1px),linear-gradient(to_bottom,#0f172a08_1px,transparent_1px)] bg-[size:34px_34px] opacity-50" />
-
-      <div className="relative mx-auto max-w-6xl space-y-10">
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white/90 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)]">
-          <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 via-blue-50 to-emerald-50 px-6 py-8 sm:px-8">
-            <p className="text-[11px] uppercase tracking-[.06em] text-slate-500">AIWoven Blog</p>
-            <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-              Practical AI guides for students
-            </h1>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
-              Useful articles on studying, note-taking, AI writing review, and file workflows. Every post connects back to
-              the tools students actually use inside AIWoven.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/ai-study"
-                className="inline-flex items-center rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition"
-              >
-                Try AIWoven for free
-              </Link>
-              <Link
-                href="/"
-                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-medium text-slate-900 transition hover:bg-slate-100"
-              >
-                Back to homepage
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-5">
-          {blogPosts.map((post) => (
-            <article
-              key={post.slug}
-              className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.14)] transition hover:border-blue-200 hover:bg-slate-50"
-            >
-              <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[.06em] text-slate-500">
-                <span>{post.category}</span>
-                <span className="h-1 w-1 rounded-full bg-slate-200" />
-                <time dateTime={post.date}>{formatDate(post.date)}</time>
-                <span className="h-1 w-1 rounded-full bg-slate-200" />
-                <span>{post.readingTime}</span>
-              </div>
-              <h2 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
-                <Link href={getBlogPostUrl(post.slug)} className="transition hover:text-blue-700">
-                  {post.title}
-                </Link>
-              </h2>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600 sm:text-[15px]">{post.description}</p>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <Link
-                  href={getBlogPostUrl(post.slug)}
-                  className="inline-flex items-center rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition"
-                >
-                  Read article
-                </Link>
-                <Link
-                  href={post.relatedToolUrl}
-                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 transition hover:border-emerald-200 hover:bg-slate-50"
-                >
-                  Related tool
-                </Link>
-              </div>
-            </article>
-          ))}
-        </section>
-      </div>
-    </main>
+    <li>
+      <Link href={getBlogPostUrl(post.slug)} className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow-md">
+        <span className="text-[17px] font-semibold leading-snug text-slate-900 group-hover:text-blue-700">{post.title}</span>
+        <span className="mt-2 flex-1 text-sm leading-6 text-slate-600">{post.description}</span>
+        <span className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+          <time dateTime={post.updated ?? post.date}>{formatBlogDate(post.updated ?? post.date)}</time>
+          <span aria-hidden className="h-1 w-1 rounded-full bg-slate-300" />
+          <span>{getReadingTime(post)}</span>
+        </span>
+      </Link>
+    </li>
   );
 }
 
+export function BlogIndexPage() {
+  const categories = getBlogCategories().sort((a, b) => {
+    const ai = CATEGORY_ORDER.indexOf(a.name);
+    const bi = CATEGORY_ORDER.indexOf(b.name);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi) || a.name.localeCompare(b.name);
+  });
+
+  const collectionLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": `${absoluteUrl("/blog")}#collection`,
+        name: "AIWoven study guides",
+        url: absoluteUrl("/blog"),
+        description: "Practical guides on lecture notes, active recall, exam preparation, and AI detection for students.",
+        mainEntity: {
+          "@type": "ItemList",
+          itemListElement: blogPosts.map((post, index) => ({ "@type": "ListItem", position: index + 1, url: absoluteUrl(getBlogPostUrl(post.slug)), name: post.title })),
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
+          { "@type": "ListItem", position: 2, name: "Study guides", item: absoluteUrl("/blog") },
+        ],
+      },
+    ],
+  };
+
+  return (
+    <>
+      <SiteHeader />
+      <main className="min-h-screen bg-white text-slate-900">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(collectionLd) }} />
+
+        <section className="border-b border-slate-200 bg-gradient-to-b from-slate-50 to-white px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
+          <div className="mx-auto max-w-6xl">
+            <nav aria-label="Breadcrumb">
+              <ol className="flex items-center gap-1.5 text-sm text-slate-500">
+                <li><Link href="/" className="hover:text-slate-900">Home</Link></li>
+                <li aria-hidden className="text-slate-300">/</li>
+                <li aria-current="page" className="text-slate-700">Study guides</li>
+              </ol>
+            </nav>
+            <h1 className="mt-5 max-w-3xl text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-[2.6rem] sm:leading-[1.15]">Study guides for lectures, notes, and exams</h1>
+            <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+              Practical, evidence-aware guides on turning lectures into notes, studying with active recall, preparing for exams, and understanding what AI detectors can and cannot tell you.
+            </p>
+            <nav aria-label="Guide categories" className="mt-7">
+              <ul className="flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <li key={category.id}>
+                    <a href={`#${category.id}`} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700">
+                      {category.name}
+                      <span className="rounded-full bg-slate-100 px-1.5 text-xs text-slate-500">{category.count}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
+        </section>
+
+        <div className="mx-auto max-w-6xl space-y-14 px-4 py-12 sm:px-6">
+          {categories.map((category) => (
+            <section key={category.id} id={category.id} aria-labelledby={`${category.id}-title`} className="scroll-mt-24">
+              <h2 id={`${category.id}-title`} className="text-2xl font-semibold tracking-tight text-slate-900">{category.name}</h2>
+              <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {blogPosts.filter((post) => post.category === category.name).map((post) => <PostRow key={post.slug} post={post} />)}
+              </ul>
+            </section>
+          ))}
+
+          <section className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white sm:p-8">
+            <h2 className="text-2xl font-semibold tracking-tight">Put a guide into practice</h2>
+            <p className="mt-2 max-w-xl text-[15px] leading-7 text-blue-100">Turn your next lecture into structured notes, or a set of slides into flashcards and an explained quiz.</p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link href="/ai-note" className="inline-flex h-11 items-center rounded-lg bg-white px-5 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50">Open AI Note</Link>
+              <Link href="/ai-study" className="inline-flex h-11 items-center rounded-lg border border-white/30 px-5 text-sm font-semibold text-white transition hover:bg-white/10">Open AI Study</Link>
+            </div>
+          </section>
+        </div>
+      </main>
+      <SiteFooter />
+    </>
+  );
+}

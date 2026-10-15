@@ -2,9 +2,11 @@
 
 import { StudyUI } from "@/components/workspace/study/StudyUI";
 import { WorkspaceSignInPrompt } from "@/components/auth/WorkspaceSignInPrompt";
+import { ToolLandingPageSection } from "@/components/seo/ToolLandingPageSection";
 import type { Entitlement } from "@/components/chat/billing/types";
 import type { StudyEntitlement } from "@/components/workspace/study/study-types";
 import { getStudyBasePlanLimits, normalizePlan } from "@/lib/plans/productLimits";
+import { toolPageContent } from "@/lib/seo/toolPageContent";
 
 import { PublicWorkspaceShell } from "./PublicWorkspaceShell";
 
@@ -33,7 +35,15 @@ export function AiStudyWorkspacePage() {
       {({ entitlement, locked, isZh, authLoading, authProviders, refreshEntitlement }) => {
         const studyEntitlement = toStudyEntitlement(entitlement);
 
-        return locked && !authLoading ? <WorkspaceSignInPrompt isZh={isZh} toolName="AI Study" callbackUrl="/ai-study" providers={authProviders} /> : <StudyUI isZh={isZh} locked={locked} entitlement={studyEntitlement} onUsageRefresh={refreshEntitlement} />;
+        // Signed-in users get the focused workspace. Guests—and the server-rendered HTML, which has no
+        // session yet—get the explainer page so the route has a real heading and crawlable content.
+        if (!locked) return <StudyUI isZh={isZh} locked={locked} entitlement={studyEntitlement} onUsageRefresh={refreshEntitlement} />;
+
+        return (
+          <ToolLandingPageSection hero={toolPageContent.study}>
+            {authLoading ? <div className="ui-card h-64 animate-pulse" aria-hidden /> : <WorkspaceSignInPrompt isZh={isZh} toolName="AI Study" callbackUrl="/ai-study" providers={authProviders} />}
+          </ToolLandingPageSection>
+        );
       }}
     </PublicWorkspaceShell>
   );

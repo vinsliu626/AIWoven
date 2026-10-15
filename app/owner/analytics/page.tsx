@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { buildPrivateMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { requireAnalyticsAdmin } from "@/lib/analytics/admin";
 import { getOwnerAnalyticsSummary } from "@/lib/analytics/summary";
 import { AIWovenAppNav } from "@/components/app/AIWovenAppNav";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = buildPrivateMetadata({ title: "Owner Analytics | AIWoven", path: "/owner/analytics" });
 
 function Metric({ label, value }: { label: string; value: number }) {
   return <div className="border-t border-slate-200 py-4"><p className="text-xs font-medium text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{value.toLocaleString()}</p></div>;

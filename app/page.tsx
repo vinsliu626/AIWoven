@@ -1,9 +1,18 @@
 import { AIWovenHome } from "@/components/marketing/AIWovenHome";
-import { getPublicImpactStats } from "@/lib/analytics/publicStats";
+import { buildMetadata } from "@/lib/seo";
 
-export const revalidate = 300;
+export const metadata = buildMetadata({
+  title: "AIWoven: AI Study Assistant for Lecture Notes, Flashcards & Quizzes",
+  description:
+    "Turn lecture recordings into structured study notes, and course documents into flashcards and explained quizzes. Free AI study assistant for students.",
+  path: "/",
+  keywords: ["AI study assistant", "AI note taker", "AI lecture notes", "AI flashcards", "study tools for students"],
+  robots: {
+    index: true,
+    follow: true,
+  },
+});
 
-export default async function Home() {
-  const stats = await getPublicImpactStats();
-  return <AIWovenHome stats={stats} />;
+export default function Home() {
+  return <AIWovenHome />;
 }

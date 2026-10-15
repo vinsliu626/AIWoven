@@ -1,35 +1,10 @@
-export const BLOG_BASE_PATH = "/blog";
+import { articles } from "./articles";
+import { BLOG_BASE_PATH, type BlogPost } from "./types";
 
-export type BlogToolLink = {
-  href: "/ai-study" | "/ai-note" | "/ai-detector" | "/ai-humanizer" | "/converter" | "/convert-pdf-to-jpg";
-  label: string;
-};
+export { BLOG_BASE_PATH } from "./types";
+export type { BlogBlock, BlogFaq, BlogPost, BlogReference, BlogSection, BlogToolLink } from "./types";
 
-export type BlogSection = {
-  heading: string;
-  paragraphs: string[];
-  bullets?: string[];
-  toolLinks?: BlogToolLink[];
-};
-
-export type BlogPost = {
-  slug: string;
-  title: string;
-  description: string;
-  category: string;
-  date: string;
-  readingTime: string;
-  relatedToolUrl: BlogToolLink["href"];
-  seoTitle: string;
-  seoDescription: string;
-  intro: string;
-  sections: BlogSection[];
-  ctaTitle: string;
-  ctaDescription: string;
-  ctaLinks: BlogToolLink[];
-};
-
-const posts: BlogPost[] = [
+const legacyPosts: BlogPost[] = [
   {
     slug: "best-ai-study-tool",
     title: "Best AI Study Tool for Busy Students",
@@ -37,7 +12,6 @@ const posts: BlogPost[] = [
       "How to evaluate AI study tools, what actually helps with retention, and where AIWoven fits into a realistic student workflow.",
     category: "Study Tools",
     date: "2026-04-29",
-    readingTime: "6 min read",
     relatedToolUrl: "/ai-study",
     seoTitle: "Best AI Study Tool for Students in 2026 | AIWoven",
     seoDescription:
@@ -97,7 +71,6 @@ const posts: BlogPost[] = [
       "Looking for a free AI note taking tool? This guide shows students how to turn lectures, readings, and rough notes into cleaner study material.",
     category: "Note Taking",
     date: "2026-04-29",
-    readingTime: "6 min read",
     relatedToolUrl: "/ai-note",
     seoTitle: "Free AI Note Taking Tool for Students (Fast & Useful) | AIWoven",
     seoDescription:
@@ -171,7 +144,6 @@ const posts: BlogPost[] = [
       "A practical guide to choosing the best AI detector for students who want fast checks, clearer signals, and fewer surprises before submission.",
     category: "AI Writing",
     date: "2026-04-29",
-    readingTime: "6 min read",
     relatedToolUrl: "/ai-detector",
     seoTitle: "Best AI Detector for Students (Free & Accurate Guide) | AIWoven",
     seoDescription:
@@ -245,7 +217,6 @@ const posts: BlogPost[] = [
       "What AI writing detectors can and cannot do, plus a practical review process students can use before submitting essays or reports.",
     category: "AI Writing",
     date: "2026-04-27",
-    readingTime: "7 min read",
     relatedToolUrl: "/ai-detector",
     seoTitle: "How to Detect AI Writing More Reliably | AIWoven",
     seoDescription:
@@ -309,7 +280,6 @@ const posts: BlogPost[] = [
       "A grounded look at which AI tools help students study, write, organize notes, and handle course files without wasting time.",
     category: "Student Productivity",
     date: "2026-04-26",
-    readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
     seoTitle: "Best AI Tools for Students | AIWoven",
     seoDescription:
@@ -370,7 +340,6 @@ const posts: BlogPost[] = [
       "Need an AI humanizer tool that makes student writing sound more natural? This guide covers what it does, when to use it, and how AIWoven helps.",
     category: "AI Writing",
     date: "2026-04-29",
-    readingTime: "6 min read",
     relatedToolUrl: "/ai-humanizer",
     seoTitle: "AI Humanizer Tool for Students (Best Choice in 2026) | AIWoven",
     seoDescription:
@@ -444,7 +413,6 @@ const posts: BlogPost[] = [
       "When to use an AI humanizer, what it should improve, and how to keep writing natural without flattening your ideas.",
     category: "AI Writing",
     date: "2026-04-25",
-    readingTime: "6 min read",
     relatedToolUrl: "/ai-humanizer",
     seoTitle: "AI Humanizer Guide: Make Writing Sound Natural | AIWoven",
     seoDescription:
@@ -502,7 +470,6 @@ const posts: BlogPost[] = [
       "Why students convert PDFs to JPG, how to avoid common quality issues, and when a converter saves time on assignments and submissions.",
     category: "File Conversion",
     date: "2026-04-24",
-    readingTime: "6 min read",
     relatedToolUrl: "/converter",
     seoTitle: "PDF to JPG Converter for Students | AIWoven",
     seoDescription:
@@ -563,7 +530,6 @@ const posts: BlogPost[] = [
       "A simple guide for students who need to convert PDF files into JPG images quickly without installing extra software.",
     category: "File Conversion",
     date: "2026-04-29",
-    readingTime: "6 min read",
     relatedToolUrl: "/converter",
     seoTitle: "How to Convert PDF to JPG Online (Free & Fast Tool) | AIWoven",
     seoDescription:
@@ -637,7 +603,6 @@ const posts: BlogPost[] = [
       "Learn how to study with AI notes the right way so you get better recall, cleaner review material, and less wasted time.",
     category: "Study Tools",
     date: "2026-04-29",
-    readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
     seoTitle: "How to Study With AI Notes (Fast Student Guide) | AIWoven",
     seoDescription:
@@ -711,7 +676,6 @@ const posts: BlogPost[] = [
       "A practical system for using AI to reduce setup time, improve review, and study more efficiently without relying on shortcuts that hurt recall.",
     category: "Study Tools",
     date: "2026-04-23",
-    readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
     seoTitle: "How to Study Faster With AI | AIWoven",
     seoDescription:
@@ -771,7 +735,6 @@ const posts: BlogPost[] = [
       "A practical guide to the most useful AI tools for college students, with real examples for notes, studying, writing checks, and file conversion.",
     category: "Student Productivity",
     date: "2026-04-29",
-    readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
     seoTitle: "AI Tools for College Students (Best Practical Picks) | AIWoven",
     seoDescription:
@@ -839,71 +802,12 @@ const posts: BlogPost[] = [
     ],
   },
   {
-    slug: "ai-note-vs-traditional-notes",
-    title: "AI Notes vs Traditional Notes: Which Works Better?",
-    description:
-      "A realistic comparison of AI-generated notes and traditional handwritten or typed notes for learning, speed, and retention.",
-    category: "Note Taking",
-    date: "2026-04-22",
-    readingTime: "7 min read",
-    relatedToolUrl: "/ai-note",
-    seoTitle: "AI Notes vs Traditional Notes for Students | AIWoven",
-    seoDescription:
-      "Compare AI notes and traditional notes across speed, retention, review quality, and how students can combine both effectively.",
-    intro:
-      "AI notes and traditional notes are often framed as opposites, but that is usually the wrong comparison. Most students do not need to choose one forever. They need to understand what each method is good at. Traditional notes are strong for attention and memory during class. AI notes are strong for cleanup, compression, and reorganization after class. The smartest workflow often combines both.",
-    sections: [
-      {
-        heading: "Where traditional notes still win",
-        paragraphs: [
-          "Writing notes yourself forces you to filter information in real time. That decision-making process helps attention and gives you a first pass at understanding the material. Even imperfect handwritten or typed notes can be valuable because they reflect what stood out to you, what confused you, and which examples the instructor emphasized. AI cannot replace that first layer of engagement.",
-          "The downside is that traditional notes are often incomplete or messy. You may miss transitions, definitions, or clarifying examples when the class moves too quickly. That is where a post-class tool like AIWoven <a href=\"/ai-note\">AI Note</a> becomes useful. It turns rough input into a cleaner, reviewable version without asking you to start from scratch.",
-        ],
-        toolLinks: [{ href: "/ai-note", label: "Clean up class notes" }],
-      },
-      {
-        heading: "Where AI notes are strongest",
-        paragraphs: [
-          "AI-generated notes excel when the source material is large, repetitive, or scattered. A transcript, article packet, or mixed set of class notes can be reorganized much faster by a dedicated note tool than by manual editing alone. This saves time and makes later review less painful, especially in reading-heavy courses.",
-          "That said, AI notes are not automatically superior for learning. If you never engage with the material beyond reading the generated output, you may understand less than you think. The best follow-up is to move cleaned notes into <a href=\"/ai-study\">AI Study</a> and test yourself with flashcards or quiz prompts. That is the step that turns organization into retention.",
-        ],
-        toolLinks: [{ href: "/ai-study", label: "Turn notes into review" }],
-      },
-      {
-        heading: "The biggest risk with relying on AI alone",
-        paragraphs: [
-          "The danger of AI notes is false confidence. Clean formatting can make information feel mastered when it has only been reorganized. Students sometimes replace active thinking with passive consumption, especially when the output looks polished. That is why AI notes should support your workflow, not become the workflow.",
-          "Another risk appears when students reuse AI-generated notes inside assignments. If a reflection or response paper is built too directly from machine-like note summaries, the voice can sound generic. Before submitting anything, check it in <a href=\"/ai-detector\">AI Detector</a> and adjust tone with <a href=\"/ai-humanizer\">AI Humanizer</a> if needed. Notes and submitted writing are not the same thing.",
-        ],
-        toolLinks: [
-          { href: "/ai-detector", label: "Check assignment language" },
-          { href: "/ai-humanizer", label: "Refine the voice" },
-        ],
-      },
-      {
-        heading: "The most effective hybrid approach",
-        paragraphs: [
-          "A practical system looks like this: take rough notes yourself during class, then use AI afterward to fill gaps, impose structure, and create a better review document. From there, study the content actively instead of admiring the formatting. This method keeps the cognitive benefit of traditional note-taking while capturing the speed advantage of AI.",
-          "AIWoven is well suited to that hybrid pattern because the tools connect logically. Start with your own notes, improve them in <a href=\"/ai-note\">AI Note</a>, and convert the result into revision material with <a href=\"/ai-study\">AI Study</a>. You keep ownership of the learning process while removing the tedious cleanup work.",
-        ],
-      },
-    ],
-    ctaTitle: "Try AIWoven for free",
-    ctaDescription:
-      "Keep the memory benefits of taking your own notes, then use AI to clean and reuse them more effectively.",
-    ctaLinks: [
-      { href: "/ai-note", label: "Try AI Note" },
-      { href: "/ai-study", label: "Open AI Study" },
-    ],
-  },
-  {
     slug: "how-to-make-ai-text-sound-human",
     title: "Make AI Text Sound Human: A Practical Student Guide for 2026",
     description:
       "Learn how to make AI text sound human with better tone, sharper edits, and a student-friendly workflow that avoids robotic writing.",
     category: "AI Writing",
     date: "2026-04-29",
-    readingTime: "6 min read",
     relatedToolUrl: "/ai-humanizer",
     seoTitle: "Make AI Text Sound Human (Student Guide for 2026) | AIWoven",
     seoDescription:
@@ -977,7 +881,6 @@ const posts: BlogPost[] = [
       "The most common ways students misuse AI tools for notes, studying, and writing, plus the workflow changes that actually improve results.",
     category: "Student Productivity",
     date: "2026-04-21",
-    readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
     seoTitle: "Mistakes Students Make With AI | AIWoven",
     seoDescription:
@@ -1038,7 +941,6 @@ const posts: BlogPost[] = [
       "A practical comparison of AI vs traditional studying, including speed, recall, pros and cons, and the best hybrid approach for students.",
     category: "Study Tools",
     date: "2026-04-29",
-    readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
     seoTitle: "AI vs Traditional Studying: Best Approach for Students | AIWoven",
     seoDescription:
@@ -1112,7 +1014,6 @@ const posts: BlogPost[] = [
       "Where AI actually helps college students day to day, from lecture notes to studying to assignment review and file handling.",
     category: "Student Productivity",
     date: "2026-04-20",
-    readingTime: "7 min read",
     relatedToolUrl: "/ai-study",
     seoTitle: "How AI Helps College Students | AIWoven",
     seoDescription:
@@ -1165,7 +1066,9 @@ const posts: BlogPost[] = [
   },
 ];
 
-export const blogPosts = [...posts].sort((a, b) => (a.date < b.date ? 1 : -1));
+const posts: BlogPost[] = [...legacyPosts, ...articles];
+
+export const blogPosts = [...posts].sort((a, b) => (a.date === b.date ? a.title.localeCompare(b.title) : a.date < b.date ? 1 : -1));
 
 export function getBlogPost(slug: string) {
   return blogPosts.find((post) => post.slug === slug);
@@ -1175,13 +1078,62 @@ export function getBlogPostUrl(slug: string) {
   return `${BLOG_BASE_PATH}/${slug}`;
 }
 
+export function getBlogCategories() {
+  const counts = new Map<string, number>();
+  for (const post of blogPosts) counts.set(post.category, (counts.get(post.category) ?? 0) + 1);
+  return [...counts.entries()].map(([name, count]) => ({ name, count, id: slugifyHeading(name) }));
+}
+
+function plainText(html: string) {
+  return html.replace(/<[^>]+>/g, " ");
+}
+
+/** Every word a reader sees in the article body, used for reading time and word counts. */
+export function getBlogPostText(post: BlogPost) {
+  const parts: string[] = [post.intro, ...(post.keyTakeaways ?? [])];
+  for (const section of post.sections) {
+    parts.push(section.heading, ...(section.paragraphs ?? []), ...(section.bullets ?? []));
+    for (const block of section.blocks ?? []) {
+      if (block.type === "p") parts.push(block.html);
+      else if (block.type === "ul" || block.type === "ol") parts.push(...block.items);
+      else if (block.type === "table") parts.push(block.caption, ...block.headers, ...block.rows.flat());
+      else if (block.type === "callout") parts.push(block.title, block.html);
+      else if (block.type === "example") parts.push(block.title, ...block.lines);
+    }
+  }
+  for (const faq of post.faqs ?? []) parts.push(faq.question, faq.answer);
+  return plainText(parts.join(" ")).replace(/\s+/g, " ").trim();
+}
+
+export function getBlogWordCount(post: BlogPost) {
+  return getBlogPostText(post).split(" ").filter(Boolean).length;
+}
+
+export function getReadingTime(post: BlogPost) {
+  return `${Math.max(1, Math.round(getBlogWordCount(post) / 230))} min read`;
+}
+
+export function slugifyHeading(heading: string) {
+  return heading
+    .toLowerCase()
+    .replace(/&[a-z]+;/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function getRelatedBlogPosts(currentSlug: string, limit = 3) {
   const currentPost = getBlogPost(currentSlug);
-  if (!currentPost) {
-    return blogPosts.slice(0, limit);
-  }
+  if (!currentPost) return blogPosts.slice(0, limit);
 
-  const sameCategory = blogPosts.filter((post) => post.slug !== currentSlug && post.category === currentPost.category);
-  const fallback = blogPosts.filter((post) => post.slug !== currentSlug && post.category !== currentPost.category);
-  return [...sameCategory, ...fallback].slice(0, limit);
+  const currentTags = new Set(currentPost.tags ?? []);
+  return blogPosts
+    .filter((post) => post.slug !== currentSlug)
+    .map((post) => {
+      const sharedTags = (post.tags ?? []).filter((tag) => currentTags.has(tag)).length;
+      const score = sharedTags * 3 + (post.category === currentPost.category ? 2 : 0) + (post.relatedToolUrl === currentPost.relatedToolUrl ? 1 : 0);
+      return { post, score };
+    })
+    .sort((a, b) => b.score - a.score || (a.post.date < b.post.date ? 1 : -1))
+    .slice(0, limit)
+    .map(({ post }) => post);
 }

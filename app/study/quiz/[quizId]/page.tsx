@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
@@ -5,6 +6,8 @@ import { getStudySessionById } from "@/lib/study/history";
 import { QuizRunner } from "@/components/workspace/study/QuizRunner";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: { absolute: "Study Quiz | AIWoven" }, robots: { index: false, follow: false } };
 
 export default async function StudyQuizPage({ params }: { params: Promise<{ quizId: string }> }) {
   const session = await getServerSession(authOptions);

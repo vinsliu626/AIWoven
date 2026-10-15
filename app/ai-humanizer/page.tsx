@@ -2,7 +2,7 @@ import { AiHumanizerWorkspacePage } from "@/components/workspace/public/AiHumani
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "AI Humanizer | AIWoven",
+  title: "AI Humanizer: Make Stiff Writing Sound Natural | AIWoven",
   description:
     "Rewrite text with the AIWoven AI Humanizer to improve flow, readability, and natural phrasing while keeping the original meaning intact.",
   path: "/ai-humanizer",
