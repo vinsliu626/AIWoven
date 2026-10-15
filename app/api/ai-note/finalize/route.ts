@@ -16,7 +16,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { transcribeAudioToText } from "@/lib/asr/transcribe";
 import { callGroqTranscribe } from "@/lib/ai/groq";
 import { AiNoteGenerationError, runAiNotePipeline } from "@/lib/aiNote/pipeline";
-import { buildCanonicalTranscript, buildProgressiveNote, buildRawTranscript, hasContiguousChunkIndexes, nextUnprocessedIndex, storedSegmentTranscript } from "@/lib/aiNote/finalizeHelpers";
+import { buildCanonicalTranscript, buildProgressiveNote, buildRawTranscript, hasContiguousChunkIndexes, nextUnprocessedIndex, storedSegmentTranscript, wavDurationSeconds } from "@/lib/aiNote/finalizeHelpers";
 import { canonicalizeTranscriptText, transcriptNormalizationMetadata } from "@/lib/aiNote/transcriptCanonicalization";
 import { deriveRecordedSeconds, parseRecordedDurationMs } from "@/lib/aiNote/recordingUsage";
 import { assertNoteRequestAllowed, markNoteAttempt, NoteLimitError, recordNoteGenerateSuccess } from "@/lib/aiNote/quota";
@@ -382,10 +382,17 @@ function limitErrorResponse(error: unknown, traceId: string) {
   return null;
 }
 
-/** Seconds of decoded audio in a 16 kHz mono 16-bit PCM WAV produced by ffmpeg. */
-function decodedWavSeconds(wavBytes: number) {
-  const pcmBytes = Math.max(0, wavBytes - 44);
-  return Math.max(1, Math.ceil(pcmBytes / (16_000 * 2)));
+/** Seconds of decoded audio in the 16 kHz mono 16-bit PCM WAV the ASR stage writes. */
+async function decodedWavSeconds(wavPath: string) {
+  const handle = await fs.open(wavPath, "r");
+  try {
+    const { size } = await handle.stat();
+    const header = Buffer.alloc(Math.min(4096, size));
+    await handle.read(header, 0, header.length, 0);
+    return wavDurationSeconds(header, size);
+  } finally {
+    await handle.close();
+  }
 }
 
 async function readBodyNoteId(req: Request) {
@@ -786,7 +793,7 @@ export async function POST(req: Request) {
         // against the weekly quota before the first segment is transcribed, and stored
         // as the amount to bill when the note completes.
         if (job.secondsBilled == null) {
-          const verifiedSeconds = decodedWavSeconds((await fs.stat(fullWav)).size);
+          const verifiedSeconds = await decodedWavSeconds(fullWav);
           try {
             await assertQuotaOrThrow({ userId, action: "note", amount: verifiedSeconds });
           } catch (error) {

@@ -78,3 +78,28 @@ export function buildProgressiveNote(parts: string[]) {
     cleaned.join("\n\n---\n\n"),
   ].join("\n");
 }
+
+/**
+ * Whole seconds (rounded up) of PCM audio in a WAV file, read from its RIFF
+ * `data` chunk. ffmpeg writes extra chunks (e.g. LIST/INFO) before `data`, so
+ * the header is not always 44 bytes. Falls back to the file size when the
+ * header cannot be parsed. Defaults match the ASR stage: 16 kHz, mono, 16-bit.
+ */
+export function wavDurationSeconds(header: Uint8Array, fileBytes: number, bytesPerSecond = 16_000 * 2) {
+  const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
+  const ascii = (offset: number) => String.fromCharCode(...header.subarray(offset, offset + 4));
+  let dataBytes = Math.max(0, fileBytes - 44);
+  if (header.byteLength >= 12 && ascii(0) === "RIFF" && ascii(8) === "WAVE") {
+    for (let offset = 12; offset + 8 <= header.byteLength; ) {
+      const size = view.getUint32(offset + 4, true);
+      if (ascii(offset) === "data") {
+        // ffmpeg may leave the size as a placeholder when it cannot seek back; trust the file then.
+        dataBytes = size > 0 && size !== 0xffffffff ? Math.min(size, fileBytes - offset - 8) : fileBytes - offset - 8;
+        break;
+      }
+      offset += 8 + size + (size % 2);
+    }
+  }
+  return Math.max(1, Math.ceil(dataBytes / bytesPerSecond));
+}
+
