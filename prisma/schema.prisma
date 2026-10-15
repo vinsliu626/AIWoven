@@ -241,7 +241,7 @@ model StudySession {
   fileSizeBytes     Int?
   mimeType          String?
   selectedModes     String[]
-  selectedQuizTypes String[]
+  selectedQuizTypes String[] @default([])
   resultJson        Json?
   status            String   @default("COMPLETED")
   errorSummary      String?
