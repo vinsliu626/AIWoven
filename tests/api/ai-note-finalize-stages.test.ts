@@ -220,7 +220,7 @@ describe.skipIf(!hasFfmpeg)("finalize ASR: verified audio duration", () => {
 
     expect(mocks.assertQuotaOrThrow).toHaveBeenCalledWith({ userId: "user_1", action: "note", amount: 4 });
     expect(order).toEqual(["quota", "transcribe"]);
-    expect(mocks.prisma.aiNoteJob.update).toHaveBeenCalledWith({ where: { noteId: NOTE_ID }, data: { secondsBilled: 4 } });
+    expect(mocks.prisma.aiNoteJob.update).toHaveBeenCalledWith({ where: { noteId: NOTE_ID }, data: { segmentsTotal: 1, secondsBilled: 4 } });
   });
 
   it("does not transcribe when the recording is longer than the remaining quota", async () => {
@@ -236,12 +236,14 @@ describe.skipIf(!hasFfmpeg)("finalize ASR: verified audio duration", () => {
   });
 
   it("does not re-check or overwrite the verified duration on later ASR steps", async () => {
-    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "asr", segmentTimeSec: 180, asrNextIndex: 0, secondsBilled: 4 });
+    mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ stage: "asr", segmentTimeSec: 180, asrNextIndex: 0, secondsBilled: 4, segmentsTotal: 1 });
 
-    await finalize();
+    const result = await finalize();
 
+    expect(result.status).toBe(200);
     expect(mocks.assertQuotaOrThrow).not.toHaveBeenCalled();
-    expect(mocks.prisma.aiNoteJob.update.mock.calls.some(([args]) => "secondsBilled" in (args?.data ?? {}))).toBe(false);
+    expect(mocks.prisma.aiNoteJob.update.mock.calls.some(([args]) => "secondsBilled" in (args?.data ?? {}) || "segmentsTotal" in (args?.data ?? {}))).toBe(false);
+    expect(mocks.transcribeAudioToText).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -319,4 +321,47 @@ describe("finalize merge: retention of processing data", () => {
     expect(result.status).toBe(200);
     expect(result.body.stage).toBe("done");
   });
+});
+
+describe.skipIf(!hasFfmpeg)("finalize ASR: per-segment extraction across steps", () => {
+  it("sends each 30 s segment once, in order, without writing a full-recording WAV", async () => {
+    const os = await import("node:os");
+    const { spawnSync } = await import("node:child_process");
+    const ffmpeg = path.resolve(__dirname, "../../node_modules/ffmpeg-static/ffmpeg");
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ai-note-steps-"));
+    const mp3 = path.join(tmp, "lecture.mp3");
+    // 65 s → segments of 30 s, 30 s, 5 s.
+    spawnSync(ffmpeg, ["-loglevel", "error", "-y", "-f", "lavfi", "-i", "sine=f=330:r=44100:d=65", "-c:a", "libmp3lame", "-b:a", "32k", mp3]);
+    const data = fs.readFileSync(mp3);
+    fs.rmSync(tmp, { recursive: true, force: true });
+
+    const stored: Array<{ chunkIndex: number; text: string }> = [];
+    const sentSeconds: number[] = [];
+    mocks.prisma.aiNoteChunk.findMany.mockResolvedValue([{ chunkIndex: 0, size: data.length, mime: "audio/mpeg", data }]);
+    mocks.prisma.aiNoteTranscript.findMany.mockImplementation(async () => [...stored]);
+    mocks.prisma.aiNoteTranscript.upsert.mockImplementation(async ({ create }) => void stored.push({ chunkIndex: create.chunkIndex, text: create.text }));
+    mocks.transcribeAudioToText.mockImplementation(async (blob: Blob, opts: { filename: string }) => {
+      const bytes = Buffer.from(await blob.arrayBuffer());
+      const dataAt = bytes.indexOf("data", 12, "ascii");
+      sentSeconds.push(bytes.readUInt32LE(dataAt + 4) / 32_000);
+      return `words from ${opts.filename}`;
+    });
+
+    const workDir = path.join((await import("node:os")).tmpdir(), "ai-note", NOTE_ID, "work");
+    let job: Record<string, unknown> = { stage: "asr", segmentTimeSec: 30, asrNextIndex: 0, secondsBilled: null, segmentsTotal: 0 };
+    mocks.prisma.aiNoteJob.update.mockImplementation(async ({ data: patch }) => void (job = { ...job, ...patch }));
+    for (let step = 0; step < 3; step += 1) {
+      mocks.prisma.aiNoteJob.upsert.mockResolvedValue({ ...job });
+      const result = await finalize({ inputType: "upload", expectedBytes: data.length, expectedSha256: (await import("node:crypto")).createHash("sha256").update(data).digest("hex") });
+      expect(result.status, JSON.stringify(result.body)).toBe(200);
+      expect(fs.readdirSync(workDir).filter((name) => name.endsWith(".wav"))).toEqual([]);
+    }
+
+    expect(stored.map((row) => row.chunkIndex)).toEqual([0, 1, 2]);
+    expect(stored.map((row) => row.text)).toEqual(["words from seg-000.wav", "words from seg-001.wav", "words from seg-002.wav"]);
+    expect(sentSeconds.map((value) => Math.round(value * 1000) / 1000)).toEqual([30, 30, 5]);
+    expect(job).toMatchObject({ segmentsTotal: 3, secondsBilled: 65 });
+    // Duration and quota were established once, on the first step.
+    expect(mocks.assertQuotaOrThrow).toHaveBeenCalledTimes(1);
+  }, 30_000);
 });

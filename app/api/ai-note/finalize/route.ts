@@ -16,8 +16,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { transcribeAudioToText } from "@/lib/asr/transcribe";
 import { callGroqTranscribe } from "@/lib/ai/groq";
 import { AiNoteGenerationError, runAiNotePipeline } from "@/lib/aiNote/pipeline";
-import { buildCanonicalTranscript, buildProgressiveNote, buildRawTranscript, hasContiguousChunkIndexes, nextUnprocessedIndex, storedSegmentTranscript, wavDurationSeconds } from "@/lib/aiNote/finalizeHelpers";
+import { buildCanonicalTranscript, buildProgressiveNote, buildRawTranscript, hasContiguousChunkIndexes, nextUnprocessedIndex, storedSegmentTranscript } from "@/lib/aiNote/finalizeHelpers";
 import { canonicalizeTranscriptText, transcriptNormalizationMetadata } from "@/lib/aiNote/transcriptCanonicalization";
+import { audioProbeArgs, countDecodedSamples, parseAudioProbe, samplesToSeconds, seekStrategyFor, segmentCount, segmentExtractArgs } from "@/lib/aiNote/audioSegments";
 import { deriveRecordedSeconds, parseRecordedDurationMs } from "@/lib/aiNote/recordingUsage";
 import { assertNoteRequestAllowed, markNoteAttempt, NoteLimitError, recordNoteGenerateSuccess } from "@/lib/aiNote/quota";
 import { parseEnvInt } from "@/lib/env/number";
@@ -382,19 +383,6 @@ function limitErrorResponse(error: unknown, traceId: string) {
   return null;
 }
 
-/** Seconds of decoded audio in the 16 kHz mono 16-bit PCM WAV the ASR stage writes. */
-async function decodedWavSeconds(wavPath: string) {
-  const handle = await fs.open(wavPath, "r");
-  try {
-    const { size } = await handle.stat();
-    const header = Buffer.alloc(Math.min(4096, size));
-    await handle.read(header, 0, header.length, 0);
-    return wavDurationSeconds(header, size);
-  } finally {
-    await handle.close();
-  }
-}
-
 async function readBodyNoteId(req: Request) {
   let body: any = null;
   try {
@@ -742,15 +730,10 @@ export async function POST(req: Request) {
           });
         }
 
-        const probe = await withTimeout(
-          run(ffmpegBin, ["-hide_banner", "-i", fullSource, "-map", "0:a:0", "-t", "0.1", "-f", "null", "-"]),
-          30_000,
-          "ffmpeg_probe"
-        ).catch((error) => {
+        const probeRun = await withTimeout(run(ffmpegBin, audioProbeArgs(fullSource)), 30_000, "ffmpeg_probe").catch((error) => {
           throw Object.assign(new Error(String((error as Error)?.message || error)), { _code: "AUDIO_VALIDATION_FAILED" });
         });
-        const duration = probe.stderr.match(/Duration:\s*([^,]+)/i)?.[1]?.trim() || "unknown";
-        const audioStream = probe.stderr.match(/Audio:\s*([^\r\n]+)/i)?.[1]?.trim() || "unknown";
+        const audioProbe = parseAudioProbe(probeRun.stderr);
         console.info("[ai-note/finalize] audio validated", {
           traceId,
           noteId,
@@ -760,58 +743,48 @@ export async function POST(req: Request) {
           reconstructedBytes,
           sha256: reconstructedSha256,
           sourceMime,
-          sourcePath: fullSource,
-          fileReadable: true,
-          ffmpegBin,
-          duration,
-          audioStream,
+          codec: audioProbe.codec,
+          seekStrategy: seekStrategyFor(audioProbe.codec),
+          firstSampleSeconds: audioProbe.firstSampleSeconds,
+          duration: audioProbe.durationText,
           elapsedMs: Date.now() - t0,
         });
 
-        const fullWav = path.join(workDir, "full.wav");
-        await withTimeout(
-          run(ffmpegBin, ["-y", "-hide_banner", "-i", fullSource, "-vn", "-sn", "-dn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", fullWav]),
-          180_000,
-          "ffmpeg_webm_to_wav"
-        ).catch((e) => {
-          throw Object.assign(new Error(String((e as any)?.message || e)), { _code: "FFMPEG_FAILED" });
-        });
-
-        const segPattern = path.join(workDir, "seg-%03d.wav");
-        await withTimeout(
-          run(ffmpegBin, ["-y", "-hide_banner", "-i", fullWav, "-f", "segment", "-segment_time", String(segTime), "-reset_timestamps", "1", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", segPattern]),
-          180_000,
-          "ffmpeg_segment"
-        ).catch((e) => {
-          throw Object.assign(new Error(String((e as any)?.message || e)), { _code: "FFMPEG_FAILED" });
-        });
-
-        const files = (await fs.readdir(workDir)).filter((n) => n.startsWith("seg-") && n.endsWith(".wav")).sort();
-        const total = files.length;
-
-        // Verified duration from the decoded audio (not the client's clock). Checked
-        // against the weekly quota before the first segment is transcribed, and stored
-        // as the amount to bill when the note completes.
-        if (job.secondsBilled == null) {
-          const verifiedSeconds = await decodedWavSeconds(fullWav);
-          try {
-            await assertQuotaOrThrow({ userId, action: "note", amount: verifiedSeconds });
-          } catch (error) {
-            const response = limitErrorResponse(error, traceId);
-            if (response) return response;
-            throw error;
-          }
-          await prisma.aiNoteJob.update({ where: { noteId }, data: { secondsBilled: verifiedSeconds } });
-          job.secondsBilled = verifiedSeconds;
-          console.info("[ai-note/finalize] verified audio duration", {
-            traceId,
-            noteId,
-            verifiedSeconds,
-            clientReportedSeconds: reportedDurationMs ? Math.ceil(reportedDurationMs / 1000) : null,
+        // Segment count and verified duration come from one streaming decode, done once
+        // per job (no WAV is written). Later ASR steps decode only their own segment.
+        let total = Number(job.segmentsTotal) || 0;
+        if (job.secondsBilled == null || total <= 0) {
+          const decodedSamples = await withTimeout(countDecodedSamples(ffmpegBin, fullSource), 180_000, "ffmpeg_decode_count").catch((e) => {
+            throw Object.assign(new Error(String((e as any)?.message || e)), { _code: "FFMPEG_FAILED" });
           });
-        }
+          if (decodedSamples <= 0) {
+            throw Object.assign(new Error("The recording decoded to no audio."), { _code: "AUDIO_DECODE_FAILED" });
+          }
+          total = segmentCount(decodedSamples, segTime);
 
-        await prisma.aiNoteJob.update({ where: { noteId }, data: { segmentsTotal: total } });
+          // Verified duration from the decoded audio (not the client's clock). Checked
+          // against the weekly quota before the first segment is transcribed, and stored
+          // as the amount to bill when the note completes.
+          if (job.secondsBilled == null) {
+            const verifiedSeconds = samplesToSeconds(decodedSamples);
+            try {
+              await assertQuotaOrThrow({ userId, action: "note", amount: verifiedSeconds });
+            } catch (error) {
+              const response = limitErrorResponse(error, traceId);
+              if (response) return response;
+              throw error;
+            }
+            job.secondsBilled = verifiedSeconds;
+            console.info("[ai-note/finalize] verified audio duration", {
+              traceId,
+              noteId,
+              verifiedSeconds,
+              clientReportedSeconds: reportedDurationMs ? Math.ceil(reportedDurationMs / 1000) : null,
+            });
+          }
+          await prisma.aiNoteJob.update({ where: { noteId }, data: { segmentsTotal: total, secondsBilled: job.secondsBilled } });
+          job.segmentsTotal = total;
+        }
 
         const existingTranscriptRows = await prisma.aiNoteTranscript.findMany({
           where: { noteId },
@@ -840,9 +813,17 @@ export async function POST(req: Request) {
         for (let i = startIdx; i < endIdx; i++) {
           await refreshJobLock(noteId, lock.lockId);
 
-          const fname = files[i];
+          const fname = `seg-${String(i).padStart(3, "0")}.wav`;
           const p = path.join(workDir, fname);
+          await withTimeout(
+            run(ffmpegBin, segmentExtractArgs({ source: fullSource, output: p, index: i, segmentSeconds: segTime, probe: audioProbe })),
+            120_000,
+            "ffmpeg_segment"
+          ).catch((e) => {
+            throw Object.assign(new Error(String((e as any)?.message || e)), { _code: "FFMPEG_FAILED" });
+          });
           const buf = await fs.readFile(p);
+          await fs.rm(p, { force: true });
 
           let asrResult: ResolvedAsrResult;
           try {
