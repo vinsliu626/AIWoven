@@ -236,6 +236,9 @@ async function imageToPdf(file: File) {
 
 function normalizePdfError(error: unknown) {
   if (error instanceof ConverterError) return error;
+  // Keep the underlying cause visible: every unexpected failure (including pdf.js failing
+  // to load) is otherwise reported to the user as "This PDF could not be opened".
+  console.error("[converter] PDF processing failed", error);
   const name = typeof error === "object" && error && "name" in error ? String((error as { name?: string }).name) : "";
   if (name === "PasswordException") return new ConverterError("PDF_ENCRYPTED");
   if (name === "InvalidPDFException") return new ConverterError("INVALID_PDF_FILE");
@@ -290,7 +293,7 @@ async function pdfToImage({
 
   try {
     onProgress?.({ stage: "loading", message: "Loading PDF pages..." });
-    const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as {
+    const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.min.mjs")) as unknown as {
       GlobalWorkerOptions: { workerSrc?: string };
       getDocument: (args: {
         data: Uint8Array;
