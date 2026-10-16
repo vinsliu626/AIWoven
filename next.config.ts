@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
-const projectRoot = "C:/Users/gcswz/Desktop/AI/ai-multimodel";
+// Turbopack's workspace root is this project. It was a hard-coded Windows path, which
+// made every Turbopack build/dev run on Linux (CI, Vercel builders, cloud dev) fail
+// with "Invalid distDirRoot". Next runs from the project directory, so cwd is the root.
+const projectRoot = process.cwd();
 const canonicalOrigin = "https://aiwoven.app";
 const redirectHosts = ["ai-multimodel-erhw.vercel.app", "www.aiwoven.app"] as const;
 
