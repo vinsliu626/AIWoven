@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { ConverterUI, type ConverterEntitlement } from "@/components/workspace/converter/ConverterUI";
 import { WorkspaceSignInPrompt } from "@/components/auth/WorkspaceSignInPrompt";
@@ -24,31 +24,34 @@ function buildEntitlement(plan: "basic" | "pro" | "ultra", usedToday: number): C
   };
 }
 
-export function ConverterWorkspacePage() {
-  const [searchState] = useState<{
-    e2eEnabled: boolean;
-    e2ePlan: "basic" | "pro" | "ultra";
-    e2eUsedToday: number;
-    e2eForceFailure: boolean;
-  }>(() => {
-    if (process.env.NODE_ENV === "production" || typeof window === "undefined") {
-      return {
-        e2eEnabled: false,
-        e2ePlan: "basic" as "basic" | "pro" | "ultra",
-        e2eUsedToday: 0,
-        e2eForceFailure: false,
-      };
-    }
+type TestModeSearchState = {
+  e2eEnabled: boolean;
+  e2ePlan: "basic" | "pro" | "ultra";
+  e2eUsedToday: number;
+  e2eForceFailure: boolean;
+};
 
-    const params = new URLSearchParams(window.location.search);
-    const planParam = params.get("plan");
-    return {
-      e2eEnabled: params.get("e2e") === "1",
-      e2ePlan: planParam === "pro" || planParam === "ultra" ? planParam : "basic",
-      e2eUsedToday: Number.parseInt(params.get("usedToday") ?? "0", 10) || 0,
-      e2eForceFailure: params.get("fail") === "conversion",
-    };
-  });
+const subscribeToNothing = () => () => {};
+const readTestModeSearch = () => (process.env.NODE_ENV === "production" ? "" : window.location.search);
+
+function parseTestModeSearch(search: string): TestModeSearchState {
+  const params = new URLSearchParams(search);
+  const planParam = params.get("plan");
+  return {
+    e2eEnabled: params.get("e2e") === "1",
+    e2ePlan: planParam === "pro" || planParam === "ultra" ? planParam : "basic",
+    e2eUsedToday: Number.parseInt(params.get("usedToday") ?? "0", 10) || 0,
+    e2eForceFailure: params.get("fail") === "conversion",
+  };
+}
+
+export function ConverterWorkspacePage() {
+  // Test-mode query parameters (dev/test only). Read through useSyncExternalStore so the
+  // server render and the first client render agree (both see no test mode); reading
+  // window.location during the first render made the client tree differ from the server
+  // HTML and React discarded it with a hydration error.
+  const search = useSyncExternalStore(subscribeToNothing, readTestModeSearch, () => "");
+  const searchState = useMemo(() => parseTestModeSearch(search), [search]);
 
   const { e2eEnabled, e2ePlan, e2eUsedToday, e2eForceFailure } = searchState;
 
