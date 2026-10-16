@@ -4,6 +4,25 @@ import { useEffect, useState } from "react";
 import type { ProTrialWheelSpinResult, ProTrialWheelStatus } from "@/lib/billing/proTrialWheelTypes";
 
 const REMINDER_DISMISSED_STORAGE_KEY = "proWheelReminderDismissed";
+/** The reminder is shown at most once per browser session, not on every page load. */
+const REMINDER_SHOWN_SESSION_KEY = "proWheelReminderShown";
+
+function readStorage(storage: "localStorage" | "sessionStorage", key: string) {
+  try {
+    return window[storage].getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(storage: "localStorage" | "sessionStorage", key: string, value: string | null) {
+  try {
+    if (value === null) window[storage].removeItem(key);
+    else window[storage].setItem(key, value);
+  } catch {
+    // Storage can be unavailable (private mode, blocked site data); the reminder still works for this page.
+  }
+}
 
 async function readJson<T>(res: Response) {
   const text = await res.text().catch(() => "");
@@ -38,6 +57,7 @@ export function useProTrialWheel({
   const [reminderOpen, setReminderOpen] = useState(false);
   const [reminderDismissed, setReminderDismissedState] = useState(false);
   const [reminderShownThisVisit, setReminderShownThisVisit] = useState(false);
+  const [storageLoaded, setStorageLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,11 +108,7 @@ export function useProTrialWheel({
   function setReminderDismissed(value: boolean) {
     setReminderDismissedState(value);
     if (typeof window === "undefined") return;
-    if (value) {
-      window.localStorage.setItem(REMINDER_DISMISSED_STORAGE_KEY, "1");
-    } else {
-      window.localStorage.removeItem(REMINDER_DISMISSED_STORAGE_KEY);
-    }
+    writeStorage("localStorage", REMINDER_DISMISSED_STORAGE_KEY, value ? "1" : null);
   }
 
   function closeReminder(options?: { dontRemindAgain?: boolean }) {
@@ -160,10 +176,13 @@ export function useProTrialWheel({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setReminderDismissedState(window.localStorage.getItem(REMINDER_DISMISSED_STORAGE_KEY) === "1");
+    setReminderDismissedState(readStorage("localStorage", REMINDER_DISMISSED_STORAGE_KEY) === "1");
+    if (readStorage("sessionStorage", REMINDER_SHOWN_SESSION_KEY) === "1") setReminderShownThisVisit(true);
+    setStorageLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!storageLoaded) return;
     if (!sessionExists) return;
     if (!status) return;
     if (reminderDismissed) return;
@@ -171,7 +190,8 @@ export function useProTrialWheel({
     if (reminderShownThisVisit) return;
     setReminderOpen(true);
     setReminderShownThisVisit(true);
-  }, [sessionExists, status, reminderDismissed, reminderShownThisVisit]);
+    writeStorage("sessionStorage", REMINDER_SHOWN_SESSION_KEY, "1");
+  }, [storageLoaded, sessionExists, status, reminderDismissed, reminderShownThisVisit]);
 
   return {
     status,

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CopyButton } from "@/components/ui/copy-button";
 import {
   PRO_TRIAL_WHEEL_PRIZES,
@@ -133,6 +133,13 @@ function WheelPointer() {
   );
 }
 
+/**
+ * Unprompted reward reminder. It is a non-modal card, not a full-screen overlay: it appears
+ * after the wheel status loads (asynchronously, often while the user is already clicking),
+ * so it must never block or swallow clicks on the page underneath, such as the account
+ * menu, sign-out, or navigation. It sits below the header (and its dropdowns) and can be
+ * dismissed with "Maybe later" or Escape.
+ */
 export function ProTrialWheelReminderPrompt({
   open,
   dontRemindAgain,
@@ -146,45 +153,57 @@ export function ProTrialWheelReminderPrompt({
   onSpinNow: () => void;
   onMaybeLater: () => void;
 }) {
+  const headingId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onMaybeLater();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onMaybeLater]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[215] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={onMaybeLater} />
-      <div className="relative w-full max-w-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.18)]">
-        <div className="relative">
-          <p className="text-[11px] uppercase tracking-[.06em] text-sky-700">AIWoven Reward</p>
-          <h3 className="mt-2 text-[26px] font-semibold tracking-tight text-slate-900">Try your luck for a Pro trial?</h3>
-          <p className="mt-3 text-sm leading-7 text-slate-600">
-            Spin the wheel for a chance to unlock free Pro access.
-          </p>
+    <div
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={headingId}
+      data-testid="pro-trial-reminder"
+      className="fixed inset-x-4 top-[68px] z-[15] sm:inset-x-auto sm:right-4 sm:w-[360px]"
+    >
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.28)]">
+        <p className="text-[11px] uppercase tracking-[.06em] text-sky-700">AIWoven Reward</p>
+        <h3 id={headingId} className="mt-2 text-[20px] font-semibold tracking-tight text-slate-900">Try your luck for a Pro trial?</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Spin the wheel for a chance to unlock free Pro access.</p>
 
-          <label className="mt-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={dontRemindAgain}
-              onChange={(event) => onDontRemindAgainChange(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 bg-white text-sky-700 focus:ring-sky-500/40"
-            />
-            <span>Don&apos;t remind me again</span>
-          </label>
+        <label className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={dontRemindAgain}
+            onChange={(event) => onDontRemindAgainChange(event.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 bg-white text-sky-700 focus:ring-sky-500/40"
+          />
+          <span>Don&apos;t remind me again</span>
+        </label>
 
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={onSpinNow}
-              className="h-11 rounded-2xl bg-blue-600 hover:bg-blue-700 px-5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(59,130,246,0.24)] transition"
-            >
-              Spin now
-            </button>
-            <button
-              type="button"
-              onClick={onMaybeLater}
-              className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-            >
-              Maybe later
-            </button>
-          </div>
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            onClick={onSpinNow}
+            className="h-10 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(59,130,246,0.24)] transition hover:bg-blue-700"
+          >
+            Spin now
+          </button>
+          <button
+            type="button"
+            onClick={onMaybeLater}
+            className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+          >
+            Maybe later
+          </button>
         </div>
       </div>
     </div>
