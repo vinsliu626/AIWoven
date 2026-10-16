@@ -268,8 +268,10 @@ test("every workspace navigation item opens its intended route", async ({ page }
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto("/chat");
   const destinations = [
-    ["Note", "/ai-note"], ["Detect", "/ai-detector"], ["Study", "/ai-study"],
-    ["Humanizer", "/ai-humanizer"], ["Converter", "/converter"], ["History", "/chat?history=1"],
+    // Accessible names of the sidebar links (the redesign renamed "Note"/"Detect"/"Study"/
+    // "Humanizer" to the full tool names shown in the sidebar).
+    ["AI Note", "/ai-note"], ["AI Detector", "/ai-detector"], ["AI Study", "/ai-study"],
+    ["AI Humanizer", "/ai-humanizer"], ["Converter", "/converter"], ["History", "/chat?history=1"],
     ["Flashcards", "/flashcards"], ["Quiz Me", "/quiz-me"], ["Chat", "/chat"],
   ] as const;
   for (const [label, destination] of destinations) {
